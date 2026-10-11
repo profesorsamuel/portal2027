@@ -1,0 +1,12 @@
+/* portal2027-asistencia.css — estilos de la asistencia (reutiliza la tabla de la libreta) */
+.asis-select { font: inherit; padding: 0.3rem 0.2rem; min-width: 3.4rem; border: 1px solid #aebdba; border-radius: 6px; background: var(--blanco); color: var(--texto); text-align: center; }
+.asis-select:disabled { background: #eceeed; color: var(--texto-suave); }
+.asis-guardando .asis-select { background: #fff6d6; }
+.asis-ok .asis-select { background: #e8f5ec; border-color: var(--ok); }
+.asis-error .asis-select { background: #fdecea; border-color: #b3261e; border-width: 2px; }
+.col-sesion { min-width: 8.5rem; }
+.sesion-fecha { font-weight: 600; white-space: nowrap; }
+.sesion-meta { display: block; font-size: 0.8rem; font-weight: 400; color: var(--texto-suave); }
+.col-conteo { background: #f7f9f8; font-weight: 600; min-width: 3rem; }
+.leyenda-asis { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--texto-suave); }
+.leyenda-asis strong { color: var(--texto); }
