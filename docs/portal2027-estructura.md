@@ -1,44 +1,33 @@
-# portal2027 — estructura (etapa 0)
+# portal2027 — estructura (etapa 1)
 
-Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz.
+Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
-## Archivos de esta etapa
+## Archivos
 
 | Ruta | Función |
 |---|---|
-| `index.html` | Entrada del portal: acceso visual y panel de ejemplo. Nombre obligatorio, queda en la raíz. |
-| `assets/css/portal2027-base.css` | Estilos base (colores, tipografía, acceso, panel, tabla, celular). |
-| `docs/portal2027-estructura.md` | Este documento. |
+| `index.html` | Entrada: inicio de sesión, recuperación de contraseña, elección de panel. |
+| `pages/portal2027-admin.html`, `-profesor.html`, `-estudiante.html`, `-consejero.html` | Un panel por rol. |
+| `assets/css/portal2027-base.css` | Estilos base (etapa 0). |
+| `assets/css/portal2027-componentes.css` | Formularios, mensajes y tablas de datos. |
+| `js/core/portal2027-conexion.js` | Conexión con Supabase: URL y clave publicable. |
+| `js/core/portal2027-permisos.js` | Sesión, roles y utilidades comunes. |
+| `js/modulos/portal2027-acceso.js` | Lógica de `index.html`. |
+| `js/modulos/portal2027-panel.js` | Estructura de los paneles y vistas de profesor, estudiante y consejero. |
+| `js/modulos/portal2027-admin.js` | Panel de administración. |
+| `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
-Todas las rutas son relativas, así que funciona abriendo el archivo o en GitHub Pages.
+## Qué ya es real
 
-## Qué está simulado
+- Inicio y cierre de sesión con Supabase Auth, y recuperación de contraseña por correo.
+- Redirección según el rol; con varios roles se elige el panel.
+- Administración: personas y roles, años, grupos, materias y asignaciones.
+- Profesor: lista de sus grupos y materias.
+- Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
 
-- Nombre, grupo y notas del panel (datos ficticios).
-- El botón «Entrar»: abre el panel de ejemplo sin validar nada. Se alterna con el ancla `#panel` / `#acceso`, sin JavaScript.
-- Los resultados finales de la tabla (3.8, 4.0, «Sin nota») ilustran las reglas de cálculo; aún no hay motor de cálculo.
-- «¿Olvidó su contraseña?» no hace nada todavía.
-- El año lectivo (`data-anio`) está escrito a mano; será un dato de la base.
+## Qué falta o es provisional
 
-## Sin conexión todavía
-
-No hay Supabase, usuarios reales, roles ni datos reales.
-
-## Estructura prevista
-
-```
-index.html
-pages/            portal2027-profesor.html, -estudiante.html, -consejero.html, -admin.html
-assets/css/       portal2027-base.css, portal2027-componentes.css
-assets/img/       logos/, iconos/, clases/
-js/core/          portal2027-conexion.js, -permisos.js, -evaluacion.js, -integracion-ejercicios.js
-js/modulos/       portal2027-<función>.js
-supabase/         migrations/ (SQL numerado), functions/ (servidor)
-docs/             inventario y contratos
-```
-
-## Revisión de la etapa 0
-
-- [ ] `index.html` abre en computadora y celular.
-- [ ] El CSS carga (fondo claro, acceso en dos columnas en pantalla ancha).
-- [ ] Se identifican los datos ficticios (franja amarilla y bloque «Qué está simulado»).
+- Panel de estudiante y de consejero: solo mensaje de cuenta activa. El grupo y las notas llegan con las etapas 2 y 3.
+- Las cuentas nuevas se crean en Supabase (Authentication → Users); la invitación desde el portal llega en la etapa 2.
+- El año lectivo del pie de página (`data-anio`) está escrito a mano.
+- La vista simulada de la etapa 0 se retiró del `index.html`.
