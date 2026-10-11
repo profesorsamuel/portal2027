@@ -78,6 +78,8 @@ Cierre trimestral (guía, etapa 7, parte A): se cierra con `portal2027_cerrar_tr
 
 Consejería con notas (guía, etapa 7, parte B): `portal2027_notas_salon(salon, trimestre)` (migración 0013) devuelve al consejero del grupo (o a administración) las columnas y notas SOLO de las materias que el profesor publicó; las materias sin publicar llegan sin columnas ni notas. No calcula nada: el motor único lo hace en la pantalla.
 
+Documentos privados (guía, etapa 8, parte A, migración 0014): tablas `portal2027_tipos_documento` (los define administración), `portal2027_documentos` (uno vigente por estudiante, año y tipo) y `portal2027_historial_documentos` (solo se agrega). Bucket privado `portal2027-documentos` (5 MB; PDF, JPG, PNG; ruta `estudiante/año/tipo/archivo`). Se leen con RLS (el propio estudiante, administración y el consejero del grupo) y se escriben solo con `portal2027_registrar_documento` y `portal2027_revisar_documento`; `portal2027_faltantes_documentos(salon, año)` lista los obligatorios sin documento o rechazados.
+
 ## Edge Function
 
 `portal2027-invitar-estudiante` (servidor): valida que quien llama sea administrador activo, invita al correo de la ficha o vincula una cuenta existente, y asigna el rol estudiante.
