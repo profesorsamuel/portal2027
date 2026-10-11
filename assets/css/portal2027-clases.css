@@ -1,0 +1,12 @@
+/* portal2027-clases.css — materiales, tareas y entregas */
+.lista-clases { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.tarjeta-clase { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.6rem; padding: 0.75rem 0.9rem; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--blanco); }
+.tarjeta-clase.tarjeta-columna { flex-direction: column; align-items: stretch; }
+.tarjeta-cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.6rem; }
+.etiqueta-chica { display: inline-block; padding: 0.05rem 0.5rem; margin: 0.1rem 0.15rem; border: 1px solid var(--linea); border-radius: 999px; background: #eef4f3; font-size: 0.82rem; color: var(--texto-suave); }
+.formulario-clases { display: grid; gap: 0.6rem; margin-top: 0.75rem; max-width: 40rem; }
+.formulario-clases label { display: grid; gap: 0.25rem; font-size: 0.92rem; margin: 0; }
+.formulario-clases textarea, .formulario-clases input[type="text"], .formulario-clases input[type="datetime-local"] { font: inherit; padding: 0.55rem 0.65rem; border: 1px solid #aebdba; border-radius: 8px; width: 100%; box-sizing: border-box; }
+.boton-principal-chico { border: 2px solid var(--tinta); font: inherit; font-weight: 600; padding: 0.5rem 1.1rem; border-radius: 8px; cursor: pointer; background: var(--acento); width: fit-content; }
+.boton-principal-chico:disabled { opacity: 0.6; cursor: wait; }
+.bloque h4 { font-size: 1rem; margin: 0.9rem 0 0.2rem; }
