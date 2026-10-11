@@ -1,4 +1,4 @@
-/* portal2027-panel.js — estructura común de los paneles por rol y vistas de profesor, estudiante y consejero. */
+/* portal2027-panel.js — estructura común de los paneles por rol y vistas de profesor y consejero (la ficha del estudiante está en portal2027-estudiantes.js). */
 (function () {
   'use strict';
 
@@ -33,12 +33,6 @@
   function bloqueTexto(titulo, parrafos) {
     return el('section', { clase: 'bloque' },
       [el('h2', { texto: titulo })].concat(parrafos.map(function (t) { return el('p', { clase: 'bloque-ayuda', texto: t }); })));
-  }
-
-  function vistaEstudiante() {
-    return bloqueTexto('Mi información', [
-      'Su cuenta está activa. Aquí verá su grupo y sus notas cuando la administración cargue las fichas de estudiantes.'
-    ]);
   }
 
   function vistaConsejero() {
@@ -87,10 +81,14 @@
     contenido.appendChild(zona);
 
     try {
-      if (rol === 'administrador') { await window.portal2027.renderAdmin(zona, info); }
-      else if (rol === 'profesor') { zona.appendChild(await vistaProfesor(info)); }
-      else if (rol === 'consejero') { zona.appendChild(vistaConsejero()); }
-      else { zona.appendChild(vistaEstudiante()); }
+      if (rol === 'administrador') {
+        await P.renderAdmin(zona, info);
+        await P.renderEstudiantesAdmin(zona, info);
+      } else if (rol === 'profesor') {
+        zona.appendChild(await vistaProfesor(info));
+        await P.renderEstudiantesProfesor(zona, info);
+      } else if (rol === 'consejero') { zona.appendChild(vistaConsejero()); }
+      else { await P.renderEstudianteFicha(zona, info); }
     } catch (e) {
       zona.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: P.traducirError(e) }));
     }

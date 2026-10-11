@@ -135,7 +135,7 @@
 
     if (h.get('error')) {
       mostrar('login');
-      mensaje('login', 'El enlace venció o ya se usó. Pida uno nuevo con «¿Olvidó su contraseña?».', 'error');
+      mensaje('login', 'El enlace venció o ya se usó. Pida uno nuevo con «¿Olvidó su contraseña?» (o pida a la administración que reenvíe la invitación).', 'error');
       return;
     }
 
@@ -144,7 +144,7 @@
     });
 
     var r = await P.db.auth.getSession();
-    if (h.get('type') === 'recovery') {
+    if (h.get('type') === 'recovery' || h.get('type') === 'invite') {
       if (r.data.session) { mostrar('nueva'); }
       else {
         mostrar('login');
