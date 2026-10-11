@@ -1,4 +1,4 @@
-# portal2027 — inventario de base de datos (etapas 1 y 2)
+# portal2027 — inventario de base de datos (etapas 1 a 3A)
 
 Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo propio lleva el prefijo `portal2027`.
 
@@ -15,6 +15,10 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | `portal2027_asignaciones` | Profesor + materia + grupo. |
 | `portal2027_estudiantes` | Ficha única por código: nombres, apellidos, correo (opcional), acudiente, cuenta vinculada, ruta de foto. |
 | `portal2027_matriculas` | Una por estudiante y año: grupo y estado. El grupo debe ser del mismo año. |
+| `portal2027_evaluaciones` | Columnas de la libreta (categoría, tema, bloqueo, ocultar, papelera, versión) por asignación y trimestre. |
+| `portal2027_notas` | Una nota por columna y matrícula; vacío no es cero; con versión. |
+| `portal2027_historial_notas` | Historial inmutable de cada cambio de nota (anterior, nuevo, motivo, versión). |
+| `portal2027_historial_evaluaciones` | Historial inmutable de acciones sobre columnas. |
 
 ## Funciones y disparadores
 
@@ -44,7 +48,9 @@ El consejero verá su grupo asignado en la etapa 7.
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos.
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base).
+
+Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
 ## Edge Function
 
