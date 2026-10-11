@@ -1,4 +1,4 @@
-# portal2027 — estructura (etapas 1 a 4B)
+# portal2027 — estructura (etapas 1 a 5)
 
 Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
@@ -24,6 +24,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-asistencia.js` | Pantalla de asistencia. |
 | `assets/css/portal2027-asistencia.css` | Estilos de la asistencia (usa también los de la libreta). |
 | `js/modulos/portal2027-config.js` | Etapa 4B: configuración académica (periodos, pesos, estados) en el panel de administración. |
+| `js/modulos/portal2027-consejeria.js` | Etapa 5: consejeros por grupo (administración) y vista del grupo (consejero). |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -36,13 +37,15 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Libreta (etapa 3): columnas por categoría con tema, +, bloqueo, ocultar y papelera; notas con guardado real, versión e historial; promedios y final con el motor único.
 - Asistencia (etapa 4A): sesiones por fecha y bloque, marca por estudiante con estados configurables, conteo por estado, bloqueo, papelera e historial. Sin porcentajes ni pesos.
 - Administración (etapa 4B): fechas de trimestres, pesos por categoría y estados de asistencia y de nota. Solo se guardan; no se calculan.
+- Consejería (etapa 5): administración asigna consejeros a grupos; el consejero ve estudiantes, acudiente y conteo de asistencia por estado.
 - Estudiante: su ficha, grupo y foto propia (etapa 2).
 - Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
 
 ## Qué falta o es provisional
 
-- Panel de consejero: solo mensaje de cuenta activa (llega en la etapa 7). Las notas del estudiante llegan en la etapa 3.
+- Consejería: ve su grupo en solo lectura (fichas y asistencia). Las notas no se le muestran todavía.
+- Estudiante: aún no ve notas ni asistencia propias (pendiente de decidir cuándo se publican).
 - Cuentas de personal: se crean en Supabase (Authentication → Users). Las de estudiantes se invitan desde el portal.
 - El año lectivo del pie de página (`data-anio`) está escrito a mano.
 - La vista simulada de la etapa 0 se retiró del `index.html`.

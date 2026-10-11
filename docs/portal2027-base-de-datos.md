@@ -1,4 +1,4 @@
-# portal2027 — inventario de base de datos (etapas 1 a 4B)
+# portal2027 — inventario de base de datos (etapas 1 a 5)
 
 Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo propio lleva el prefijo `portal2027`.
 
@@ -24,6 +24,7 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | `portal2027_asistencia` | Una marca por sesión y matrícula; sin fila o estado nulo = sin marcar (no es ausencia); con versión. |
 | `portal2027_pesos_categoria` | Peso por año y categoría (nulo = sin definir). Solo se guarda; no entra en ningún cálculo. |
 | `portal2027_estados_nota` | Estados de nota (pendiente, exento) con efecto «sin definir». Solo catálogo. |
+| `portal2027_consejeros_salon` | Consejero + grupo (solo personas con rol consejero). |
 | `portal2027_historial_asistencia` | Historial inmutable de cada cambio de marca (anterior, nuevo, versión, quién, cuándo). |
 
 ## Funciones y disparadores
@@ -50,11 +51,11 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | salones | (ver arriba) | (ver arriba) | estudiante: el grupo donde está matriculado | nada |
 | Storage `portal2027-fotos` (privado) | ve/sube/quita todas | las de sus estudiantes | solo la suya | nada |
 
-El consejero verá su grupo asignado en la etapa 7.
+Etapa 5: el consejero ve (solo lectura) sus grupos, las matrículas y fichas de sus estudiantes y el conteo de asistencia del grupo con `portal2027_resumen_asistencia_salon`. No ve notas.
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres.
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería.
 
 Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
