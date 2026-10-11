@@ -61,7 +61,8 @@
         return el('tr', null, [el('td', { texto: String(f.anio) }), el('td', { texto: f.grupo }), el('td', { texto: f.materia }),
           el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' })])])]);
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases y tareas' })])])]);
       }))
     ]);
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [tabla]));
@@ -91,6 +92,7 @@
       else {
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
+        await P.renderEstudianteClases(zona, info);
       }
     } catch (e) {
       zona.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: P.traducirError(e) }));

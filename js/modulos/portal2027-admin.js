@@ -240,7 +240,8 @@
         el('td', { texto: P.nombreCompleto(a.profesor) }),
         el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(a.id), texto: 'Libreta' }),
-          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(a.id), texto: 'Asistencia' }), quitar])])
+          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(a.id), texto: 'Asistencia' }),
+          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(a.id), texto: 'Clases y tareas' }), quitar])])
       ]);
     });
 
