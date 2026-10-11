@@ -1,4 +1,4 @@
-# portal2027 — estructura (etapas 1 y 2)
+# portal2027 — estructura (etapas 1 a 3)
 
 Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
@@ -16,6 +16,10 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-panel.js` | Estructura de los paneles y vistas de profesor, estudiante y consejero. |
 | `js/modulos/portal2027-admin.js` | Panel de administración. |
 | `js/modulos/portal2027-estudiantes.js` | Etapa 2: importación de Excel, lista, invitación y foto de perfil (administración, profesor y estudiante). |
+| `pages/portal2027-libreta.html` | Libreta por año/grupo/materia/trimestre (profesor y administración). |
+| `js/core/portal2027-evaluacion.js` | Motor único de cálculo de notas. |
+| `js/modulos/portal2027-libreta.js` | Pantalla de la libreta. |
+| `assets/css/portal2027-libreta.css` | Estilos de la libreta. |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -25,6 +29,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Redirección según el rol; con varios roles se elige el panel.
 - Administración: personas y roles, años, grupos, materias y asignaciones.
 - Profesor: lista de sus grupos y materias; sus estudiantes y ayuda con la foto (etapa 2).
+- Libreta (etapa 3): columnas por categoría con tema, +, bloqueo, ocultar y papelera; notas con guardado real, versión e historial; promedios y final con el motor único.
 - Estudiante: su ficha, grupo y foto propia (etapa 2).
 - Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
