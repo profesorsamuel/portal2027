@@ -1,12 +1,14 @@
-/* portal2027-consejeria.js — etapa 5: consejería.
-   Administración: asigna consejeros a grupos. Consejero: ve su grupo en SOLO LECTURA (fichas y conteo
-   de asistencia por estado). No muestra notas: eso se decidirá más adelante. */
+/* portal2027-consejeria.js — etapa 5 y 7B: consejería.
+   Administración: asigna consejeros a grupos. Consejero: ve su grupo en SOLO LECTURA (fichas, conteo de asistencia
+   por estado y, desde la etapa 7B, las notas de las materias que el profesor ya PUBLICÓ). Los promedios los calcula
+   el motor único (portal2027.evaluacion). Los avisos a acudientes son borradores: no se envía nada. */
 (function () {
   'use strict';
 
   var P = window.portal2027;
   var el = P.el;
   var db = P.db;
+  var M = P.evaluacion;
 
   async function consultar(q) { var r = await q; if (r.error) { throw r.error; } return r.data; }
   function nombreEst(e) { return ((e.apellidos || '') + ', ' + (e.nombres || '')).replace(/^, |, $/g, ''); }
@@ -109,10 +111,12 @@
     var selTrim = el('select', { 'aria-label': 'Trimestre' });
     var estado = el('p', { clase: 'mensaje', hidden: true });
     var zonaTabla = el('div');
+    var zonaNotas = el('div');
     sec.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Grupo', selGrupo]), el('label', null, ['Trimestre', selTrim])]));
-    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Solo lectura. La asistencia es el conteo de todas las materias del grupo; una casilla sin marcar no cuenta como ausencia. Las notas no se muestran en esta pantalla.' }));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Solo lectura. La asistencia es el conteo de todas las materias del grupo; una casilla sin marcar no cuenta como ausencia. Las notas aparecen solo de las materias que el profesor ya publicó.' }));
     sec.appendChild(estado);
     sec.appendChild(zonaTabla);
+    sec.appendChild(zonaNotas);
 
     function error(t) { estado.textContent = t; estado.className = 'mensaje error'; estado.hidden = !t; }
 
@@ -123,8 +127,68 @@
       S.trimestres.forEach(function (t) { selTrim.appendChild(el('option', { value: t.id, texto: 'Trimestre ' + t.numero })); });
     }
 
+    function trimestreNumero() { var t = S.trimestres.filter(function (x) { return x.id === S.trimestreId; })[0]; return t ? t.numero : ''; }
+
+    async function cargarNotas(mats, conteos, resumen, estados) {
+      zonaNotas.textContent = '';
+      zonaNotas.appendChild(el('h3', { texto: 'Notas del grupo (solo materias publicadas)' }));
+      var d;
+      try {
+        var rn = await db.rpc('portal2027_notas_salon', { p_salon: S.grupo.id, p_trimestre: S.trimestreId });
+        if (rn.error) { throw rn.error; }
+        d = rn.data;
+      } catch (e) {
+        zonaNotas.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: 'No se pudieron cargar las notas. ' + textoError(e) }));
+        return;
+      }
+      if (d.materias.length === 0) { zonaNotas.appendChild(el('p', { clase: 'vacio-texto', texto: 'Este grupo no tiene materias asignadas.' })); return; }
+
+      // Resultado por estudiante y materia (motor único). finales[matId] = [{materia, texto}]
+      var finales = {}, sinPublicar = [];
+      mats.forEach(function (m) { finales[m.id] = []; });
+      d.materias.forEach(function (mt) {
+        var bloque = el('div', { clase: 'detalle-ficha' }, [el('h4', { texto: mt.materia + (mt.cerrado ? ' · trimestre cerrado' : '') })]);
+        zonaNotas.appendChild(bloque);
+        if (!mt.publicada) { sinPublicar.push(mt.materia); bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'El profesor aún no ha publicado las notas de esta materia en este trimestre.' })); return; }
+        if (mt.evaluaciones.length === 0) { bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay evaluaciones en esta materia.' })); return; }
+        var porMat = {};
+        mt.notas.forEach(function (n) { (porMat[n.matricula_id] = porMat[n.matricula_id] || {})[n.evaluacion_id] = Number(n.valor); });
+        var filas = mats.map(function (m) {
+          var r = M.calcular(mt.evaluaciones, porMat[m.id] || {});
+          finales[m.id].push({ materia: mt.materia, texto: r.textoFinal });
+          var celdas = [el('td', { texto: nombreEst(m.estudiante) })];
+          M.CATEGORIAS.forEach(function (c) { celdas.push(el('td', { clase: 'centro', texto: r.categorias[c].texto || '—' })); });
+          celdas.push(el('td', { clase: 'centro', texto: r.textoFinal }));
+          return el('tr', null, celdas);
+        });
+        bloque.appendChild(tabla(['Estudiante'].concat(M.CATEGORIAS.map(function (c) { return M.ETIQUETAS[c]; }), ['Final']), filas, 'Sin estudiantes.'));
+      });
+      zonaNotas.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Solo lectura. Vacío no es cero: sin notas no hay promedio. No se muestra promedio anual ni criterios de honor.' }));
+
+      // Avisos en borrador (no se envía nada)
+      var zonaAv = el('div');
+      zonaNotas.appendChild(el('h3', { texto: 'Avisos a acudientes (borradores)' }));
+      zonaNotas.appendChild(zonaAv);
+      var firma = P.nombreCompleto(info.perfil) || '[Su nombre]';
+      var items = mats.map(function (m) {
+        var c = conteos[m.id] || {}, marcadas = 0, partes = [];
+        estados.forEach(function (e) { var n = c[e.codigo] || 0; marcadas += n; if (n) { partes.push(e.etiqueta + ' ' + n); } });
+        var sin = Math.max(resumen.sesiones - marcadas, 0);
+        var lineas = finales[m.id].map(function (f) { return '- ' + f.materia + ': ' + f.texto; });
+        var nombre = ((m.estudiante.nombres || '') + ' ' + (m.estudiante.apellidos || '')).trim();
+        return { titulo: nombreEst(m.estudiante), texto:
+          'Estimado(a) acudiente de ' + nombre + ':\n\nResumen del trimestre ' + trimestreNumero() + ' (' + S.grupo.nombre + ') con las materias cuyas notas ya publicaron los profesores:\n' +
+          (lineas.length ? lineas.join('\n') : '- (todavía no hay notas publicadas)') +
+          (sinPublicar.length ? '\nMaterias sin publicar todavía: ' + sinPublicar.join(', ') + '.' : '') +
+          '\n\nAsistencia registrada (todas las materias): ' + (partes.length ? partes.join(', ') : 'sin marcas registradas') + (sin ? ' (sin marcar: ' + sin + ')' : '') +
+          '.\n\nEste resumen es informativo; no incluye promedio anual.\n\nAtentamente,\n' + firma };
+      });
+      P.avisos.dibujar(zonaAv, items);
+    }
+
     async function cargarGrupo() {
       zonaTabla.textContent = '';
+      zonaNotas.textContent = '';
       error('');
       if (!S.trimestreId) { zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Este año no tiene trimestres.' })); return; }
       zonaTabla.appendChild(el('p', { clase: 'texto-estado', texto: 'Cargando…' }));
@@ -163,6 +227,7 @@
         if (estados.length) {
           zonaTabla.appendChild(el('p', { clase: 'bloque-ayuda', texto: estados.map(function (e) { return e.abreviatura + ' = ' + e.etiqueta; }).join(' · ') }));
         }
+        await cargarNotas(mats, conteos, resumen, estados);
       } catch (e) {
         zonaTabla.textContent = '';
         error('No se pudo cargar el grupo. ' + textoError(e));

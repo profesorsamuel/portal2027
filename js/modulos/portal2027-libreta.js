@@ -13,7 +13,7 @@
   var S = {
     info: null, asig: null, trimestres: [], trimestreId: null,
     evals: [], mats: [], notas: {},            // notas: clave evalId|matId -> {valor, version}
-    filtroCat: '', verOcultas: false, verPapelera: false, buscar: '', historial: null, publicada: false
+    filtroCat: '', verOcultas: false, verPapelera: false, buscar: '', historial: null, publicada: false, cerrado: false
   };
   var estado = null;
   var zonaTabla = null;
@@ -42,7 +42,7 @@
   function textoError(e) {
     var m = (e && e.message) || '';
     if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
-    if (/ya existe|bloqueada|papelera|motivo|entre 0 y 5|No tiene permiso|no pertenece/i.test(m) && !/duplicate key/i.test(m)) {
+    if (/ya existe|bloqueada|papelera|motivo|entre 0 y 5|No tiene permiso|no pertenece|trimestre está cerrado/i.test(m) && !/duplicate key/i.test(m)) {
       return m.replace(/\s*\(row-level security\)/, '');
     }
     return P.traducirError(e);
@@ -88,9 +88,11 @@
           .select('evaluacion_id,matricula_id,valor,version,evaluacion:portal2027_evaluaciones!inner(asignacion_id,trimestre_id)')
           .eq('evaluacion.asignacion_id', asigId).eq('evaluacion.trimestre_id', trId).order('id');
       }),
-      consultar(db.from('portal2027_publicaciones').select('publicada').eq('asignacion_id', asigId).eq('trimestre_id', trId).maybeSingle())
+      consultar(db.from('portal2027_publicaciones').select('publicada').eq('asignacion_id', asigId).eq('trimestre_id', trId).maybeSingle()),
+      consultar(db.from('portal2027_cierres').select('cerrado').eq('asignacion_id', asigId).eq('trimestre_id', trId).maybeSingle())
     ]);
     S.publicada = !!(r[3] && r[3].publicada);
+    S.cerrado = !!(r[4] && r[4].cerrado);
     S.evals = r[0];
     S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) {
       return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es');
@@ -124,6 +126,7 @@
   }
 
   function agregarColumna(cat) {
+    if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
     var tema = window.prompt('Tema de la nueva columna de ' + M.ETIQUETAS[cat].toLowerCase() + ' (puede dejarlo vacío):', '');
     if (tema === null) { return; }
     llamar('portal2027_crear_evaluacion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_categoria: cat, p_tema: tema }, 'Columna agregada.');
@@ -211,7 +214,7 @@
     var input = el('input', {
       type: 'text', inputmode: 'decimal', clase: 'nota-input', maxlength: '4',
       value: n && n.valor !== null ? String(n.valor) : '',
-      disabled: ev.bloqueada,
+      disabled: ev.bloqueada || S.cerrado,
       'aria-label': 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + (ev.tema || M.ETIQUETAS[ev.categoria])
     });
     var td = el('td', { clase: 'celda-nota' }, [input]);
@@ -222,9 +225,9 @@
   }
 
   function cabeceraColumna(ev) {
-    var tema = el('input', { type: 'text', clase: 'tema-input', value: ev.tema || '', placeholder: 'Tema', maxlength: '120', disabled: ev.bloqueada, 'aria-label': 'Tema de la columna' });
+    var tema = el('input', { type: 'text', clase: 'tema-input', value: ev.tema || '', placeholder: 'Tema', maxlength: '120', disabled: ev.bloqueada || S.cerrado, 'aria-label': 'Tema de la columna' });
     tema.addEventListener('change', function () { cambiarTema(ev, tema); });
-    function boton(texto, titulo, fn) { return el('button', { clase: 'mini', type: 'button', texto: texto, title: titulo, 'aria-label': titulo, onclick: fn }); }
+    function boton(texto, titulo, fn) { return el('button', { clase: 'mini', type: 'button', texto: texto, title: titulo, 'aria-label': titulo, disabled: S.cerrado, onclick: fn }); }
     return el('th', { scope: 'col', clase: 'col-eval' + (ev.oculta ? ' col-oculta' : '') }, [
       tema,
       el('div', { clase: 'col-acciones' }, [
@@ -246,7 +249,7 @@
     var fila2 = [];
     cats.forEach(function (c) {
       var delCat = cols.filter(function (e) { return e.categoria === c; });
-      var mas = el('button', { clase: 'mini mas', type: 'button', texto: '+', title: 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), 'aria-label': 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), onclick: function () { agregarColumna(c); } });
+      var mas = el('button', { clase: 'mini mas', type: 'button', disabled: S.cerrado, texto: '+', title: 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), 'aria-label': 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), onclick: function () { agregarColumna(c); } });
       fila1.push(el('th', { scope: 'colgroup', colspan: String(delCat.length + 1), clase: 'grupo-cat' }, [M.ETIQUETAS[c] + ' ', mas]));
       delCat.forEach(function (e) { fila2.push(cabeceraColumna(e)); });
       fila2.push(el('th', { scope: 'col', clase: 'col-prom', texto: 'Prom.' }));
@@ -295,7 +298,7 @@
       el('thead', null, [el('tr', null, ['Categoría', 'Tema', ''].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
       el('tbody', null, lista.map(function (e) {
         return el('tr', null, [el('td', { texto: M.ETIQUETAS[e.categoria] }), el('td', { texto: e.tema || '(sin tema)' }),
-          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Restaurar', onclick: function () { aPapelera(e, false); } })])]);
+          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', disabled: S.cerrado, texto: 'Restaurar', onclick: function () { aPapelera(e, false); } })])]);
       }))
     ])]));
     return sec;
@@ -368,6 +371,7 @@
 
     zonaTabla = el('div');
     var zonaExtra = el('div');
+    var zonaCierre = el('div');
     btnHist.addEventListener('click', function () { zonaExtra.textContent = ''; var c = el('div'); zonaExtra.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Historial de notas' }), c])); dibujarHistorial(c); });
     btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
 
@@ -378,13 +382,19 @@
           el('label', { clase: 'etiqueta-check' }, [cbOc, ' Mostrar ocultas (' + ocultas + ')']),
           btnHist, btnPap, btnRec, btnPub
         ]),
+        el('p', { clase: S.cerrado ? 'mensaje ok' : 'bloque-ayuda', texto: S.cerrado ? 'Trimestre CERRADO: la libreta está en solo lectura (columnas, notas y asistencia bloqueadas por la base).' : 'Trimestre abierto.' }),
         el('p', { clase: 'bloque-ayuda', texto: S.publicada ? 'Estado: notas PUBLICADAS a los estudiantes en este trimestre.' : 'Estado: notas no publicadas (los estudiantes no las ven).' }),
         el('p', { clase: 'bloque-ayuda', texto: 'Escriba la nota y pulse Enter o cambie de casilla. Vacío no es cero. Promedio por categoría con las notas existentes; Final = promedio de las categorías con nota. Las columnas ocultas siguen contando.' }),
         zonaTabla
       ]),
-      zonaExtra
+      zonaExtra,
+      zonaCierre
     ]);
     contenido.appendChild(cuerpo);
+    P.cierre.dibujar(zonaCierre, {
+      asignacionId: S.asig.id, trimestreId: S.trimestreId, trimestreNumero: tr ? tr.numero : '', cerrado: S.cerrado,
+      esAdmin: S.info.roles.indexOf('administrador') !== -1, alCambiar: function (m, tipo) { recargar(m); }
+    });
     dibujarTabla();
     if (!tr) { aviso('Este año no tiene trimestres.', 'error'); }
   }

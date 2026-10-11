@@ -60,8 +60,9 @@
     if (datos.items.length > 100) { cont.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran las 100 sesiones más recientes.' })); }
   }
 
-  P.renderEstudianteAcademico = async function (zona) {
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Mis notas y asistencia' })]);
+  P.renderEstudianteAcademico = async function (zona, info) {
+    var sec = el('section', { clase: 'bloque reporte-imprimible' }, [el('h2', { texto: 'Mis notas y asistencia' })]);
+    var cabImpresion = el('p', { clase: 'solo-impresion' });
     zona.appendChild(sec);
 
     var mats = await consultar(db.from('portal2027_matriculas').select('anio_id,anio:portal2027_anios(anio)'));
@@ -74,7 +75,15 @@
     var sel = el('select', { 'aria-label': 'Trimestre' }, trims.map(function (t) { return el('option', { value: t.id, texto: 'Trimestre ' + t.numero }); }));
     var msg = el('p', { clase: 'mensaje error', role: 'alert', hidden: true });
     var zNotas = el('div'), zAsis = el('div');
-    sec.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', sel])]));
+    // Etapa 7B: «Ver mis notas» como reporte imprimible (PDF desde el navegador). Es informativo: sin promedio anual ni honor.
+    var btnImp = el('button', { clase: 'boton boton-secundario boton-chico no-imprimir', type: 'button', texto: 'Imprimir o guardar mi reporte (PDF)', onclick: function () {
+      document.body.classList.add('solo-reporte');
+      window.print();
+    } });
+    window.addEventListener('afterprint', function () { document.body.classList.remove('solo-reporte'); });
+    sec.appendChild(cabImpresion);
+    sec.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', sel]), btnImp]));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Reporte informativo de las materias que su profesor ya publicó. Vacío no es cero. No incluye promedio anual ni criterios de honor.' }));
     sec.appendChild(msg);
     sec.appendChild(el('h3', { texto: 'Notas' }));
     sec.appendChild(zNotas);
@@ -82,6 +91,7 @@
     sec.appendChild(zAsis);
 
     async function cargar() {
+      cabImpresion.textContent = 'C.E.B.G. El Jiral · Reporte de notas de ' + P.nombreCompleto(info && info.perfil) + ' · ' + sel.options[sel.selectedIndex].text + ' · ' + new Date().toLocaleDateString('es-PA');
       msg.hidden = true;
       zNotas.textContent = ''; zAsis.textContent = '';
       zNotas.appendChild(el('p', { clase: 'texto-estado', texto: 'Cargando…' }));
