@@ -76,6 +76,8 @@ Clases y tareas (guía, etapa 5, parte A): se leen con RLS (personal de la asign
 
 Cierre trimestral (guía, etapa 7, parte A): se cierra con `portal2027_cerrar_trimestre` (copia previa versionada) y solo administración reabre con `portal2027_reabrir_trimestre` (motivo obligatorio). Disparadores `portal2027_*_cierre` bloquean columnas, notas, sesiones y asistencia del trimestre cerrado. Ver `portal2027-reportes-cierre-parteA.md`.
 
+Consejería con notas (guía, etapa 7, parte B): `portal2027_notas_salon(salon, trimestre)` (migración 0013) devuelve al consejero del grupo (o a administración) las columnas y notas SOLO de las materias que el profesor publicó; las materias sin publicar llegan sin columnas ni notas. No calcula nada: el motor único lo hace en la pantalla.
+
 ## Edge Function
 
 `portal2027-invitar-estudiante` (servidor): valida que quien llama sea administrador activo, invita al correo de la ficha o vincula una cuenta existente, y asigna el rol estudiante.

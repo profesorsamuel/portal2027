@@ -31,6 +31,10 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-clases-comun.js` | Validación y apertura segura de archivos. |
 | `js/modulos/portal2027-clases-estudiante.js` | «Mis clases y tareas» del estudiante. |
 | `assets/css/portal2027-clases.css` | Estilos de clases y tareas. |
+| `js/modulos/portal2027-cierre.js` | Etapa 7B: panel de cierre trimestral dentro de la libreta (revisión previa, cerrar, reabrir, copias e historial). |
+| `pages/portal2027-reporte.html`, `js/modulos/portal2027-reporte.js` | Etapa 7B: reporte del trimestre por materia y grupo (copia de cierre o datos actuales), imprimible, con avisos en borrador. |
+| `js/modulos/portal2027-avisos.js` | Etapa 7B: avisos a acudientes como borradores editables y copiables; no envía nada. |
+| `assets/css/portal2027-reportes.css` | Estilos de reportes, avisos e impresión. |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -52,7 +56,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 
 ## Qué falta o es provisional
 
-- Consejería: ve su grupo en solo lectura (fichas y asistencia). Las notas no se le muestran todavía.
+- Consejería: ve su grupo en solo lectura (fichas, asistencia y, desde la etapa 7B, las notas de las materias publicadas).
 - Cuentas de personal: se crean en Supabase (Authentication → Users). Las de estudiantes se invitan desde el portal.
 - El año lectivo del pie de página (`data-anio`) está escrito a mano.
 - La vista simulada de la etapa 0 se retiró del `index.html`.
