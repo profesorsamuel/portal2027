@@ -238,7 +238,8 @@
         el('td', { texto: a.salon ? a.salon.nombre + (a.salon.anio ? ' (' + a.salon.anio.anio + ')' : '') : '' }),
         el('td', { texto: a.materia ? a.materia.nombre : '' }),
         el('td', { texto: P.nombreCompleto(a.profesor) }),
-        el('td', null, [quitar])
+        el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
+          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(a.id), texto: 'Libreta' }), quitar])])
       ]);
     });
 
