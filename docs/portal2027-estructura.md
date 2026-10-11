@@ -1,4 +1,4 @@
-# portal2027 — estructura (etapa 1)
+# portal2027 — estructura (etapas 1 y 2)
 
 Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
@@ -15,6 +15,8 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-acceso.js` | Lógica de `index.html`. |
 | `js/modulos/portal2027-panel.js` | Estructura de los paneles y vistas de profesor, estudiante y consejero. |
 | `js/modulos/portal2027-admin.js` | Panel de administración. |
+| `js/modulos/portal2027-estudiantes.js` | Etapa 2: importación de Excel, lista, invitación y foto de perfil (administración, profesor y estudiante). |
+| `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
 ## Qué ya es real
@@ -22,12 +24,14 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Inicio y cierre de sesión con Supabase Auth, y recuperación de contraseña por correo.
 - Redirección según el rol; con varios roles se elige el panel.
 - Administración: personas y roles, años, grupos, materias y asignaciones.
-- Profesor: lista de sus grupos y materias.
+- Profesor: lista de sus grupos y materias; sus estudiantes y ayuda con la foto (etapa 2).
+- Estudiante: su ficha, grupo y foto propia (etapa 2).
+- Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
 
 ## Qué falta o es provisional
 
-- Panel de estudiante y de consejero: solo mensaje de cuenta activa. El grupo y las notas llegan con las etapas 2 y 3.
-- Las cuentas nuevas se crean en Supabase (Authentication → Users); la invitación desde el portal llega en la etapa 2.
+- Panel de consejero: solo mensaje de cuenta activa (llega en la etapa 7). Las notas del estudiante llegan en la etapa 3.
+- Cuentas de personal: se crean en Supabase (Authentication → Users). Las de estudiantes se invitan desde el portal.
 - El año lectivo del pie de página (`data-anio`) está escrito a mano.
 - La vista simulada de la etapa 0 se retiró del `index.html`.
