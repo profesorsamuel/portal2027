@@ -1,0 +1,165 @@
+/* portal2027-base.css — estilos base del Portal C.E.B.G. El Jiral */
+
+:root {
+  --tinta: #14323b;
+  --tinta-suave: #1f4752;
+  --papel: #f6f8f7;
+  --blanco: #ffffff;
+  --linea: #d5dedc;
+  --texto: #1d2b2f;
+  --texto-suave: #556a6e;
+  --acento: #e8a317;
+  --acento-oscuro: #8a5a00;
+  --ok: #2f7d4f;
+  --radio: 10px;
+  --fuente-titulo: Georgia, "Times New Roman", serif;
+  --fuente-texto: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--papel);
+  color: var(--texto);
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+h1, h2 { font-family: var(--fuente-titulo); line-height: 1.15; margin: 0; color: var(--tinta); }
+p { margin: 0; }
+
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+/* Aviso de datos simulados */
+.aviso-simulado {
+  background: var(--acento);
+  color: #2b1d00;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+}
+
+.portal { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 1.5rem 1rem 2rem; }
+
+/* Alternar acceso y panel con el ancla de la URL (sin JavaScript) */
+#panel { display: none; }
+#panel:target { display: block; }
+#panel:target ~ #acceso { display: none; }
+
+/* Acceso */
+.acceso {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  border-radius: var(--radio);
+  overflow: hidden;
+  border: 1px solid var(--linea);
+  background: var(--blanco);
+}
+
+.acceso-marca {
+  background: var(--tinta);
+  color: #eef4f3;
+  padding: 3rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.25rem;
+}
+.acceso-marca h1 { color: #ffffff; font-size: clamp(2rem, 4.5vw, 3.1rem); font-weight: 700; letter-spacing: -0.01em; }
+.acceso-etiqueta { color: var(--acento); font-weight: 600; font-size: 0.95rem; }
+.acceso-texto { max-width: 34ch; color: #cfdedc; }
+
+.acceso-formulario { padding: 3rem 2.5rem; display: flex; flex-direction: column; justify-content: center; }
+.acceso-formulario h2 { font-size: 1.6rem; margin-bottom: 1.25rem; }
+.acceso-formulario form { display: flex; flex-direction: column; gap: 0.35rem; }
+
+label { font-weight: 600; font-size: 0.95rem; margin-top: 0.75rem; }
+
+input {
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #aebdba;
+  border-radius: 8px;
+  background: var(--blanco);
+  color: var(--texto);
+  width: 100%;
+}
+
+.enlace-recuperar { margin-top: 0.9rem; color: var(--tinta-suave); font-size: 0.95rem; }
+.nota-simulada { margin-top: 1.5rem; color: var(--texto-suave); font-size: 0.9rem; }
+
+/* Botones */
+.boton {
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.boton-principal { background: var(--tinta); color: #ffffff; margin-top: 1.25rem; }
+.boton-principal:hover { background: var(--tinta-suave); }
+.boton-secundario { background: transparent; color: var(--tinta); border-color: var(--tinta); }
+.boton-secundario:hover { background: #e7eeed; }
+
+/* Panel de ejemplo */
+.panel-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--tinta);
+}
+.panel-centro { color: var(--acento-oscuro); font-weight: 600; font-size: 0.95rem; }
+.panel-cabecera h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0.15rem 0 0.35rem; }
+.panel-datos { color: var(--texto-suave); }
+
+.panel-cuerpo { display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem; align-items: start; }
+
+.bloque { background: var(--blanco); border: 1px solid var(--linea); border-radius: var(--radio); padding: 1.25rem; }
+.bloque h2 { font-size: 1.3rem; margin-bottom: 0.4rem; }
+.bloque-ayuda { color: var(--texto-suave); font-size: 0.92rem; margin-top: 0.5rem; }
+
+.lista-simple { margin: 0.75rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; }
+
+/* Tabla de notas */
+.tabla-contenedor { overflow-x: auto; margin-top: 1rem; }
+.tabla-notas { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tabla-notas th, .tabla-notas td { padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--linea); text-align: right; }
+.tabla-notas thead th { font-size: 0.9rem; color: var(--texto-suave); font-weight: 600; }
+.tabla-notas th:first-child, .tabla-notas tbody th { text-align: left; font-weight: 600; color: var(--tinta); }
+.tabla-notas .vacio { color: #8da09d; }
+.tabla-notas .final { font-weight: 700; color: var(--ok); }
+.tabla-notas .final.sin-nota { color: var(--texto-suave); font-weight: 600; }
+
+.pie { text-align: center; color: var(--texto-suave); font-size: 0.88rem; padding: 1rem; border-top: 1px solid var(--linea); }
+
+/* Celular */
+@media (max-width: 760px) {
+  .acceso, .panel-cuerpo { grid-template-columns: 1fr; }
+  .acceso-marca, .acceso-formulario { padding: 2rem 1.25rem; }
+
+  .tabla-notas thead { position: absolute; left: -9999px; }
+  .tabla-notas, .tabla-notas tbody, .tabla-notas tr, .tabla-notas th, .tabla-notas td { display: block; width: 100%; }
+  .tabla-notas tr { border: 1px solid var(--linea); border-radius: 8px; margin-bottom: 0.75rem; padding: 0.25rem 0; }
+  .tabla-notas tbody th { border: 0; padding-bottom: 0.2rem; }
+  .tabla-notas td { display: flex; justify-content: space-between; border: 0; padding: 0.35rem 0.75rem; }
+  .tabla-notas td::before { content: attr(data-etiqueta); color: var(--texto-suave); font-weight: 400; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
