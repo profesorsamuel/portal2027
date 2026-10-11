@@ -1,0 +1,26 @@
+/* portal2027-libreta.css — estilos de la libreta */
+.portal-ancho { max-width: 1400px; }
+.libreta-scroll { overflow-x: auto; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--blanco); margin-top: 0.75rem; max-height: 75vh; }
+.tabla-libreta { border-collapse: separate; border-spacing: 0; font-size: 0.92rem; min-width: 100%; }
+.tabla-libreta th, .tabla-libreta td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--linea); border-right: 1px solid var(--linea); text-align: center; vertical-align: middle; }
+.tabla-libreta thead th { position: sticky; background: #eef4f3; z-index: 2; font-weight: 600; }
+.tabla-libreta thead tr:first-child th { top: 0; }
+.tabla-libreta thead tr:nth-child(2) th { top: 2.4rem; }
+.tabla-libreta .col-nombre { position: sticky; left: 0; z-index: 3; background: var(--blanco); text-align: left; min-width: 11rem; white-space: nowrap; }
+.tabla-libreta thead .col-nombre { background: #eef4f3; z-index: 4; }
+.col-eval { min-width: 7.5rem; }
+.col-oculta { background: #f3ece0 !important; }
+.col-prom, .col-final { background: #f7f9f8; font-weight: 600; min-width: 3.5rem; }
+.col-final { background: #fdf6e3; }
+.grupo-cat { white-space: nowrap; }
+.nota-input { width: 3.6rem; text-align: center; padding: 0.3rem; font: inherit; border: 1px solid #aebdba; border-radius: 6px; }
+.nota-input:disabled { background: #eceeed; color: var(--texto-suave); }
+.tema-input { width: 100%; min-width: 6.5rem; padding: 0.25rem 0.35rem; font: inherit; font-size: 0.85rem; border: 1px solid #aebdba; border-radius: 6px; }
+.col-acciones { display: flex; justify-content: center; gap: 0.2rem; margin-top: 0.25rem; }
+.mini { border: 1px solid var(--linea); background: var(--blanco); border-radius: 6px; padding: 0.1rem 0.4rem; font: inherit; font-size: 0.85rem; cursor: pointer; min-height: 1.8rem; min-width: 1.8rem; }
+.mini.mas { font-weight: 700; background: var(--acento); border-color: var(--acento-oscuro); }
+.celda-guardando .nota-input { background: #fff6d6; }
+.celda-ok .nota-input { background: #e8f5ec; border-color: var(--ok); }
+.celda-error .nota-input { background: #fdecea; border-color: #b3261e; border-width: 2px; }
+.etiqueta-check { display: flex !important; flex-direction: row; align-items: center; gap: 0.4rem; }
+@media (max-width: 640px) { .tabla-libreta .col-nombre { min-width: 8rem; white-space: normal; } }
