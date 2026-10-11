@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal C.E.B.G. El Jiral</title>
+  <meta name="description" content="Portal del Centro Educativo Básico General El Jiral. Vista inicial con datos ficticios.">
+  <link rel="stylesheet" href="assets/css/portal2027-base.css">
+</head>
+<body>
+
+  <div class="aviso-simulado" role="note">
+    Vista de prueba: todos los datos son ficticios y el acceso aún no está conectado.
+  </div>
+
+  <main class="portal">
+
+    <!-- Panel de ejemplo (se muestra al pulsar «Entrar»; simulado) -->
+    <section id="panel" aria-labelledby="panel-titulo">
+      <header class="panel-cabecera">
+        <div>
+          <p class="panel-centro">C.E.B.G. El Jiral</p>
+          <h1 id="panel-titulo">Hola, Estudiante Ejemplo</h1>
+          <p class="panel-datos">Grupo 9C · Año lectivo <span data-anio="2027">2027</span> · Trimestre 1</p>
+        </div>
+        <a class="boton boton-secundario" href="#acceso">Cerrar sesión</a>
+      </header>
+
+      <div class="panel-cuerpo">
+        <section class="bloque" aria-labelledby="notas-titulo">
+          <h2 id="notas-titulo">Mis notas</h2>
+          <p class="bloque-ayuda">Ejemplo de cómo se verá la libreta. Una casilla vacía no cuenta como cero.</p>
+
+          <div class="tabla-contenedor">
+            <table class="tabla-notas">
+              <thead>
+                <tr>
+                  <th scope="col">Materia</th>
+                  <th scope="col">Apreciación</th>
+                  <th scope="col">Ejercicio escrito</th>
+                  <th scope="col">Examen</th>
+                  <th scope="col">Final</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Matemática</th>
+                  <td data-etiqueta="Apreciación">4.5</td>
+                  <td data-etiqueta="Ejercicio escrito">3.0</td>
+                  <td data-etiqueta="Examen" class="vacio">—</td>
+                  <td data-etiqueta="Final" class="final">3.8</td>
+                </tr>
+                <tr>
+                  <th scope="row">Español</th>
+                  <td data-etiqueta="Apreciación">4.0</td>
+                  <td data-etiqueta="Ejercicio escrito">4.5</td>
+                  <td data-etiqueta="Examen">3.5</td>
+                  <td data-etiqueta="Final" class="final">4.0</td>
+                </tr>
+                <tr>
+                  <th scope="row">Ciencias</th>
+                  <td data-etiqueta="Apreciación" class="vacio">—</td>
+                  <td data-etiqueta="Ejercicio escrito" class="vacio">—</td>
+                  <td data-etiqueta="Examen" class="vacio">—</td>
+                  <td data-etiqueta="Final" class="final sin-nota">Sin nota</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="bloque bloque-lateral" aria-labelledby="simulado-titulo">
+          <h2 id="simulado-titulo">Qué está simulado</h2>
+          <ul class="lista-simple">
+            <li>El nombre, el grupo y todas las notas.</li>
+            <li>El botón «Entrar»: no valida ningún usuario.</li>
+            <li>El cálculo de la nota final, que solo muestra el resultado esperado.</li>
+          </ul>
+          <p class="bloque-ayuda">Cuando se conecte la base de datos, estos valores vendrán de cada persona con su rol.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Acceso visual (simulado) -->
+    <section id="acceso" class="acceso" aria-labelledby="acceso-titulo">
+      <div class="acceso-marca">
+        <p class="acceso-etiqueta">Portal escolar</p>
+        <h1 id="acceso-titulo">Centro Educativo Básico General El Jiral</h1>
+        <p class="acceso-texto">Notas, asistencia y tareas en un solo lugar, para estudiantes, docentes y familias.</p>
+      </div>
+
+      <div class="acceso-formulario">
+        <h2>Entrar al portal</h2>
+        <form onsubmit="return false;" novalidate>
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" name="correo" type="email" autocomplete="username" placeholder="nombre@ejemplo.com">
+
+          <label for="clave">Contraseña</label>
+          <input id="clave" name="clave" type="password" autocomplete="current-password" placeholder="Su contraseña">
+
+          <a class="boton boton-principal" href="#panel">Entrar</a>
+          <a class="enlace-recuperar" href="#acceso">¿Olvidó su contraseña?</a>
+        </form>
+        <p class="nota-simulada">Prueba visual: «Entrar» abre un panel de ejemplo sin pedir datos reales.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="pie">
+    <p>C.E.B.G. El Jiral · Portal <span data-anio="2027">2027</span> · Versión de prueba</p>
+  </footer>
+
+</body>
+</html>
