@@ -1,0 +1,450 @@
+/* portal2027-asistencia.js — etapa 4, parte A: asistencia por sesión.
+   Aquí solo se registra y se cuenta (conteo por estado). NO se calcula ningún porcentaje, peso ni
+   estado pendiente/exento: eso se define en la parte B. Todo cambio se guarda con funciones de la base
+   (permisos, bloqueo, versión e historial); la pantalla solo muestra el resultado real. */
+(function () {
+  'use strict';
+
+  var P = window.portal2027;
+  var el = P.el;
+  var db = P.db;
+  var contenido = document.getElementById('contenido');
+
+  var S = {
+    info: null, asig: null, trimestres: [], trimestreId: null,
+    estados: [], sesiones: [], mats: [], asist: {},   // asist: sesionId|matId -> {estado, version}
+    buscar: ''
+  };
+  var barra = null;
+  var zonaTabla = null;
+  var filasEst = {};                                   // matId -> { celdas: {codigo: td}, sin: td }
+  var resumenes = {};                                  // sesionId -> span
+
+  /* ---------- utilidades ---------- */
+  async function consultar(q) {
+    var r = await q;
+    if (r.error) { throw r.error; }
+    return r.data;
+  }
+  async function todas(fabrica) {
+    var salida = [], desde = 0;
+    for (;;) {
+      var lote = await consultar(fabrica().range(desde, desde + 999));
+      salida = salida.concat(lote);
+      if (lote.length < 1000) { return salida; }
+      desde += 1000;
+    }
+  }
+  function aviso(texto, tipo) {
+    barra.textContent = texto;
+    barra.className = 'mensaje estado-panel ' + (tipo || 'info');
+    barra.hidden = !texto;
+  }
+  function textoError(e) {
+    var m = (e && e.message) || '';
+    if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
+    if (/^(No tiene permiso|La sesión|El estudiante|El estado|Ya existe|Elija|La fecha|El trimestre)/.test(m)) {
+      return m.replace(/\s*\(row-level security\)/, '');
+    }
+    return P.traducirError(e);
+  }
+  function clave(s, m) { return s + '|' + m; }
+  function nombreEst(e) { return ((e.apellidos || '') + ', ' + (e.nombres || '')).replace(/^, |, $/g, ''); }
+  function sesionPorId(id) { return S.sesiones.filter(function (s) { return s.id === id; })[0]; }
+  function estadoPorCodigo(c) { return S.estados.filter(function (e) { return e.codigo === c; })[0]; }
+  function activas() { return S.sesiones.filter(function (s) { return !s.eliminada_en; }); }
+  function fechaTexto(f) {          // 'AAAA-MM-DD' sin pasar por zonas horarias
+    var p = String(f).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  function diaSemana(f) {
+    var p = String(f).split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('es-PA', { weekday: 'short' });
+  }
+  function hoy() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  /* ---------- carga ---------- */
+  async function cargarAsignacion(id) {
+    return consultar(db.from('portal2027_asignaciones')
+      .select('id, salon:portal2027_salones(id,nombre,anio_id,anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)')
+      .eq('id', id).maybeSingle());
+  }
+
+  async function cargarAsistencia() {
+    var asigId = S.asig.id, trId = S.trimestreId;
+    var r = await Promise.all([
+      consultar(db.from('portal2027_estados_asistencia').select('codigo,etiqueta,abreviatura,orden,activo').order('orden').order('codigo')),
+      todas(function () {
+        return db.from('portal2027_sesiones_asistencia')
+          .select('id,fecha,bloque,descripcion,bloqueada,eliminada_en,version')
+          .eq('asignacion_id', asigId).eq('trimestre_id', trId).order('fecha').order('bloque').order('id');
+      }),
+      todas(function () {
+        return db.from('portal2027_matriculas')
+          .select('id,estado,estudiante:portal2027_estudiantes(codigo,nombres,apellidos)')
+          .eq('salon_id', S.asig.salon.id).eq('anio_id', S.asig.salon.anio_id).order('id');
+      }),
+      todas(function () {
+        return db.from('portal2027_asistencia')
+          .select('sesion_id,matricula_id,estado,version,sesion:portal2027_sesiones_asistencia!inner(asignacion_id,trimestre_id)')
+          .eq('sesion.asignacion_id', asigId).eq('sesion.trimestre_id', trId).order('id');
+      })
+    ]);
+    S.estados = r[0];
+    S.sesiones = r[1];
+    S.mats = r[2].filter(function (m) { return m.estudiante; }).sort(function (a, b) {
+      return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es');
+    });
+    S.asist = {};
+    r[3].forEach(function (a) { S.asist[clave(a.sesion_id, a.matricula_id)] = { estado: a.estado, version: a.version }; });
+  }
+
+  async function recargar(mensaje) {
+    aviso('Cargando asistencia…', 'info');
+    try {
+      await cargarAsistencia();
+      dibujar();
+      aviso(mensaje || '', mensaje ? 'ok' : 'info');
+    } catch (e) { aviso('No se pudo cargar la asistencia. ' + textoError(e), 'error'); }
+  }
+
+  /* ---------- acciones sobre sesiones ---------- */
+  async function llamar(nombre, args, textoOk) {
+    aviso('Guardando…', 'info');
+    try {
+      var r = await db.rpc(nombre, args);
+      if (r.error) { throw r.error; }
+      await cargarAsistencia();
+      dibujar();
+      aviso(typeof textoOk === 'function' ? textoOk(r.data) : textoOk, 'ok');
+    } catch (e) {
+      aviso('No se guardó. ' + textoError(e), 'error');
+    }
+  }
+  function cambiarDescripcion(s, input) {
+    if (input.value.trim() === (s.descripcion || '')) { return; }
+    llamar('portal2027_actualizar_sesion', { p_id: s.id, p_version: s.version, p_descripcion: input.value, p_bloqueada: null }, 'Descripción guardada.');
+  }
+  function alternarBloqueo(s) {
+    llamar('portal2027_actualizar_sesion', { p_id: s.id, p_version: s.version, p_descripcion: null, p_bloqueada: !s.bloqueada },
+      s.bloqueada ? 'Sesión desbloqueada.' : 'Sesión bloqueada: ya no se puede cambiar la asistencia.');
+  }
+  function aPapelera(s, si) {
+    if (si && !window.confirm('¿Enviar esta sesión a la papelera? Sus marcas se conservan y podrá restaurarla.')) { return; }
+    llamar('portal2027_papelera_sesion', { p_id: s.id, p_version: s.version, p_a_papelera: si }, si ? 'Sesión enviada a la papelera.' : 'Sesión restaurada.');
+  }
+  function marcarPendientes(sesionId, codigo) {
+    var s = sesionPorId(sesionId), e = estadoPorCodigo(codigo);
+    if (!s || !e) { aviso('Elija la sesión y el estado.', 'error'); return; }
+    if (!window.confirm('Se marcará «' + e.etiqueta + '» a todos los estudiantes sin registro de la sesión del ' + fechaTexto(s.fecha) +
+      '. Los ya marcados no cambian. ¿Continuar?')) { return; }
+    llamar('portal2027_marcar_pendientes', { p_sesion: sesionId, p_estado: codigo }, function (n) {
+      return n + (n === 1 ? ' estudiante marcado.' : ' estudiantes marcados.');
+    });
+  }
+
+  /* ---------- guardar una marca ---------- */
+  async function guardarCelda(ses, mat, select, marca) {
+    var k = clave(ses.id, mat.id);
+    var previa = S.asist[k] || { estado: null, version: 0 };
+    var nuevo = select.value === '' ? null : select.value;
+    if (nuevo === previa.estado) { return; }
+
+    marca('guardando');
+    aviso('Guardando…', 'info');
+    try {
+      var r = await db.rpc('portal2027_guardar_asistencia', { p_sesion: ses.id, p_matricula: mat.id, p_estado: nuevo, p_version: previa.version });
+      if (r.error) { throw r.error; }
+      S.asist[k] = { estado: r.data.estado, version: r.data.version };
+      marca('ok');
+      actualizarFila(mat.id);
+      actualizarResumen(ses.id);
+      aviso('Asistencia guardada.', 'ok');
+    } catch (e) {
+      select.value = previa.estado === null ? '' : previa.estado;
+      marca('error');
+      aviso('NO se guardó la asistencia de ' + nombreEst(mat.estudiante) + '. ' + textoError(e), 'error');
+    }
+  }
+
+  /* ---------- dibujo ---------- */
+  function estadosColumnas() {
+    var usados = {};
+    Object.keys(S.asist).forEach(function (k) { if (S.asist[k].estado) { usados[S.asist[k].estado] = true; } });
+    return S.estados.filter(function (e) { return e.activo || usados[e.codigo]; });
+  }
+
+  function contar(matId) {
+    var cuenta = {}, marcadas = 0, ses = activas();
+    ses.forEach(function (s) {
+      var a = S.asist[clave(s.id, matId)];
+      if (a && a.estado) { cuenta[a.estado] = (cuenta[a.estado] || 0) + 1; marcadas += 1; }
+    });
+    return { cuenta: cuenta, sin: ses.length - marcadas };
+  }
+
+  function actualizarFila(matId) {
+    var f = filasEst[matId];
+    if (!f) { return; }
+    var c = contar(matId);
+    Object.keys(f.celdas).forEach(function (cod) { f.celdas[cod].textContent = String(c.cuenta[cod] || 0); });
+    f.sin.textContent = String(c.sin);
+  }
+
+  function actualizarResumen(sesId) {
+    var span = resumenes[sesId];
+    if (!span) { return; }
+    var marcadas = S.mats.filter(function (m) { var a = S.asist[clave(sesId, m.id)]; return a && a.estado; }).length;
+    span.textContent = marcadas + ' de ' + S.mats.length + ' marcados';
+  }
+
+  function celdaAsistencia(ses, mat) {
+    var reg = S.asist[clave(ses.id, mat.id)];
+    var actual = reg ? reg.estado : null;
+    var opciones = [el('option', { value: '', texto: '—' })];
+    S.estados.forEach(function (e) {
+      if (e.activo || e.codigo === actual) {
+        opciones.push(el('option', { value: e.codigo, texto: e.abreviatura, title: e.etiqueta, selected: e.codigo === actual }));
+      }
+    });
+    var select = el('select', {
+      clase: 'asis-select', disabled: ses.bloqueada,
+      'aria-label': 'Asistencia de ' + nombreEst(mat.estudiante) + ' el ' + fechaTexto(ses.fecha)
+    }, opciones);
+    select.value = actual === null ? '' : actual;
+    var td = el('td', { clase: 'celda-asis' }, [select]);
+    function marca(tipo) { td.className = 'celda-asis' + (tipo ? ' asis-' + tipo : ''); }
+    select.addEventListener('change', function () { guardarCelda(ses, mat, select, marca); });
+    return td;
+  }
+
+  function cabeceraSesion(ses) {
+    var desc = el('input', { type: 'text', clase: 'tema-input', value: ses.descripcion || '', placeholder: 'Descripción', maxlength: '120', disabled: ses.bloqueada, 'aria-label': 'Descripción de la sesión' });
+    desc.addEventListener('change', function () { cambiarDescripcion(ses, desc); });
+    function boton(texto, titulo, fn) { return el('button', { clase: 'mini', type: 'button', texto: texto, title: titulo, 'aria-label': titulo, onclick: fn }); }
+    var resumen = el('span', { clase: 'sesion-meta' });
+    resumenes[ses.id] = resumen;
+    return el('th', { scope: 'col', clase: 'col-sesion' }, [
+      el('div', { clase: 'sesion-fecha', texto: diaSemana(ses.fecha) + ' ' + fechaTexto(ses.fecha) }),
+      el('span', { clase: 'sesion-meta', texto: 'Bloque ' + ses.bloque }),
+      desc, resumen,
+      el('div', { clase: 'col-acciones' }, [
+        boton(ses.bloqueada ? '🔒' : '🔓', ses.bloqueada ? 'Desbloquear sesión' : 'Bloquear sesión', function () { alternarBloqueo(ses); }),
+        boton('🗑', 'Enviar a la papelera', function () { aPapelera(ses, true); })
+      ])
+    ]);
+  }
+
+  function dibujarTabla() {
+    zonaTabla.textContent = '';
+    filasEst = {};
+    resumenes = {};
+    var ses = activas();
+    var cols = estadosColumnas();
+
+    var cab = [el('th', { scope: 'col', clase: 'col-nombre', texto: 'Estudiante' })];
+    ses.forEach(function (s) { cab.push(cabeceraSesion(s)); });
+    cols.forEach(function (e) { cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: e.etiqueta, texto: e.abreviatura })); });
+    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones sin marcar', texto: 'Sin' }));
+
+    var q = S.buscar.trim().toLowerCase();
+    var mats = S.mats.filter(function (m) {
+      return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1;
+    });
+
+    var cuerpo = mats.map(function (m) {
+      var celdas = [el('th', { scope: 'row', clase: 'col-nombre' }, [nombreEst(m.estudiante), m.estado && m.estado !== 'activo' ? el('small', { texto: ' (' + m.estado + ')' }) : null])];
+      ses.forEach(function (s) { celdas.push(celdaAsistencia(s, m)); });
+      var f = { celdas: {}, sin: null };
+      cols.forEach(function (e) { var td = el('td', { clase: 'col-conteo' }); f.celdas[e.codigo] = td; celdas.push(td); });
+      f.sin = el('td', { clase: 'col-conteo' });
+      celdas.push(f.sin);
+      filasEst[m.id] = f;
+      return el('tr', null, celdas);
+    });
+
+    zonaTabla.appendChild(el('div', { clase: 'libreta-scroll' }, [el('table', { clase: 'tabla-libreta' }, [
+      el('thead', null, [el('tr', null, cab)]),
+      el('tbody', null, cuerpo)
+    ])]));
+    S.mats.forEach(function (m) { actualizarFila(m.id); });
+    ses.forEach(function (s) { actualizarResumen(s.id); });
+    if (S.mats.length === 0) {
+      zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Este grupo todavía no tiene estudiantes matriculados en el año.' }));
+    }
+    if (ses.length === 0) {
+      zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no hay sesiones en este trimestre. Agregue la primera con el formulario de arriba.' }));
+    }
+  }
+
+  function dibujarPapelera() {
+    var lista = S.sesiones.filter(function (s) { return s.eliminada_en; });
+    var sec = el('section', { clase: 'bloque' }, [el('h3', { texto: 'Papelera (' + lista.length + ')' })]);
+    if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'La papelera está vacía.' })); return sec; }
+    sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+      el('thead', null, [el('tr', null, ['Fecha', 'Bloque', 'Descripción', ''].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
+      el('tbody', null, lista.map(function (s) {
+        return el('tr', null, [el('td', { texto: fechaTexto(s.fecha) }), el('td', { texto: String(s.bloque) }), el('td', { texto: s.descripcion || '(sin descripción)' }),
+          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Restaurar', onclick: function () { aPapelera(s, false); } })])]);
+      }))
+    ])]));
+    return sec;
+  }
+
+  async function dibujarHistorial(contenedor) {
+    contenedor.textContent = '';
+    contenedor.appendChild(el('p', { clase: 'texto-estado', texto: 'Cargando historial…' }));
+    try {
+      var h = await consultar(db.from('portal2027_historial_asistencia')
+        .select('matricula_id,sesion_id,estado_anterior,estado_nuevo,version,creado_en,sesion:portal2027_sesiones_asistencia!inner(asignacion_id,trimestre_id,fecha,bloque)')
+        .eq('sesion.asignacion_id', S.asig.id).eq('sesion.trimestre_id', S.trimestreId)
+        .order('creado_en', { ascending: false }).limit(100));
+      contenedor.textContent = '';
+      if (h.length === 0) { contenedor.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay cambios de asistencia en este trimestre.' })); return; }
+      var porMat = {};
+      S.mats.forEach(function (m) { porMat[m.id] = m; });
+      function etiqueta(c) { var e = c ? estadoPorCodigo(c) : null; return c ? (e ? e.etiqueta : c) : '(sin marcar)'; }
+      contenedor.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Últimos ' + h.length + ' cambios (máximo 100).' }));
+      contenedor.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+        el('thead', null, [el('tr', null, ['Cuándo', 'Estudiante', 'Sesión', 'Antes', 'Ahora', 'Versión'].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
+        el('tbody', null, h.map(function (x) {
+          var m = porMat[x.matricula_id];
+          return el('tr', null, [
+            el('td', { texto: new Date(x.creado_en).toLocaleString('es-PA') }),
+            el('td', { texto: m ? nombreEst(m.estudiante) : '' }),
+            el('td', { texto: fechaTexto(x.sesion.fecha) + ' · bloque ' + x.sesion.bloque }),
+            el('td', { texto: etiqueta(x.estado_anterior) }), el('td', { texto: etiqueta(x.estado_nuevo) }), el('td', { texto: String(x.version) })
+          ]);
+        }))
+      ])]));
+    } catch (e) {
+      contenedor.textContent = '';
+      contenedor.appendChild(el('p', { clase: 'mensaje error', texto: 'No se pudo cargar el historial. ' + textoError(e) }));
+    }
+  }
+
+  function dibujar() {
+    var previo = contenido.querySelector('.asistencia-cuerpo');
+    if (previo) { previo.remove(); }
+
+    var selTrim = el('select', { 'aria-label': 'Trimestre' }, S.trimestres.map(function (t) {
+      return el('option', { value: t.id, texto: 'Trimestre ' + t.numero, selected: t.id === S.trimestreId });
+    }));
+    selTrim.addEventListener('change', function () { S.trimestreId = selTrim.value; recargar(); });
+
+    var buscar = el('input', { type: 'search', placeholder: 'Buscar estudiante', value: S.buscar, 'aria-label': 'Buscar estudiante' });
+    buscar.addEventListener('input', function () { S.buscar = buscar.value; dibujarTabla(); });
+
+    // Nueva sesión
+    var inFecha = el('input', { type: 'date', value: hoy(), required: true });
+    var inBloque = el('input', { type: 'number', min: '1', max: '12', value: '1', 'aria-label': 'Bloque' });
+    var inDesc = el('input', { type: 'text', maxlength: '120', placeholder: 'Descripción (opcional)' });
+    var formNueva = el('form', { clase: 'formulario-fila', novalidate: true }, [
+      el('label', null, ['Fecha', inFecha]), el('label', null, ['Bloque', inBloque]), el('label', null, ['Descripción', inDesc]),
+      el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Agregar sesión' })
+    ]);
+    formNueva.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var bloque = Number(inBloque.value);
+      if (!inFecha.value) { aviso('Elija la fecha de la sesión.', 'error'); return; }
+      if (!(bloque >= 1 && bloque <= 12) || Math.floor(bloque) !== bloque) { aviso('El bloque debe ser un número de 1 a 12.', 'error'); return; }
+      llamar('portal2027_crear_sesion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_fecha: inFecha.value, p_bloque: bloque, p_descripcion: inDesc.value }, 'Sesión agregada.');
+    });
+
+    // Marcar pendientes
+    var abiertas = activas().filter(function (s) { return !s.bloqueada; });
+    var selSes = el('select', { 'aria-label': 'Sesión' }, abiertas.map(function (s) {
+      return el('option', { value: s.id, texto: fechaTexto(s.fecha) + ' · bloque ' + s.bloque });
+    }));
+    var selEst = el('select', { 'aria-label': 'Estado' }, S.estados.filter(function (e) { return e.activo; }).map(function (e) {
+      return el('option', { value: e.codigo, texto: e.etiqueta });
+    }));
+    var btnMarcar = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Marcar sin registro', disabled: abiertas.length === 0 || S.estados.length === 0,
+      onclick: function () { marcarPendientes(selSes.value, selEst.value); } });
+
+    var btnHist = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Historial' });
+    var btnPap = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Papelera' });
+    var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Asistencia recargada.'); } });
+
+    zonaTabla = el('div');
+    var zonaExtra = el('div');
+    btnHist.addEventListener('click', function () { zonaExtra.textContent = ''; var c = el('div'); zonaExtra.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Historial de asistencia' }), c])); dibujarHistorial(c); });
+    btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
+
+    var leyenda = el('p', { clase: 'leyenda-asis' }, S.estados.filter(function (e) { return e.activo; }).map(function (e) {
+      return el('span', null, [el('strong', { texto: e.abreviatura }), ' = ' + e.etiqueta]);
+    }));
+
+    var cuerpo = el('div', { clase: 'asistencia-cuerpo secciones' }, [
+      el('section', { clase: 'bloque' }, [
+        el('h2', { texto: 'Nueva sesión' }),
+        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', selTrim]), el('label', null, ['Estudiante', buscar]), btnHist, btnPap, btnRec]),
+        formNueva
+      ]),
+      el('section', { clase: 'bloque' }, [
+        el('h2', { texto: 'Asistencia' }),
+        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Sesión', selSes]), el('label', null, ['Estado', selEst]), btnMarcar]),
+        el('p', { clase: 'bloque-ayuda', texto: 'Elija el estado en cada casilla; se guarda al instante. Una casilla vacía significa «sin marcar» (no cuenta como ausencia). Las columnas de la derecha solo cuentan sesiones por estado: aún no hay porcentajes ni pesos.' }),
+        leyenda,
+        zonaTabla
+      ]),
+      zonaExtra
+    ]);
+    contenido.appendChild(cuerpo);
+    dibujarTabla();
+  }
+
+  /* ---------- inicio ---------- */
+  function errorPantalla(texto) {
+    contenido.textContent = '';
+    contenido.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: texto }));
+    contenido.appendChild(el('a', { clase: 'boton boton-secundario', href: P.rutaInicio(), texto: 'Volver al inicio' }));
+  }
+
+  async function iniciar() {
+    if (!db) { errorPantalla(P.errorCarga); return; }
+    var info;
+    try { info = await P.cargarSesion(); } catch (e) { errorPantalla(P.traducirError(e)); return; }
+    var rolPanel = info && (info.roles.indexOf('profesor') !== -1 ? 'profesor' : (info.roles.indexOf('administrador') !== -1 ? 'administrador' : null));
+    if (!info || !rolPanel) { window.location.replace(P.rutaInicio()); return; }
+    db.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') { window.location.replace(P.rutaInicio()); } });
+    S.info = info;
+
+    var params = new URLSearchParams(window.location.search);
+    var asigId = params.get('asignacion');
+    contenido.textContent = '';
+    barra = el('p', { clase: 'mensaje estado-panel', role: 'status', 'aria-live': 'polite', hidden: true });
+
+    try {
+      S.asig = asigId ? await cargarAsignacion(asigId) : null;
+      if (!S.asig) { errorPantalla('No se encontró esta asistencia o no tiene acceso a ella.'); return; }
+      S.trimestres = await consultar(db.from('portal2027_trimestres').select('id,numero').eq('anio_id', S.asig.salon.anio_id).order('numero'));
+      var pedido = params.get('trimestre');
+      S.trimestreId = (pedido && S.trimestres.some(function (t) { return t.id === pedido; })) ? pedido : (S.trimestres[0] ? S.trimestres[0].id : null);
+      if (!S.trimestreId) { errorPantalla('Este año no tiene trimestres.'); return; }
+
+      contenido.appendChild(el('header', { clase: 'panel-cabecera' }, [
+        el('div', null, [
+          el('p', { clase: 'panel-centro', texto: 'C.E.B.G. El Jiral · Asistencia' }),
+          el('h1', { texto: S.asig.materia.nombre + ' · ' + S.asig.salon.nombre }),
+          el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + S.asig.salon.anio.anio })
+        ]),
+        el('div', { clase: 'cabecera-acciones' }, [
+          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a la libreta' }),
+          el('a', { clase: 'boton boton-secundario', href: P.rutaPanel(rolPanel), texto: 'Volver al panel' }),
+          el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar sesión', onclick: P.cerrarSesion })
+        ])
+      ]));
+      contenido.appendChild(barra);
+      await cargarAsistencia();
+      dibujar();
+    } catch (e) {
+      errorPantalla('No se pudo abrir la asistencia. ' + textoError(e));
+    }
+  }
+
+  iniciar();
+})();

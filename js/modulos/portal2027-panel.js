@@ -65,7 +65,9 @@
       el('thead', null, [el('tr', null, ['Año', 'Grupo', 'Materia', ''].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
       el('tbody', null, filas.map(function (f) {
         return el('tr', null, [el('td', { texto: String(f.anio) }), el('td', { texto: f.grupo }), el('td', { texto: f.materia }),
-          el('td', null, [el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' })])]);
+          el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' })])])]);
       }))
     ]);
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [tabla]));
