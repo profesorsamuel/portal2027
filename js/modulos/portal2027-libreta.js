@@ -13,7 +13,7 @@
   var S = {
     info: null, asig: null, trimestres: [], trimestreId: null,
     evals: [], mats: [], notas: {},            // notas: clave evalId|matId -> {valor, version}
-    filtroCat: '', verOcultas: false, verPapelera: false, buscar: '', historial: null
+    filtroCat: '', verOcultas: false, verPapelera: false, buscar: '', historial: null, publicada: false
   };
   var estado = null;
   var zonaTabla = null;
@@ -87,8 +87,10 @@
         return db.from('portal2027_notas')
           .select('evaluacion_id,matricula_id,valor,version,evaluacion:portal2027_evaluaciones!inner(asignacion_id,trimestre_id)')
           .eq('evaluacion.asignacion_id', asigId).eq('evaluacion.trimestre_id', trId).order('id');
-      })
+      }),
+      consultar(db.from('portal2027_publicaciones').select('publicada').eq('asignacion_id', asigId).eq('trimestre_id', trId).maybeSingle())
     ]);
+    S.publicada = !!(r[3] && r[3].publicada);
     S.evals = r[0];
     S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) {
       return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es');
@@ -355,6 +357,13 @@
 
     var btnHist = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Historial de notas' });
     var btnPap = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Papelera' });
+    var btnPub = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: S.publicada ? 'Retirar publicación' : 'Publicar a estudiantes', onclick: function () {
+      var txt = S.publicada ? '¿Retirar la publicación? Los estudiantes dejarán de ver las notas de esta materia en este trimestre.'
+        : '¿Publicar las notas de este trimestre? Cada estudiante verá solo sus propias notas, y los cambios que haga después también se verán.';
+      if (!window.confirm(txt)) { return; }
+      llamar('portal2027_publicar_notas', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_publicar: !S.publicada },
+        S.publicada ? 'Publicación retirada.' : 'Notas publicadas a los estudiantes.');
+    } });
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Libreta recargada.'); } });
 
     zonaTabla = el('div');
@@ -367,8 +376,9 @@
         el('div', { clase: 'formulario-fila' }, [
           el('label', null, ['Trimestre', selTrim]), el('label', null, ['Categoría', selCat]), el('label', null, ['Estudiante', buscar]),
           el('label', { clase: 'etiqueta-check' }, [cbOc, ' Mostrar ocultas (' + ocultas + ')']),
-          btnHist, btnPap, btnRec
+          btnHist, btnPap, btnRec, btnPub
         ]),
+        el('p', { clase: 'bloque-ayuda', texto: S.publicada ? 'Estado: notas PUBLICADAS a los estudiantes en este trimestre.' : 'Estado: notas no publicadas (los estudiantes no las ven).' }),
         el('p', { clase: 'bloque-ayuda', texto: 'Escriba la nota y pulse Enter o cambie de casilla. Vacío no es cero. Promedio por categoría con las notas existentes; Final = promedio de las categorías con nota. Las columnas ocultas siguen contando.' }),
         zonaTabla
       ]),

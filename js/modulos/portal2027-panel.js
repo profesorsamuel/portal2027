@@ -88,7 +88,10 @@
         zona.appendChild(await vistaProfesor(info));
         await P.renderEstudiantesProfesor(zona, info);
       } else if (rol === 'consejero') { await P.renderConsejeria(zona, info); }
-      else { await P.renderEstudianteFicha(zona, info); }
+      else {
+        await P.renderEstudianteFicha(zona, info);
+        await P.renderEstudianteAcademico(zona, info);
+      }
     } catch (e) {
       zona.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: P.traducirError(e) }));
     }
