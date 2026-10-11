@@ -26,6 +26,11 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-config.js` | Etapa 4B: configuración académica (periodos, pesos, estados) en el panel de administración. |
 | `js/modulos/portal2027-consejeria.js` | Etapa 5: consejeros por grupo (administración) y vista del grupo (consejero). |
 | `js/modulos/portal2027-estudiante-academico.js` | Etapa 6: notas publicadas y asistencia del propio estudiante. |
+| `pages/portal2027-clases.html` | Clases y tareas por asignación (profesor y administración). |
+| `js/modulos/portal2027-clases.js` | Materiales, tareas, entregas y revisión. |
+| `js/modulos/portal2027-clases-comun.js` | Validación y apertura segura de archivos. |
+| `js/modulos/portal2027-clases-estudiante.js` | «Mis clases y tareas» del estudiante. |
+| `assets/css/portal2027-clases.css` | Estilos de clases y tareas. |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -40,6 +45,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Administración (etapa 4B): fechas de trimestres, pesos por categoría y estados de asistencia y de nota. Solo se guardan; no se calculan.
 - Consejería (etapa 5): administración asigna consejeros a grupos; el consejero ve estudiantes, acudiente y conteo de asistencia por estado.
 - Estudiante (etapa 6): ve sus notas solo de materias publicadas por el profesor y su asistencia, por trimestre. El profesor publica o retira desde la libreta.
+- Clases y tareas (guía, etapa 5): el profesor publica materiales y tareas con plazo, revisa entregas y, si la tarea cuenta para nota, la guarda en la libreta con historial; el estudiante entrega sus archivos en Storage privado.
 - Estudiante: su ficha, grupo y foto propia (etapa 2).
 - Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
