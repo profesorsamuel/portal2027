@@ -1,4 +1,4 @@
-# portal2027 — estructura (etapas 1 a 4A)
+# portal2027 — estructura (etapas 1 a 4B)
 
 Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
@@ -23,6 +23,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `pages/portal2027-asistencia.html` | Etapa 4A: asistencia por sesión (profesor y administración). |
 | `js/modulos/portal2027-asistencia.js` | Pantalla de asistencia. |
 | `assets/css/portal2027-asistencia.css` | Estilos de la asistencia (usa también los de la libreta). |
+| `js/modulos/portal2027-config.js` | Etapa 4B: configuración académica (periodos, pesos, estados) en el panel de administración. |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -34,6 +35,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Profesor: lista de sus grupos y materias; sus estudiantes y ayuda con la foto (etapa 2).
 - Libreta (etapa 3): columnas por categoría con tema, +, bloqueo, ocultar y papelera; notas con guardado real, versión e historial; promedios y final con el motor único.
 - Asistencia (etapa 4A): sesiones por fecha y bloque, marca por estudiante con estados configurables, conteo por estado, bloqueo, papelera e historial. Sin porcentajes ni pesos.
+- Administración (etapa 4B): fechas de trimestres, pesos por categoría y estados de asistencia y de nota. Solo se guardan; no se calculan.
 - Estudiante: su ficha, grupo y foto propia (etapa 2).
 - Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.

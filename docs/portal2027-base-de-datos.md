@@ -1,4 +1,4 @@
-# portal2027 — inventario de base de datos (etapas 1 a 4A)
+# portal2027 — inventario de base de datos (etapas 1 a 4B)
 
 Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo propio lleva el prefijo `portal2027`.
 
@@ -22,6 +22,8 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | `portal2027_estados_asistencia` | Estados de asistencia configurables (código, etiqueta, abreviatura, orden, activo). Sin efecto en cálculos todavía. |
 | `portal2027_sesiones_asistencia` | Una sesión de clase: asignación + trimestre + fecha + bloque; descripción, bloqueo, papelera y versión. |
 | `portal2027_asistencia` | Una marca por sesión y matrícula; sin fila o estado nulo = sin marcar (no es ausencia); con versión. |
+| `portal2027_pesos_categoria` | Peso por año y categoría (nulo = sin definir). Solo se guarda; no entra en ningún cálculo. |
+| `portal2027_estados_nota` | Estados de nota (pendiente, exento) con efecto «sin definir». Solo catálogo. |
 | `portal2027_historial_asistencia` | Historial inmutable de cada cambio de marca (anterior, nuevo, versión, quién, cuándo). |
 
 ## Funciones y disparadores
@@ -52,11 +54,13 @@ El consejero verá su grupo asignado en la etapa 7.
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta).
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres.
 
 Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
 Etapa 4A: la asistencia se lee directamente (administración y profesor de la asignación) y se escribe solo con `portal2027_crear_sesion`, `_actualizar_sesion`, `_papelera_sesion`, `_guardar_asistencia` y `_marcar_pendientes`. Ver `portal2027-etapa4-parteA.md`.
+
+Etapa 4B: pesos y estados de nota se leen con cualquier rol y los cambia solo administración (RLS). El disparador `portal2027_validar_trimestre` impide fechas cruzadas y sesiones de asistencia fuera de las fechas. Ver `portal2027-etapa4-parteB.md`.
 
 ## Edge Function
 
