@@ -1,4 +1,4 @@
-# portal2027 — inventario de base de datos (etapas 1 a 6)
+# portal2027 — inventario de base de datos (etapas 1 a 6 y clases y tareas, parte A)
 
 Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo propio lleva el prefijo `portal2027`.
 
@@ -26,6 +26,9 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | `portal2027_estados_nota` | Estados de nota (pendiente, exento) con efecto «sin definir». Solo catálogo. |
 | `portal2027_consejeros_salon` | Consejero + grupo (solo personas con rol consejero). |
 | `portal2027_publicaciones` | Si las notas de una asignación y trimestre están publicadas a los estudiantes. |
+| `portal2027_materiales` | Materiales por asignación y trimestre (archivo opcional en `portal2027-materiales`, publicado, papelera). |
+| `portal2027_tareas` | Tareas con plazo, publicación, papelera, versión y vínculo opcional a una columna de la libreta. |
+| `portal2027_entregas` | Una por tarea y matrícula: archivo en `portal2027-entregas`, tardía, estado, comentario del profesor, versión. |
 | `portal2027_historial_asistencia` | Historial inmutable de cada cambio de marca (anterior, nuevo, versión, quién, cuándo). |
 
 ## Funciones y disparadores
@@ -58,13 +61,15 @@ Etapa 6: el estudiante no lee las tablas de notas ni de asistencia; recibe solo 
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias.
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias · `0011` clases y tareas (materiales, tareas, entregas y buckets privados).
 
 Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
 Etapa 4A: la asistencia se lee directamente (administración y profesor de la asignación) y se escribe solo con `portal2027_crear_sesion`, `_actualizar_sesion`, `_papelera_sesion`, `_guardar_asistencia` y `_marcar_pendientes`. Ver `portal2027-etapa4-parteA.md`.
 
 Etapa 4B: pesos y estados de nota se leen con cualquier rol y los cambia solo administración (RLS). El disparador `portal2027_validar_trimestre` impide fechas cruzadas y sesiones de asistencia fuera de las fechas. Ver `portal2027-etapa4-parteB.md`.
+
+Clases y tareas (guía, etapa 5, parte A): se leen con RLS (personal de la asignación; el estudiante solo su entrega) y se escriben solo con `portal2027_crear_material`, `_actualizar_material`, `_crear_tarea`, `_actualizar_tarea`, `_entregar_tarea`, `_revisar_entrega`, `_reabrir_entrega`; el estudiante recibe su clase con `portal2027_mis_clases`. Buckets privados `portal2027-materiales` y `portal2027-entregas`. Ver `portal2027-clases-tareas-parteA.md`.
 
 ## Edge Function
 
