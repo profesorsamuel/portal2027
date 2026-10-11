@@ -1,0 +1,47 @@
+/* portal2027-componentes.css — formularios, mensajes y tablas de datos */
+
+[hidden] { display: none !important; }
+
+.vista h2 { font-size: 1.6rem; margin-bottom: 1rem; }
+.texto-ayuda { color: var(--texto-suave); margin-bottom: 0.5rem; }
+.texto-estado { color: var(--texto-suave); padding: 1rem 0; }
+
+.boton-principal { width: 100%; border: 2px solid var(--tinta); font: inherit; font-weight: 600; }
+button.boton { font: inherit; font-weight: 600; }
+button.boton:disabled { opacity: 0.6; cursor: wait; }
+
+.enlace-boton {
+  background: none; border: 0; padding: 0; margin-top: 0.9rem; text-align: left;
+  font: inherit; color: var(--tinta-suave); text-decoration: underline; cursor: pointer;
+}
+
+.mensaje { margin-top: 1rem; padding: 0.7rem 0.9rem; border-radius: 8px; border: 1px solid var(--linea); font-size: 0.95rem; }
+.mensaje.error { background: #fdecea; border-color: #e9a7a0; color: #7a1d14; }
+.mensaje.ok { background: #e8f5ec; border-color: #9fcfae; color: #1d5a35; }
+.mensaje.info { background: #eef4f3; color: var(--tinta); }
+
+.lista-paneles { display: grid; gap: 0.6rem; margin: 0.5rem 0; }
+.lista-paneles .boton { width: 100%; }
+
+/* Paneles internos */
+.cabecera-acciones { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.estado-panel { position: sticky; top: 0; z-index: 5; margin: 0 0 1rem; }
+.secciones { display: grid; gap: 1.25rem; }
+.bloque h3 { font-family: var(--fuente-titulo); font-size: 1.1rem; color: var(--tinta); margin: 1rem 0 0.4rem; }
+
+.tabla-datos { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.tabla-datos th, .tabla-datos td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--linea); text-align: left; vertical-align: middle; }
+.tabla-datos thead th { font-size: 0.88rem; color: var(--texto-suave); font-weight: 600; }
+.tabla-datos input[type="text"] { padding: 0.4rem 0.5rem; min-width: 8rem; }
+.tabla-datos input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
+.tabla-datos .centro { text-align: center; }
+
+.formulario-fila { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-top: 0.75rem; }
+.formulario-fila label { margin: 0; display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.formulario-fila input, .formulario-fila select { width: auto; min-width: 8rem; }
+select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; border-radius: 8px; background: var(--blanco); color: var(--texto); }
+
+.boton-chico { padding: 0.4rem 0.8rem; font-size: 0.9rem; }
+.boton-peligro { color: #7a1d14; border-color: #7a1d14; }
+.etiqueta-activo { color: var(--ok); font-weight: 600; }
+.vacio-texto { color: var(--texto-suave); padding: 0.5rem 0; }
