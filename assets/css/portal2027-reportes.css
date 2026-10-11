@@ -1,0 +1,24 @@
+/* portal2027-reportes.css — reportes, avisos en borrador e impresión (etapa 7, parte B) */
+.portal-ancho { max-width: 1400px; }
+.solo-impresion { display: none; }
+.reporte-tabla { font-size: 0.92rem; }
+.reporte-tabla td.centro, .reporte-tabla th.centro { text-align: center; }
+.reporte-tabla td.final { font-weight: 700; background: #fdf6e3; text-align: center; }
+.reporte-origen { border-left: 4px solid var(--acento-oscuro, #8a6d1d); padding: 0.4rem 0.8rem; background: #fdf6e3; margin: 0.75rem 0; }
+.reporte-origen.copia { border-left-color: var(--ok, #1d5a35); background: #e8f5ec; }
+.aviso-borrador { border: 1px solid var(--linea); border-radius: var(--radio, 8px); padding: 0.6rem 0.8rem; margin: 0.75rem 0; background: var(--blanco, #fff); }
+.aviso-borrador h4 { margin: 0 0 0.4rem; }
+.aviso-texto { width: 100%; font: inherit; font-size: 0.92rem; padding: 0.5rem; border: 1px solid #aebdba; border-radius: 6px; box-sizing: border-box; }
+.aviso-marca { font-size: 0.9rem; color: var(--texto-suave); align-self: center; }
+.cierre-panel h4 { margin: 1rem 0 0.4rem; }
+@media print {
+  .no-imprimir, .panel-cabecera .cabecera-acciones, footer.pie, .aviso-borrador { display: none !important; }
+  .solo-impresion { display: block !important; }
+  body { background: #fff; }
+  .portal, .portal-ancho { max-width: none; padding: 0; box-shadow: none; }
+  .tabla-contenedor { overflow: visible; }
+  .reporte-tabla { font-size: 0.8rem; }
+  /* Vista del estudiante: se imprime solo el reporte de notas */
+  body.solo-reporte .panel-cabecera, body.solo-reporte .secciones > :not(.reporte-imprimible) { display: none !important; }
+  body.solo-reporte .reporte-imprimible .formulario-fila { display: none !important; }
+}
