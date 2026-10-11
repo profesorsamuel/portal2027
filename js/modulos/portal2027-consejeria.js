@@ -36,10 +36,13 @@
       var r = await Promise.all([
         consultar(db.from('portal2027_consejeros_salon').select('salon_id,consejero_id,salon:portal2027_salones(nombre,anio:portal2027_anios(anio)),consejero:portal2027_perfiles(nombres,apellidos,correo)')),
         consultar(db.from('portal2027_salones').select('id,nombre,anio:portal2027_anios(anio)').order('nombre')),
-        consultar(db.from('portal2027_roles_usuario').select('usuario_id,perfil:portal2027_perfiles!usuario_id(id,nombres,apellidos,correo,activo)').eq('rol', 'consejero'))
+        consultar(db.from('portal2027_roles_usuario').select('usuario_id').eq('rol', 'consejero')),
+        consultar(db.from('portal2027_perfiles').select('id,nombres,apellidos,correo,activo').order('apellidos').order('correo'))
       ]);
       var asign = r[0], salones = r[1];
-      var consejeros = r[2].map(function (x) { return x.perfil; }).filter(function (p) { return p && p.activo !== false; });
+      var ids = {};
+      r[2].forEach(function (x) { ids[x.usuario_id] = true; });
+      var consejeros = r[3].filter(function (p) { return ids[p.id] && p.activo !== false; });
 
       var filas = asign.map(function (a) {
         return el('tr', null, [
