@@ -72,7 +72,7 @@
 
   // Administración en pestañas: una barra fija arriba y, debajo, solo las secciones de la pestaña elegida.
   var PESTANAS = [
-    { id: 'personas', texto: 'Personas', titulos: ['Personas y roles', 'Importar profesores desde Excel'] },
+    { id: 'personas', texto: 'Personas', titulos: ['Personas y roles', 'Importar profesores desde Excel', 'Directorio de docentes'] },
     { id: 'estructura', texto: 'Años, grupos y materias', titulos: ['Años lectivos', 'Grupos', 'Materias', 'Profesores por grupo', 'Consejeros por grupo'] },
     { id: 'estudiantes', texto: 'Estudiantes', titulos: ['Estudiantes'] },
     { id: 'documentos', texto: 'Documentos', titulos: ['Documentos de estudiantes'] },
@@ -152,6 +152,7 @@
       if (rol === 'administrador') {
         await P.renderAdmin(zona, info);
         await P.renderProfesoresAdmin(zona, info);
+        await P.renderDocentesAdmin(zona, info);
         await P.renderEstudiantesAdmin(zona, info);
         await P.renderDocumentosAdmin(zona, info);
         await P.renderConfigAdmin(zona, info);
