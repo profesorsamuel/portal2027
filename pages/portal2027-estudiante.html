@@ -58,6 +58,30 @@ body[data-rol="estudiante"] .bloque > h3 { margin-top: 1.6rem; padding-top: 1.1r
 .apartado-ejercicios { margin-top: 1.6rem; padding-top: 1.1rem; border-top: 1px solid var(--linea); }
 .apartado-ejercicios > h3 { margin-top: 0; }
 
+/* Mis notas: tarjetas por materia, notas con su detalle y promedio final */
+.materia-notas { margin-top: 1.1rem; padding: 1.1rem; background: #f7faf9; border: 1px solid var(--linea); border-radius: 14px; }
+.materia-notas > h3 { margin: 0 0 .7rem; padding: 0; border: 0; }
+.grupo-notas { margin-top: .9rem; }
+.grupo-notas h4 { margin: 0 0 .35rem; font-size: .95rem; color: var(--tinta); display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.grupo-notas .promedio-grupo { font-size: .85rem; font-weight: 700; color: var(--tinta); background: #e7eeed; border-radius: 999px; padding: .15rem .7rem; }
+.tabla-notas { width: 100%; border-collapse: collapse; background: var(--blanco); font-size: .92rem; }
+.tabla-notas th, .tabla-notas td { padding: .55rem .7rem; text-align: left; border-bottom: 1px solid var(--linea); vertical-align: middle; }
+.tabla-notas th { font-size: .8rem; color: var(--texto-suave); font-weight: 700; }
+.tabla-notas td.col-nota, .tabla-notas th.col-nota { text-align: center; width: 5.5rem; }
+.nota-que { font-weight: 700; color: var(--tinta); }
+.nota-tema { color: var(--texto); }
+.etiqueta-tipo { display: inline-block; background: #e7eeed; color: var(--tinta); font-size: .78rem; font-weight: 700; padding: .15rem .6rem; border-radius: 999px; white-space: nowrap; }
+.nota-valor { display: inline-block; min-width: 2.6rem; font-weight: 700; font-size: 1rem; padding: .15rem .5rem; border-radius: 8px; background: #e6f3ea; color: #1d5b34; }
+.nota-valor.nota-baja { background: #fbe9e7; color: #9b2c1f; }
+.nota-valor.nota-vacia { background: transparent; color: var(--texto-suave); font-weight: 400; font-size: .85rem; }
+.promedio-final { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding: .9rem 1.1rem; background: var(--tinta); color: #fff; border-radius: 12px; }
+.promedio-final .pf-texto { font-weight: 700; }
+.promedio-final .pf-ayuda { display: block; font-weight: 400; font-size: .8rem; color: #cfdedc; }
+.promedio-final .pf-numero { font-family: var(--fuente-titulo); font-size: 1.8rem; font-weight: 700; color: var(--acento); }
+.promedio-final.sin-nota .pf-numero { font-size: 1rem; color: #cfdedc; font-weight: 400; }
+@media (max-width: 640px) { .materia-notas { padding: .8rem; } .tabla-notas th, .tabla-notas td { padding: .45rem .5rem; } }
+@media print { .materia-notas { background: #fff; break-inside: avoid; } .promedio-final { background: #fff; color: #000; border: 1px solid #000; } .promedio-final .pf-numero, .promedio-final .pf-ayuda { color: #000; } }
+
 /* Mi foto */
 .foto-archivo { font-size: .88rem; color: var(--texto-suave); }
 .foto-controles .boton { padding: .65rem 1rem; font-size: .95rem; }
@@ -91,7 +115,7 @@ body[data-rol="estudiante"] .foto-marco { border-radius: 14px; }
   <script src="../js/core/portal2027-permisos.js"></script>
   <script src="../js/core/portal2027-evaluacion.js"></script>
   <script src="../js/modulos/portal2027-estudiantes.js?v=20261013"></script>
-  <script src="../js/modulos/portal2027-estudiante-academico.js?v=20261014"></script>
+  <script src="../js/modulos/portal2027-estudiante-academico.js?v=20261201"></script>
   <script src="../js/modulos/portal2027-clases-comun.js"></script>
   <script src="../js/modulos/portal2027-clases-estudiante.js"></script>
   <script src="../js/core/portal2027-integracion-ejercicios.js"></script>
