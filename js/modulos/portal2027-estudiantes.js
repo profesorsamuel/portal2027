@@ -362,6 +362,61 @@
         entrada.disabled = false;
       });
 
+      /* ----- plantilla incrustada: ejemplo en pantalla y Excel generado en el navegador ----- */
+      var EJEMPLO = [
+        ['E0001', 'Ana María', 'Pérez Gómez', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
+        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
+        ['E0003', 'María José', 'Castillo Ruiz', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
+        ['E0004', 'Pedro', 'Santos Vega', '7', 'B', '2027', '', '', '', '']
+      ];
+      var AYUDA_COLUMNAS = [
+        ['Columna', '¿Obligatoria?', 'Qué escribir', 'Ejemplo'],
+        ['codigo_estudiante', 'Sí', 'Código único del estudiante. No se repite. Es la llave para reimportar: no lo cambie después.', 'E0001'],
+        ['nombres', 'Sí', 'Nombres del estudiante.', 'Ana María'],
+        ['apellidos', 'Sí', 'Apellidos del estudiante.', 'Pérez Gómez'],
+        ['grado', 'Sí', 'Solo el número del grado (uno o dos dígitos).', '9'],
+        ['seccion', 'Sí', 'Solo la letra de la sección. Grado 9 + sección C = grupo 9C.', 'C'],
+        ['anio_lectivo', 'Sí', 'Año con cuatro cifras. Debe existir en Años lectivos.', '2027'],
+        ['correo_estudiante', 'No', 'Correo propio del estudiante, para invitarlo. No puede repetirse.', 'ana@example.com'],
+        ['nombre_acudiente', 'No', 'Nombre del acudiente.', 'Carmen Gómez'],
+        ['telefono_acudiente', 'No', 'Uno o varios teléfonos en la misma celda, separados por « / » o «; ».', '6000-0001 / 6500-0002'],
+        ['estado', 'No', 'Estado de la matrícula. Vacío = activo.', 'activo']
+      ];
+
+      function tablaSimple(cabecera, filas) {
+        return el('div', { clase: 'tabla-scroll', style: 'overflow-x:auto' }, [el('table', null, [
+          el('thead', null, [el('tr', null, cabecera.map(function (c) { return el('th', { texto: c }); }))]),
+          el('tbody', null, filas.map(function (f) { return el('tr', null, f.map(function (v) { return el('td', { texto: v }); })); }))
+        ])]);
+      }
+
+      var botonPlantilla = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Descargar plantilla de Excel' });
+      botonPlantilla.addEventListener('click', function () {
+        if (!window.XLSX) { aviso.mostrar('No se cargó la biblioteca de Excel. Recargue la página e intente de nuevo.', 'error'); return; }
+        var libro = XLSX.utils.book_new();
+        var hojaImportar = XLSX.utils.aoa_to_sheet([COLUMNAS].concat(EJEMPLO));
+        hojaImportar['!cols'] = [18, 18, 20, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
+        XLSX.utils.book_append_sheet(libro, hojaImportar, 'Importar');
+        var hojaAyuda = XLSX.utils.aoa_to_sheet([
+          ['Cómo llenar la hoja «Importar»'],
+          ['Las 4 filas de ejemplo son ficticias: bórrelas y escriba sus estudiantes, una fila por estudiante.'],
+          ['No cambie los nombres de la fila 1 ni el nombre de la hoja «Importar». Esta hoja puede quedarse en el archivo.'],
+          ['El año debe existir antes en Administración → Años lectivos. Máximo 3000 filas por importación.'],
+          []
+        ].concat(AYUDA_COLUMNAS));
+        hojaAyuda['!cols'] = [{ wch: 22 }, { wch: 14 }, { wch: 80 }, { wch: 24 }];
+        XLSX.utils.book_append_sheet(libro, hojaAyuda, 'Instrucciones');
+        XLSX.writeFile(libro, 'portal2027-plantilla-importar-estudiantes.xlsx');
+      });
+
+      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda' }, [botonPlantilla, ' Llénela (borre las filas de ejemplo) y súbala aquí abajo.']));
+      zonaImport.appendChild(el('details', null, [
+        el('summary', { texto: 'Ver cómo llenar el Excel (ejemplo)' }),
+        el('p', { clase: 'bloque-ayuda', texto: 'La hoja se llama «Importar»; la primera fila son estos nombres de columna, y cada estudiante va en una fila.' }),
+        tablaSimple(COLUMNAS, EJEMPLO),
+        el('p', { clase: 'bloque-ayuda', texto: 'Qué lleva cada columna:' }),
+        tablaSimple(AYUDA_COLUMNAS[0], AYUDA_COLUMNAS.slice(1))
+      ]));
       zonaImport.appendChild(el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]));
       zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
       zonaImport.appendChild(vista);
