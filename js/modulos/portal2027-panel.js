@@ -196,6 +196,83 @@
     new MutationObserver(aplicar).observe(zona, { childList: true });
   }
 
+  // Panel del estudiante: menú de botones grandes; solo se ve la sección que se toca.
+  var MENU_ESTUDIANTE = [
+    { titulo: 'Mi información', icono: '👤', texto: 'Mis datos de contacto y mi foto' },
+    { titulo: 'Mis notas y asistencia', icono: '📊', texto: 'Notas por trimestre y asistencia' },
+    { titulo: 'Mis clases y tareas', icono: '📚', texto: 'Tareas y materiales de mis clases' },
+    { titulo: 'Mis ejercicios virtuales', icono: '✏️', texto: 'Practique con ejercicios en línea' },
+    { titulo: 'Mis documentos', icono: '📁', texto: 'Documentos entregados y pendientes' }
+  ];
+
+  function menuEstudiante(zona) {
+    var secciones = Array.prototype.filter.call(zona.children, function (c) { return c.tagName === 'SECTION'; });
+    if (secciones.length === 0) { return; }
+    var items = secciones.map(function (sec, i) {
+      var h = sec.querySelector('h2');
+      var titulo = h ? h.textContent.trim() : 'Apartado ' + (i + 1);
+      var def = MENU_ESTUDIANTE.filter(function (m) { return m.titulo === titulo; })[0] || { icono: '📄', texto: '' };
+      sec.id = 'est-apartado-' + i;
+      return { sec: sec, titulo: titulo, icono: def.icono, texto: def.texto, id: i };
+    });
+
+    var rejilla = el('nav', { clase: 'menu-estudiante no-imprimir', 'aria-label': 'Menú del estudiante' });
+    var barra = el('div', { clase: 'volver-menu no-imprimir', hidden: true });
+    var tituloActual = el('span', { clase: 'volver-titulo' });
+    var volver = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: '← Volver al menú' });
+    barra.appendChild(volver);
+    barra.appendChild(tituloActual);
+
+    var insignias = {};
+    items.forEach(function (it) {
+      var ins = el('span', { clase: 'tarjeta-insignia', hidden: true, texto: 'Pendiente' });
+      insignias[it.id] = ins;
+      var b = el('button', { clase: 'tarjeta-menu', type: 'button' }, [
+        el('span', { clase: 'tarjeta-icono', 'aria-hidden': 'true', texto: it.icono }),
+        el('span', { clase: 'tarjeta-titulo', texto: it.titulo }),
+        it.texto ? el('span', { clase: 'tarjeta-texto', texto: it.texto }) : null,
+        ins
+      ]);
+      b.addEventListener('click', function () { abrir(it.id, true); });
+      rejilla.appendChild(b);
+    });
+
+    function pendientes() {
+      items.forEach(function (it) {
+        insignias[it.id].hidden = it.titulo !== 'Mi información' || it.sec.textContent.indexOf('Falta completar') === -1;
+      });
+    }
+    function mostrarMenu() {
+      items.forEach(function (it) { it.sec.classList.add('oculta'); });
+      pendientes();
+      rejilla.hidden = false;
+      barra.hidden = true;
+    }
+    function abrir(id, empujar) {
+      var it = items[id];
+      if (!it) { mostrarMenu(); return; }
+      items.forEach(function (x) { x.sec.classList.toggle('oculta', x !== it); });
+      rejilla.hidden = true;
+      barra.hidden = false;
+      tituloActual.textContent = it.titulo;
+      if (empujar) { try { window.history.pushState({ est: id }, '', '#apartado-' + id); } catch (e) { /* sin historial */ } }
+      window.scrollTo({ top: 0 });
+    }
+    function desdeHash() {
+      var m = /^#apartado-(\d+)$/.exec(window.location.hash || '');
+      if (m) { abrir(Number(m[1]), false); } else { mostrarMenu(); }
+    }
+    volver.addEventListener('click', function () {
+      if (/^#apartado-/.test(window.location.hash || '')) { window.history.back(); }
+      else { mostrarMenu(); }
+    });
+    window.addEventListener('popstate', desdeHash);
+
+    zona.parentNode.insertBefore(rejilla, zona);
+    zona.parentNode.insertBefore(barra, zona);
+    desdeHash();
+  }
+
   async function iniciar() {
     var info = await P.requerirRol(rol);
     if (info === null) { return; }
@@ -229,6 +306,7 @@
         await P.renderEstudianteClases(zona, info);
         await P.renderEstudianteEjercicios(zona, info);
         await P.renderDocumentosEstudiante(zona, info);
+        menuEstudiante(zona);
       }
     } catch (e) {
       zona.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: P.traducirError(e) }));

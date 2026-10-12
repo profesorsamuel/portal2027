@@ -104,16 +104,65 @@
     return null;
   }
 
+  // Reduce una foto (de la cámara o la galería) a JPG de máximo 2 MB; devuelve null si no se puede leer.
+  async function reducirImagen(archivo) {
+    var origen = null;
+    if (window.createImageBitmap) { try { origen = await window.createImageBitmap(archivo); } catch (e) { origen = null; } }
+    if (!origen) {
+      origen = await new Promise(function (ok, mal) {
+        var url = URL.createObjectURL(archivo), img = new Image();
+        img.onload = function () { URL.revokeObjectURL(url); ok(img); };
+        img.onerror = function () { URL.revokeObjectURL(url); mal(new Error('imagen')); };
+        img.src = url;
+      });
+    }
+    var ancho = origen.width || origen.naturalWidth, alto = origen.height || origen.naturalHeight;
+    var pasos = [[1280, 0.85], [1280, 0.7], [1024, 0.7], [800, 0.65], [640, 0.6]];
+    for (var i = 0; i < pasos.length; i++) {
+      var k = Math.min(1, pasos[i][0] / Math.max(ancho, alto));
+      var lienzo = document.createElement('canvas');
+      lienzo.width = Math.max(1, Math.round(ancho * k));
+      lienzo.height = Math.max(1, Math.round(alto * k));
+      var cx = lienzo.getContext('2d');
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(0, 0, lienzo.width, lienzo.height);
+      cx.drawImage(origen, 0, 0, lienzo.width, lienzo.height);
+      var blob = await new Promise(function (ok) { lienzo.toBlob(ok, 'image/jpeg', pasos[i][1]); });
+      if (blob && blob.size <= MAX_FOTO) { return blob; }
+    }
+    return null;
+  }
+
   // Tarjeta con la foto del estudiante y, si se permite, botones para subir o quitar.
   // alCambiar(): se llama tras un cambio real y guardado.
   function tarjetaFoto(est, alCambiar) {
     var aviso = crearAviso();
     var imagen = el('div', { clase: 'foto-marco' }, [el('span', { clase: 'foto-vacia', texto: 'Sin foto' })]);
-    var entrada = el('input', { type: 'file', accept: 'image/jpeg,image/png', 'aria-label': 'Elegir foto de ' + nombreEst(est) });
+    var entrada = el('input', { type: 'file', accept: 'image/*', hidden: true, 'aria-label': 'Elegir foto de la galería de ' + nombreEst(est) });
+    var camara = el('input', { type: 'file', accept: 'image/*', capture: 'user', hidden: true, 'aria-label': 'Tomar foto de ' + nombreEst(est) });
+    var seleccionado = null;
+    var nombreArchivo = el('p', { clase: 'foto-archivo', texto: 'Ninguna foto elegida todavía.' });
+    var btnCamara = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: '📷 Tomar foto', onclick: function () { camara.click(); } });
+    var btnGaleria = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: '🖼️ Elegir de la galería', onclick: function () { entrada.click(); } });
     var subir = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Subir foto' });
     var quitar = el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar foto', hidden: !est.foto_ruta });
 
-    function ocupado(si) { subir.disabled = si; quitar.disabled = si; entrada.disabled = si; }
+    function ocupado(si) { subir.disabled = si; quitar.disabled = si; entrada.disabled = si; camara.disabled = si; btnCamara.disabled = si; btnGaleria.disabled = si; }
+
+    function elegir(ev) {
+      var a = ev.target.files && ev.target.files[0];
+      if (!a) { return; }
+      seleccionado = a;
+      nombreArchivo.textContent = 'Foto elegida: ' + (a.name || 'foto') + ' (' + (a.size / 1048576).toFixed(1) + ' MB). Toque «Subir foto» para guardarla.';
+      aviso.mostrar('', 'info');
+      var url = URL.createObjectURL(a);
+      var vista = el('img', { src: url, alt: 'Vista previa', clase: 'foto-img' });
+      vista.addEventListener('load', function () { URL.revokeObjectURL(url); });
+      imagen.textContent = '';
+      imagen.appendChild(vista);
+    }
+    entrada.addEventListener('change', elegir);
+    camara.addEventListener('change', elegir);
 
     async function mostrarFoto() {
       if (!est.foto_ruta) { return; }
@@ -124,23 +173,30 @@
     }
 
     subir.addEventListener('click', async function () {
-      var archivo = entrada.files && entrada.files[0];
-      if (!archivo) { aviso.mostrar('Elija primero una imagen JPG o PNG.', 'error'); return; }
-      if (archivo.size > MAX_FOTO) { aviso.mostrar('La foto pesa más de 2 MB. Elija una más pequeña.', 'error'); return; }
+      var archivo = seleccionado;
+      if (!archivo) { aviso.mostrar('Elija primero una foto: tómela con la cámara o elíjala de la galería.', 'error'); return; }
       ocupado(true);
-      aviso.mostrar('Subiendo foto…', 'info');
+      aviso.mostrar('Preparando la foto…', 'info');
       try {
         var bytes = new Uint8Array(await archivo.slice(0, 8).arrayBuffer());
         var tipo = tipoImagen(bytes);
-        if (!tipo) { aviso.mostrar('El archivo no es una imagen JPG o PNG válida.', 'error'); ocupado(false); return; }
+        var envio = archivo;
+        if (!tipo || archivo.size > MAX_FOTO) {
+          try { envio = await reducirImagen(archivo); } catch (e) { envio = null; }
+          if (!envio) { aviso.mostrar('No se pudo preparar esa foto. Pruebe con otra imagen JPG o PNG.', 'error'); ocupado(false); return; }
+          tipo = tipoImagen(new Uint8Array(await envio.slice(0, 8).arrayBuffer()));
+          if (!tipo) { aviso.mostrar('El archivo no es una imagen válida.', 'error'); ocupado(false); return; }
+        }
+        aviso.mostrar('Subiendo foto…', 'info');
         var ruta = est.id + '/foto';
-        var s = await db.storage.from(BUCKET).upload(ruta, archivo, { upsert: true, contentType: tipo, cacheControl: '0' });
+        var s = await db.storage.from(BUCKET).upload(ruta, envio, { upsert: true, contentType: tipo, cacheControl: '0' });
         if (s.error) { throw s.error; }
         var g = await db.rpc('portal2027_guardar_foto_ruta', { p_estudiante: est.id, p_ruta: ruta });
         if (g.error) { throw g.error; }
         est.foto_ruta = ruta;
         quitar.hidden = false;
-        entrada.value = '';
+        entrada.value = ''; camara.value = ''; seleccionado = null;
+        nombreArchivo.textContent = 'Ninguna foto elegida todavía.';
         await mostrarFoto();
         aviso.mostrar('Foto guardada.', 'ok');
         if (alCambiar) { alCambiar(); }
@@ -175,8 +231,11 @@
     return el('div', { clase: 'foto-tarjeta' }, [
       imagen,
       el('div', { clase: 'foto-controles' }, [
-        el('p', { clase: 'bloque-ayuda', texto: 'JPG o PNG, máximo 2 MB.' }),
+        el('p', { clase: 'bloque-ayuda', texto: 'Tome una foto con la cámara o elija una de la galería. Si pesa más de 2 MB, se reduce sola.' }),
+        el('div', { clase: 'cabecera-acciones' }, [btnCamara, btnGaleria]),
         entrada,
+        camara,
+        nombreArchivo,
         el('div', { clase: 'cabecera-acciones' }, [subir, quitar]),
         aviso
       ])
