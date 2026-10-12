@@ -12,8 +12,10 @@ y usa su número de cédula como contraseña. Docentes y familias siguen entrand
 - El navegador verifica la cédula directamente con Supabase Auth (`signInWithPassword`).
 - "8-123-456", "8123456" y "8 123 456" valen igual (se quitan guiones y espacios y se pasa a mayúsculas). Mínimo 6 letras o números.
 
-## Instalación (una sola vez)
-No hay migraciones nuevas. Solo desplegar dos funciones:
+## Instalación (una sola vez, en este orden)
+0. **Primero la base:** en Supabase > SQL Editor ejecute `supabase/migrations/0017_portal2027_sexo_estudiante.sql`
+   (agrega la columna `sexo` y actualiza la importación). Si sube la web antes de hacerlo, la pantalla de Estudiantes dará error.
+1. Desplegar dos funciones:
 
 ```bash
 supabase functions deploy portal2027-crear-accesos
@@ -28,6 +30,9 @@ Si despliega desde el panel web de Supabase: en `portal2027-buscar-estudiante` d
    (formato Texto, para que Excel no quite guiones ni ceros).
 2. Llene una fila por estudiante, incluida su cédula, y súbala. La vista previa muestra la cédula oculta (`••••456`).
 3. Al confirmar, se importan los estudiantes **y** se crean sus accesos en el mismo paso. Ya pueden entrar.
+
+Columna `sexo`: escriba **Femenino** o **Masculino** (también vale F o M). Es obligatoria para estudiantes nuevos o que aún no
+tienen sexo registrado; en la plantilla trae una lista desplegable. Se muestra en la lista de estudiantes.
 
 Reglas de la columna `cedula`:
 - Obligatoria para estudiantes que aún no tienen acceso. Si ya lo tienen, puede quedar vacía (si viene, cambia su contraseña).
