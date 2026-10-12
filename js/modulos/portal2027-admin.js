@@ -30,9 +30,10 @@
       consultar(db.from('portal2027_anios').select('id,anio,activo,trimestres:portal2027_trimestres(numero)').order('anio', { ascending: false })),
       consultar(db.from('portal2027_salones').select('id,nombre,anio:portal2027_anios(anio)').order('nombre')),
       consultar(db.from('portal2027_materias').select('id,nombre').order('nombre')),
-      consultar(db.from('portal2027_asignaciones').select('id,salon:portal2027_salones(nombre,anio:portal2027_anios(anio)),materia:portal2027_materias(nombre),profesor:portal2027_perfiles(nombres,apellidos,correo)'))
+      consultar(db.from('portal2027_asignaciones').select('id,salon_id,profesor_id,salon:portal2027_salones(nombre,anio:portal2027_anios(anio)),materia:portal2027_materias(nombre),profesor:portal2027_perfiles(nombres,apellidos,correo)')),
+      consultar(db.from('portal2027_consejeros_salon').select('salon_id,consejero_id'))
     ]);
-    datos = { perfiles: r[0], roles: r[1], anios: r[2], salones: r[3], materias: r[4], asignaciones: r[5] };
+    datos = { perfiles: r[0], roles: r[1], anios: r[2], salones: r[3], materias: r[4], asignaciones: r[5], consejerias: r[6] };
   }
 
   async function ejecutar(accion, textoOk) {
@@ -254,54 +255,123 @@
     return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Grupos' }), tabla(['Grupo', 'Año', ''], filas, 'Todavía no hay grupos.'), form]);
   }
 
-  /* ---------- Asignaciones ---------- */
+  /* ---------- Profesores por grupo: materias y consejería en un solo lugar ---------- */
+  function etiquetaSalon(s) { return s ? s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : '') : ''; }
+
   function seccionAsignaciones() {
     var profesores = datos.perfiles.filter(function (p) { return tieneRol(p.id, 'profesor'); });
+    var perfilDe = {};
+    datos.perfiles.forEach(function (p) { perfilDe[p.id] = p; });
+    var salonDe = {};
+    datos.salones.forEach(function (s) { salonDe[s.id] = s; });
 
-    var filas = datos.asignaciones.map(function (a) {
-      var quitar = el('button', {
-        clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar',
-        onclick: function () {
-          if (!window.confirm('¿Quitar esta asignación?')) { return; }
-          ejecutar(async function () {
-            var r = await db.from('portal2027_asignaciones').delete().eq('id', a.id);
-            if (r.error) { throw r.error; }
-          }, 'Asignación quitada.');
-        }
+    // Una fila por grupo y profesor, con sus materias y si es consejero de ese grupo.
+    var filasMapa = {};
+    function fila(salonId, profId) {
+      var k = salonId + '|' + profId;
+      if (!filasMapa[k]) { filasMapa[k] = { salonId: salonId, profId: profId, asigs: [], consejero: false }; }
+      return filasMapa[k];
+    }
+    datos.asignaciones.forEach(function (a) { fila(a.salon_id, a.profesor_id).asigs.push(a); });
+    datos.consejerias.forEach(function (c) { fila(c.salon_id, c.consejero_id).consejero = true; });
+    var lista = Object.keys(filasMapa).map(function (k) { return filasMapa[k]; });
+    lista.sort(function (x, y) {
+      var gx = etiquetaSalon(salonDe[x.salonId]), gy = etiquetaSalon(salonDe[y.salonId]);
+      return gx.localeCompare(gy, 'es') || P.nombreCompleto(perfilDe[x.profId]).localeCompare(P.nombreCompleto(perfilDe[y.profId]), 'es');
+    });
+
+    var filas = lista.map(function (f) {
+      var materias = f.asigs.map(function (a) {
+        var quitar = el('button', {
+          clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar',
+          onclick: function () {
+            if (!window.confirm('¿Quitar la materia «' + (a.materia ? a.materia.nombre : '') + '» de este profesor en este grupo?')) { return; }
+            ejecutar(async function () {
+              var r = await db.from('portal2027_asignaciones').delete().eq('id', a.id);
+              if (r.error) { throw r.error; }
+            }, 'Materia quitada.');
+          }
+        });
+        var enlace = function (pagina, texto) {
+          return el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/' + pagina + '?asignacion=' + encodeURIComponent(a.id), texto: texto });
+        };
+        return el('div', { clase: 'cabecera-acciones' }, [
+          el('strong', { texto: a.materia ? a.materia.nombre : '' }),
+          enlace('portal2027-libreta.html', 'Libreta'), enlace('portal2027-asistencia.html', 'Asistencia'),
+          enlace('portal2027-clases.html', 'Clases y tareas'), quitar
+        ]);
       });
+      if (materias.length === 0) { materias = [el('span', { clase: 'bloque-ayuda', texto: 'Sin materia (solo consejería)' })]; }
+
+      var celdaCons = f.consejero
+        ? el('div', { clase: 'cabecera-acciones' }, [el('strong', { texto: 'Sí' }), el('button', {
+            clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar consejería',
+            onclick: function () {
+              if (!window.confirm('¿Quitar a este profesor como consejero de este grupo?')) { return; }
+              ejecutar(async function () {
+                var r = await db.from('portal2027_consejeros_salon').delete().eq('salon_id', f.salonId).eq('consejero_id', f.profId);
+                if (r.error) { throw r.error; }
+              }, 'Consejería quitada.');
+            }
+          })])
+        : el('div', { clase: 'cabecera-acciones' }, [el('span', { texto: 'No' }), el('button', {
+            clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Hacer consejero',
+            onclick: function () { ejecutar(function () { return hacerConsejero(f.salonId, f.profId); }, 'Consejería asignada.'); }
+          })]);
+
       return el('tr', null, [
-        el('td', { texto: a.salon ? a.salon.nombre + (a.salon.anio ? ' (' + a.salon.anio.anio + ')' : '') : '' }),
-        el('td', { texto: a.materia ? a.materia.nombre : '' }),
-        el('td', { texto: P.nombreCompleto(a.profesor) }),
-        el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
-          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(a.id), texto: 'Libreta' }),
-          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(a.id), texto: 'Asistencia' }),
-          el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(a.id), texto: 'Clases y tareas' }), quitar])])
+        el('td', { texto: etiquetaSalon(salonDe[f.salonId]) }),
+        el('td', { texto: P.nombreCompleto(perfilDe[f.profId]) }),
+        el('td', null, materias),
+        el('td', null, [celdaCons])
       ]);
     });
 
-    var selSalon = el('select', { required: true }, opciones(datos.salones, function (s) { return s.id; }, function (s) { return s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : ''); }, 'Elija el grupo'));
-    var selMateria = el('select', { required: true }, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Elija la materia'));
+    var selSalon = el('select', { required: true }, opciones(datos.salones, function (s) { return s.id; }, etiquetaSalon, 'Elija el grupo'));
     var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) { return P.nombreCompleto(p); }, 'Elija el profesor'));
+    var selMateria = el('select', null, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Sin materia (solo consejería)'));
+    var cbCons = el('input', { type: 'checkbox', 'aria-label': 'Es consejero de este grupo' });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
-      campo('Grupo', selSalon), campo('Materia', selMateria), campo('Profesor', selProfesor),
+      campo('Grupo', selSalon), campo('Profesor', selProfesor), campo('Materia', selMateria),
+      el('label', null, [cbCons, ' Es consejero(a) de este grupo']),
       el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Asignar' })
     ]);
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      if (!selSalon.value || !selMateria.value || !selProfesor.value) { aviso('Elija grupo, materia y profesor.', 'error'); return; }
+      if (!selSalon.value || !selProfesor.value) { aviso('Elija el grupo y el profesor.', 'error'); return; }
+      if (!selMateria.value && !cbCons.checked) { aviso('Elija una materia, marque «Es consejero(a)», o ambas.', 'error'); return; }
       ejecutar(async function () {
-        var r = await db.from('portal2027_asignaciones').insert({ salon_id: selSalon.value, materia_id: selMateria.value, profesor_id: selProfesor.value });
-        if (r.error) { throw r.error; }
-      }, 'Asignación creada.');
+        if (selMateria.value) {
+          var r = await db.from('portal2027_asignaciones').insert({ salon_id: selSalon.value, materia_id: selMateria.value, profesor_id: selProfesor.value });
+          if (r.error) { throw r.error; }
+        }
+        if (cbCons.checked) { await hacerConsejero(selSalon.value, selProfesor.value); }
+      }, 'Asignación guardada.');
     });
 
-    var hijos = [el('h2', { texto: 'Asignaciones' }), tabla(['Grupo', 'Materia', 'Profesor', ''], filas, 'Todavía no hay asignaciones.')];
+    var hijos = [
+      el('h2', { texto: 'Profesores por grupo' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Aquí se asigna a cada profesor su grupo, su materia y, si corresponde, su consejería. Para un profesor con varias materias en el mismo grupo, asigne una por una.' }),
+      tabla(['Grupo', 'Profesor', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
+    ];
     if (profesores.length === 0) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Para asignar, primero marque el rol Profesor a alguien en «Personas y roles».' }));
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Para asignar, primero marque el rol Profesor a alguien en «Personas y roles» o importe la lista de profesores desde Excel.' }));
     }
     hijos.push(form);
     return el('section', { clase: 'bloque' }, hijos);
+  }
+
+  // Da el rol consejero al profesor si aún no lo tiene y lo pone como consejero del grupo (sin duplicar).
+  async function hacerConsejero(salonId, profId) {
+    if (!tieneRol(profId, 'consejero')) {
+      var rr = await db.from('portal2027_roles_usuario').insert({ usuario_id: profId, rol: 'consejero' });
+      if (rr.error) { throw rr.error; }
+    }
+    var ya = datos.consejerias.some(function (c) { return c.salon_id === salonId && c.consejero_id === profId; });
+    if (!ya) {
+      var r = await db.from('portal2027_consejeros_salon').insert({ salon_id: salonId, consejero_id: profId });
+      if (r.error) { throw r.error; }
+    }
   }
 
   function dibujar() {
