@@ -48,7 +48,22 @@
     return P.traducirError(e);
   }
   function clave(e, m) { return e + '|' + m; }
-  function nombreEst(e) { return ((e.apellidos || '') + ', ' + (e.nombres || '')).replace(/^, |, $/g, ''); }
+  // Apellido y nombre para mostrar y ordenar. Si el estudiante tiene todo en «nombres» (sin apellidos),
+  // se toma la última palabra como apellido. Lo correcto es corregirlo en Administración > Estudiantes.
+  function partesNombre(e) {
+    var ap = String(e.apellidos || '').trim(), no = String(e.nombres || '').trim();
+    if (!ap && no.indexOf(' ') !== -1) { var w = no.split(/\s+/); ap = w.pop(); no = w.join(' '); }
+    return { ap: ap, no: no };
+  }
+  function nombreEst(e) { var p = partesNombre(e); return (p.ap + ', ' + p.no).replace(/^, |, $/g, ''); }
+  function comparaEst(a, b) {
+    var x = partesNombre(a), y = partesNombre(b);
+    return x.ap.localeCompare(y.ap, 'es', { sensitivity: 'base' }) || x.no.localeCompare(y.no, 'es', { sensitivity: 'base' });
+  }
+  function matsVisibles() {
+    var q = S.buscar.trim().toLowerCase();
+    return S.mats.filter(function (m) { return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1; });
+  }
   function evalPorId(id) { return S.evals.filter(function (e) { return e.id === id; })[0]; }
   function trimestreActual() { return S.trimestres.filter(function (t) { return t.id === S.trimestreId; })[0]; }
 
@@ -94,9 +109,7 @@
     S.publicada = !!(r[3] && r[3].publicada);
     S.cerrado = !!(r[4] && r[4].cerrado);
     S.evals = r[0];
-    S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) {
-      return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es');
-    });
+    S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.notas = {};
     r[2].forEach(function (n) { S.notas[clave(n.evaluacion_id, n.matricula_id)] = { valor: n.valor === null ? null : Number(n.valor), version: n.version }; });
     S.historial = null;
@@ -249,7 +262,21 @@
     var td = el('td', { clase: 'celda-nota' }, [input]);
     function marca(tipo) { td.className = 'celda-nota' + (tipo ? ' celda-' + tipo : ''); }
     input.addEventListener('change', function () { guardarCelda(ev, mat, input, marca); });
-    input.addEventListener('keydown', function (k) { if (k.key === 'Enter') { input.blur(); } });
+    input.addEventListener('keydown', function (k) {
+      if (k.key === 'Enter') { k.preventDefault(); if (!moverFoco(input, k.shiftKey ? -1 : 1, 0)) { input.blur(); } }
+      else if (k.key === 'ArrowDown') { k.preventDefault(); moverFoco(input, 1, 0); }
+      else if (k.key === 'ArrowUp') { k.preventDefault(); moverFoco(input, -1, 0); }
+      else if (k.key === 'ArrowRight' && input.selectionEnd === input.value.length) { k.preventDefault(); moverFoco(input, 0, 1); }
+      else if (k.key === 'ArrowLeft' && input.selectionStart === 0) { k.preventDefault(); moverFoco(input, 0, -1); }
+    });
+    // Pegar varias filas desde Excel: se abre la carga de notas empezando en este estudiante.
+    input.addEventListener('paste', function (k) {
+      var txt = (k.clipboardData && k.clipboardData.getData('text')) || '';
+      if (/[\r\n\t]/.test(txt.replace(/[\r\n\t]+$/, '')) && S.abrirImport) {
+        k.preventDefault();
+        S.abrirImport({ texto: txt, evId: ev.id, inicio: Math.max(matsVisibles().indexOf(mat), 0) });
+      }
+    });
     return td;
   }
 
@@ -297,10 +324,7 @@
     });
     fila1.push(el('th', { scope: 'col', rowspan: '2', clase: 'col-final', texto: 'Final' }));
 
-    var q = S.buscar.trim().toLowerCase();
-    var mats = S.mats.filter(function (m) {
-      return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1;
-    });
+    var mats = matsVisibles();
 
     var cuerpo = mats.map(function (m) {
       var celdas = [el('th', { scope: 'row', clase: 'col-nombre' }, [nombreEst(m.estudiante), m.estado && m.estado !== 'activo' ? el('small', { texto: ' (' + m.estado + ')' }) : null])];
@@ -450,6 +474,8 @@
     zonaTabla = el('div');
     var zonaExtra = el('div');
     var zonaCierre = el('div');
+    S.abrirImport = function (pre) { abrirImportacion(zonaExtra, pre || {}); };
+    var btnImp = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Cargar notas (Excel o pegar)', disabled: S.cerrado, onclick: function () { S.abrirImport({}); } });
     function mostrarHistorial() { zonaExtra.textContent = ''; var c = el('div'); zonaExtra.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Historial de notas' }), c])); dibujarHistorial(c); }
     btnHist.addEventListener('click', mostrarHistorial);
     btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
@@ -459,11 +485,11 @@
         el('div', { clase: 'formulario-fila' }, [
           el('label', null, ['Trimestre', selTrim]), el('label', null, ['Categoría', selCat]), el('label', null, ['Estudiante', buscar]),
           el('label', { clase: 'etiqueta-check' }, [cbOc, ' Mostrar ocultas (' + ocultas + ')']),
-          btnHist, btnPap, btnRec, btnPub
+          btnImp, btnHist, btnPap, btnRec, btnPub
         ]),
         el('p', { clase: S.cerrado ? 'mensaje ok' : 'bloque-ayuda', texto: S.cerrado ? 'Trimestre CERRADO: la libreta está en solo lectura (columnas, notas y asistencia bloqueadas por la base).' : 'Trimestre abierto.' }),
         el('p', { clase: 'bloque-ayuda', texto: S.publicada ? 'Estado: notas PUBLICADAS a los estudiantes en este trimestre.' : 'Estado: notas no publicadas (los estudiantes no las ven).' }),
-        el('p', { clase: 'bloque-ayuda', texto: 'Escriba la nota y pulse Enter o cambie de casilla. Vacío no es cero. Promedio por categoría con las notas existentes; Final = promedio de las categorías con nota. Las columnas ocultas siguen contando.' }),
+        el('p', { clase: 'bloque-ayuda', texto: 'Escriba la nota y pulse Enter (baja a la casilla de abajo) o use las flechas del teclado para moverse. Puede pegar una columna de Excel. Vacío no es cero. Promedio por categoría con las notas existentes; Final = promedio de las categorías con nota. Las columnas ocultas siguen contando.' }),
         zonaTabla
       ]),
       zonaExtra,
@@ -477,6 +503,267 @@
     dibujarTabla();
     if (S.abrirHistorial) { S.abrirHistorial = false; mostrarHistorial(); }
     if (!tr) { aviso('Este año no tiene trimestres.', 'error'); }
+  }
+
+  /* ---------- moverse entre casillas con el teclado ---------- */
+  function inputDeFila(fila, i) {
+    var c = fila && fila.querySelectorAll('td.celda-nota')[i];
+    var inp = c && c.querySelector('input');
+    return inp && !inp.disabled ? inp : null;
+  }
+  function celdaVecina(input, df, dc) {
+    var td = input.closest('td'), tr = td.parentNode;
+    var celdas = Array.prototype.slice.call(tr.querySelectorAll('td.celda-nota'));
+    var idx = celdas.indexOf(td);
+    if (df) {
+      var f = df > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+      while (f) {
+        var x = inputDeFila(f, idx);
+        if (x) { return x; }
+        f = df > 0 ? f.nextElementSibling : f.previousElementSibling;
+      }
+      return null;
+    }
+    for (var i = idx + dc; i >= 0 && i < celdas.length; i += dc) {
+      var y = inputDeFila(tr, i);
+      if (y) { return y; }
+    }
+    return null;
+  }
+  function moverFoco(input, df, dc) {
+    var v = celdaVecina(input, df, dc);
+    if (!v) { return false; }
+    v.focus(); v.select();   // al salir de la casilla anterior se guarda sola (evento change)
+    return true;
+  }
+
+  /* ---------- cargar notas desde Excel o pegando ---------- */
+  var XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  function cargarXlsx() {
+    return new Promise(function (ok, fallo) {
+      if (window.XLSX) { ok(window.XLSX); return; }
+      var sc = document.createElement('script');
+      sc.src = XLSX_URL;
+      sc.onload = function () { ok(window.XLSX); };
+      sc.onerror = function () { fallo(new Error('No se pudo cargar el lector de Excel. Revise su internet o pegue las notas copiadas de Excel.')); };
+      document.head.appendChild(sc);
+    });
+  }
+  function esNum(c) { return (typeof c === 'number' && isFinite(c)) || (typeof c === 'string' && /^\d+([.,]\d+)?$/.test(c.trim())); }
+  function aNumero(c) { return typeof c === 'number' ? c : Number(String(c).trim().replace(',', '.')); }
+  function tokensNombre(s) {
+    return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  }
+  function claveNombre(s) { return tokensNombre(s).sort().join(' '); }
+
+  // Texto pegado (Excel copia con tabuladores) -> filas de celdas. Las filas vacías conservan su lugar.
+  function filasDeTexto(t) {
+    var l = String(t).replace(/\r/g, '').split('\n');
+    while (l.length && l[l.length - 1].trim() === '') { l.pop(); }
+    return l.map(function (x) {
+      var z = x.trim();
+      if (z === '' || /^\d+([.,]\d+)?$/.test(z)) { return [z]; }
+      var d = x.indexOf('\t') !== -1 ? '\t' : (x.indexOf(';') !== -1 ? ';' : null);
+      if (d) { return x.split(d).map(function (c) { return c.trim(); }); }
+      var m = /^(.*\S)\s+(\d+(?:[.,]\d+)?)$/.exec(z);   // «Diaz Wilton 4.5» sin tabulador
+      return m ? [m[1], m[2]] : [z];
+    });
+  }
+  function leerFilas(filas) {
+    var f = filas.map(function (cells) {
+      var t = [], n = [];
+      cells.forEach(function (c) {
+        if (c === '' || c === null || c === undefined) { return; }
+        if (esNum(c)) { n.push(c); } else { t.push(String(c).trim()); }
+      });
+      return { texto: t.join(' '), nums: n };
+    });
+    if (f.length && f[0].nums.length === 0 && /nombre|apellido|estudiante|nota|c[oó]digo|virtual|ejercicio/i.test(f[0].texto)) { f.shift(); }
+    while (f.length && !f[f.length - 1].texto && f[f.length - 1].nums.length === 0) { f.pop(); }
+    return f;
+  }
+
+  function validar(v) {
+    if (!isFinite(v) || v < 0 || v > 5) { return 'Debe estar entre 0 y 5'; }
+    if (Math.round(v * 100) / 100 !== v) { return 'Máximo 2 decimales'; }
+    return '';
+  }
+
+  // Arma el plan: a quién va cada nota y qué pasaría. No guarda nada.
+  function planificar(filas, ev, inicio) {
+    var mats = matsVisibles();
+    var porCodigo = {}, porClave = {};
+    mats.forEach(function (m) {
+      if (m.estudiante.codigo) { porCodigo[String(m.estudiante.codigo).trim()] = m; }
+      porClave[claveNombre((m.estudiante.apellidos || '') + ' ' + (m.estudiante.nombres || ''))] = m;
+    });
+    var porNombres = filas.some(function (r) { return r.texto; }) ||
+      filas.some(function (r) { return r.nums.length > 1 && porCodigo[String(r.nums[0]).trim()]; });
+    var items = [], usados = {};
+
+    function item(mat, etiqueta, valor, error) {
+      var it = { mat: mat, etiqueta: etiqueta, valor: valor, previa: null, estado: '', detalle: '' };
+      if (error) { it.estado = error.estado; it.detalle = error.detalle; return it; }
+      if (valor === null) { it.estado = 'vacia'; it.detalle = 'Sin nota en el archivo'; return it; }
+      var bad = validar(valor);
+      if (bad) { it.estado = 'invalida'; it.detalle = bad; return it; }
+      if (usados[mat.id]) { it.estado = 'repetido'; it.detalle = 'Este estudiante ya aparece antes'; return it; }
+      usados[mat.id] = true;
+      var n = S.notas[clave(ev.id, mat.id)];
+      it.previa = n && n.valor !== null ? n.valor : null;
+      it.estado = it.previa === null ? 'nueva' : (it.previa === valor ? 'igual' : 'cambia');
+      return it;
+    }
+
+    if (porNombres) {
+      filas.forEach(function (r) {
+        if (!r.texto && r.nums.length === 0) { return; }
+        var mat = null, nums = r.nums.slice(), amb = false;
+        for (var i = 0; i < nums.length && !mat; i++) {
+          var cm = porCodigo[String(nums[i]).trim()];
+          if (cm && (r.texto || nums.length > 1)) { mat = cm; nums.splice(i, 1); }
+        }
+        if (!mat && r.texto) {
+          var k = claveNombre(r.texto);
+          mat = porClave[k] || null;
+          if (!mat) {
+            var tk = tokensNombre(r.texto);
+            var cand = mats.filter(function (m) {
+              var st = tokensNombre((m.estudiante.apellidos || '') + ' ' + (m.estudiante.nombres || ''));
+              return tk.length > 0 && tk.every(function (t) { return st.indexOf(t) !== -1; });
+            });
+            if (cand.length === 1) { mat = cand[0]; } else if (cand.length > 1) { amb = true; }
+          }
+        }
+        var etiqueta = r.texto || String(r.nums[0]);
+        if (!mat) { items.push(item(null, etiqueta, null, { estado: 'noencontrado', detalle: amb ? 'Coincide con varios estudiantes' : 'No se encontró en esta lista' })); return; }
+        items.push(item(mat, nombreEst(mat.estudiante), nums.length ? aNumero(nums[nums.length - 1]) : null, null));
+      });
+    } else {
+      filas.forEach(function (r, i) {
+        var mat = mats[inicio + i];
+        if (!mat) { items.push(item(null, 'Fila ' + (i + 1), null, { estado: 'sobra', detalle: 'No hay más estudiantes en la lista' })); return; }
+        items.push(item(mat, nombreEst(mat.estudiante), r.nums.length ? aNumero(r.nums[r.nums.length - 1]) : null, null));
+      });
+    }
+    return { porNombres: porNombres, items: items };
+  }
+
+  var TEXTO_ESTADO = { nueva: 'Nueva', cambia: 'Cambia', igual: 'Sin cambio', vacia: 'Vacía', invalida: 'No válida', noencontrado: 'No encontrado', repetido: 'Repetido', sobra: 'Sobra' };
+
+  function abrirImportacion(zona, pre) {
+    if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden cargar notas.', 'error'); return; }
+    var cols = S.evals.filter(function (e) { return !e.eliminada_en && !e.bloqueada; });
+    zona.textContent = '';
+    if (cols.length === 0) {
+      zona.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Cargar notas' }), el('p', { clase: 'vacio-texto', texto: 'Primero cree una columna (botón + de la categoría) y que no esté bloqueada.' })]));
+      return;
+    }
+    function rotuloCol(e) {
+      var base = e.categoria === 'ejercicio_escrito' ? 'Ejercicio ' + numeroEscrito(e) : (e.tipo || M.ETIQUETAS[e.categoria]);
+      return M.ETIQUETAS[e.categoria] + ' · ' + base + (e.tema ? ' · ' + e.tema : '');
+    }
+    var selCol = el('select', { 'aria-label': 'Columna destino' }, cols.map(function (e) { return el('option', { value: e.id, texto: rotuloCol(e), selected: e.id === pre.evId }); }));
+    var mats = matsVisibles();
+    var selIni = el('select', { 'aria-label': 'Empezar en' }, mats.map(function (m, i) { return el('option', { value: String(i), texto: (i + 1) + '. ' + nombreEst(m.estudiante), selected: i === (pre.inicio || 0) }); }));
+    var area = el('textarea', { rows: '8', clase: 'importar-texto', 'aria-label': 'Notas copiadas de Excel', placeholder: 'Pegue aquí la columna de notas copiada de Excel.\nO filas con nombre y nota (Apellido Nombre [Tab] Nota).' });
+    area.value = pre.texto || '';
+    var archivo = el('input', { type: 'file', accept: '.xlsx,.xls,.csv,.tsv,.txt', 'aria-label': 'Archivo de Excel o CSV' });
+    var msg = el('p', { clase: 'mensaje', role: 'status', hidden: true });
+    var zonaPrev = el('div');
+    function mensaje(t, tipo) { msg.textContent = t; msg.className = 'mensaje ' + (tipo || 'info'); msg.hidden = !t; }
+
+    archivo.addEventListener('change', async function () {
+      var f = archivo.files && archivo.files[0];
+      if (!f) { return; }
+      mensaje('Leyendo el archivo…', 'info');
+      try {
+        var texto;
+        if (/\.(tsv|txt)$/i.test(f.name)) { texto = await f.text(); }
+        else {
+          var X = await cargarXlsx();
+          var buf = await f.arrayBuffer();
+          var libro = X.read(buf, { type: 'array' });
+          var hoja = libro.Sheets[libro.SheetNames[0]];
+          var filas = X.utils.sheet_to_json(hoja, { header: 1, raw: true, defval: '' });
+          texto = filas.map(function (r) { return r.join('\t'); }).join('\n');
+        }
+        area.value = texto;
+        mensaje('Archivo leído (primera hoja). Revise la vista previa y guarde.', 'ok');
+        revisar();
+      } catch (e) { mensaje('No se pudo leer el archivo. ' + ((e && e.message) || ''), 'error'); }
+    });
+
+    function revisar() {
+      zonaPrev.textContent = '';
+      var ev = evalPorId(selCol.value);
+      var filas = leerFilas(filasDeTexto(area.value));
+      if (filas.length === 0) { mensaje('No hay notas para revisar. Pegue o suba un archivo.', 'error'); return; }
+      var plan = planificar(filas, ev, Number(selIni.value) || 0);
+      var cuenta = {};
+      plan.items.forEach(function (it) { cuenta[it.estado] = (cuenta[it.estado] || 0) + 1; });
+      var aGuardar = plan.items.filter(function (it) { return it.estado === 'nueva' || it.estado === 'cambia'; });
+      var problemas = plan.items.filter(function (it) { return ['invalida', 'noencontrado', 'repetido', 'sobra'].indexOf(it.estado) !== -1; }).length;
+      mensaje('', 'info');
+      zonaPrev.appendChild(el('p', { clase: 'bloque-ayuda', texto: (plan.porNombres ? 'Se buscó a cada estudiante por su nombre o código.' : 'Solo hay números: se asignan en el orden de la lista, desde «Empezar en».') +
+        ' Nuevas: ' + (cuenta.nueva || 0) + ' · Cambian: ' + (cuenta.cambia || 0) + ' · Sin cambio: ' + (cuenta.igual || 0) + ' · Con problema: ' + problemas + '.' }));
+      zonaPrev.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+        el('thead', null, [el('tr', null, ['Estudiante', 'Nota actual', 'Nota nueva', 'Resultado'].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
+        el('tbody', null, plan.items.map(function (it) {
+          var malo = ['invalida', 'noencontrado', 'repetido', 'sobra'].indexOf(it.estado) !== -1;
+          return el('tr', { clase: malo ? 'fila-problema' : (it.estado === 'cambia' ? 'fila-cambia' : '') }, [
+            el('td', { texto: it.etiqueta }),
+            el('td', { texto: it.previa === null ? '—' : String(it.previa) }),
+            el('td', { texto: it.valor === null ? '—' : String(it.valor) }),
+            el('td', { texto: TEXTO_ESTADO[it.estado] + (it.detalle ? ': ' + it.detalle : '') })]);
+        }))
+      ])]));
+      var btnGuardar = el('button', { clase: 'boton', type: 'button', disabled: aGuardar.length === 0, texto: 'Guardar ' + aGuardar.length + ' nota(s)' });
+      btnGuardar.addEventListener('click', function () { guardarImportacion(aGuardar, ev, btnGuardar, mensaje, function () { zonaPrev.textContent = ''; }); });
+      zonaPrev.appendChild(el('div', { clase: 'cabecera-acciones' }, [btnGuardar]));
+      if (problemas > 0) { zonaPrev.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Las filas con problema no se guardan; corríjalas en el texto y vuelva a pulsar «Revisar».' })); }
+    }
+
+    var btnRev = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Revisar', onclick: revisar });
+    var btnCerrar = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar', onclick: function () { zona.textContent = ''; } });
+    zona.appendChild(el('section', { clase: 'bloque importar' }, [
+      el('h3', { texto: 'Cargar notas desde Excel' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Copie en Excel la columna de notas y péguela aquí, o suba el archivo (.xlsx, .csv). Si solo trae números, se asignan en el orden de esta lista (apellido, nombre). Si trae nombres o códigos, se busca a cada estudiante. Nada se guarda hasta que revise la vista previa.' }),
+      el('div', { clase: 'formulario-fila' }, [el('label', null, ['Columna destino', selCol]), el('label', null, ['Empezar en (solo si pega números)', selIni]), el('label', null, ['Archivo de Excel', archivo])]),
+      area, msg,
+      el('div', { clase: 'cabecera-acciones' }, [btnRev, btnCerrar]),
+      zonaPrev
+    ]));
+    zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (area.value) { revisar(); } else { area.focus(); }
+  }
+
+  async function guardarImportacion(lista, ev, boton, mensaje, alTerminar) {
+    var motivo = null;
+    if (lista.some(function (it) { return it.estado === 'cambia'; })) {
+      motivo = window.prompt('Algunas notas ya estaban escritas y van a cambiar. Motivo del cambio:', 'Corrección desde Excel');
+      if (motivo === null || motivo.trim() === '') { mensaje('No se guardó: falta el motivo del cambio.', 'info'); return; }
+    }
+    boton.disabled = true;
+    var ok = 0, fallas = [];
+    for (var i = 0; i < lista.length; i++) {
+      var it = lista[i], k = clave(ev.id, it.mat.id);
+      var previa = S.notas[k] || { valor: null, version: 0 };
+      mensaje('Guardando ' + (i + 1) + ' de ' + lista.length + '…', 'info');
+      try {
+        var r = await db.rpc('portal2027_guardar_nota', {
+          p_evaluacion: ev.id, p_matricula: it.mat.id, p_valor: it.valor, p_version: previa.version, p_motivo: previa.valor !== null ? motivo : null
+        });
+        if (r.error) { throw r.error; }
+        S.notas[k] = { valor: r.data.valor === null ? null : Number(r.data.valor), version: r.data.version };
+        ok++;
+      } catch (e) { fallas.push(it.etiqueta + ' (' + textoError(e) + ')'); }
+    }
+    S.historial = null;
+    dibujarTabla();
+    alTerminar();
+    if (fallas.length === 0) { mensaje('Se guardaron ' + ok + ' nota(s).', 'ok'); }
+    else { mensaje('Se guardaron ' + ok + ' nota(s). NO se guardaron ' + fallas.length + ': ' + fallas.join('; ') + '.', 'error'); }
   }
 
   /* ---------- inicio ---------- */
