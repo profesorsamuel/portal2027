@@ -25,7 +25,7 @@
 
   async function cargar() {
     var r = await Promise.all([
-      consultar(db.from('portal2027_perfiles').select('id,nombres,apellidos,correo,activo').order('apellidos').order('correo')),
+      consultar(db.from('portal2027_perfiles').select('id,nombres,apellidos,correo,telefono,activo').order('apellidos').order('correo')),
       consultar(db.from('portal2027_roles_usuario').select('usuario_id,rol')),
       consultar(db.from('portal2027_anios').select('id,anio,activo,trimestres:portal2027_trimestres(numero)').order('anio', { ascending: false })),
       consultar(db.from('portal2027_salones').select('id,nombre,anio:portal2027_anios(anio)').order('nombre')),
@@ -119,11 +119,12 @@
         el('td', { texto: p.correo || '' }),
         el('td', null, [nombres]),
         el('td', null, [apellidos]),
+        el('td', { texto: p.telefono || '—' }),
         el('td', null, [guardar])
       ].concat(celdasRoles).concat([el('td', { clase: 'centro' }, [activo])]));
     });
 
-    var cab = ['Correo', 'Nombres', 'Apellidos', ''].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa']);
+    var cab = ['Correo', 'Nombres', 'Apellidos', 'Teléfono', ''].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa']);
     return el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Personas y roles' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Las cuentas nuevas se crean en Supabase (Authentication → Users). Aparecen aquí sin roles; marque los roles que correspondan.' }),
@@ -353,13 +354,14 @@
       return el('tr', null, [
         el('td', { texto: etiquetaSalon(salonDe[f.salonId]) }),
         el('td', { texto: P.nombreCompleto(perfilDe[f.profId]) }),
+        el('td', { texto: (perfilDe[f.profId] && perfilDe[f.profId].telefono) || '—' }),
         el('td', null, materias),
         el('td', null, [celdaCons])
       ]);
     });
 
     var selSalon = el('select', { required: true }, opciones(datos.salones, function (s) { return s.id; }, etiquetaSalon, 'Elija el grupo'));
-    var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) { return P.nombreCompleto(p); }, 'Elija el profesor'));
+    var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) { return P.nombreCompleto(p) + (p.telefono ? ' · ' + p.telefono : ''); }, 'Elija el profesor'));
     var selMateria = el('select', null, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Sin materia (solo consejería)'));
     var cbCons = el('input', { type: 'checkbox', 'aria-label': 'Es consejero de este grupo' });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
@@ -387,7 +389,7 @@
     var hijos = [
       el('h2', { texto: 'Profesores por grupo' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Aquí se asigna a cada profesor su grupo, su materia y, si corresponde, su consejería. Para un profesor con varias materias en el mismo grupo, asigne una por una.' }),
-      tabla(['Grupo', 'Profesor', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
+      tabla(['Grupo', 'Profesor', 'Teléfono', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
     ];
     if (profesores.length === 0) {
       hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Personas y roles» o importe la lista de profesores desde Excel.' }));
