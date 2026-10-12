@@ -79,7 +79,8 @@
       var r = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { accion: 'estudiantes', grupo: grupo } });
       if (turno !== solicitudLista) { return; }
       if (r.error || (r.data && r.data.error)) { throw r.error || new Error(r.data.error); }
-      var estudiantes = (r.data && r.data.estudiantes) || [];
+      if (!r.data || !Array.isArray(r.data.estudiantes)) { throw new Error('Actualice la función portal2027-buscar-estudiante en Supabase con el código de este ZIP.'); }
+      var estudiantes = r.data.estudiantes;
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: estudiantes.length ? 'Elija su nombre…' : 'No hay estudiantes con acceso en este salón' }));
       estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: e.nombre })); });
@@ -88,7 +89,7 @@
       if (turno !== solicitudLista) { return; }
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: 'No se pudo cargar la lista' }));
-      mensaje('login', 'No se pudo cargar la lista de estudiantes. Revise la función portal2027-buscar-estudiante y vuelva a elegir el grado.', 'error');
+      mensaje('login', e.message || 'No se pudo cargar la lista de estudiantes. Vuelva a elegir el grado.', 'error');
     }
   }
 
