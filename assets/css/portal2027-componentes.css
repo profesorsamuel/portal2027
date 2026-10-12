@@ -121,3 +121,13 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .bloque-materias .formulario-fila { margin-top: .45rem; }
 @media (max-width: 700px) { .lista-materias-compacta { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 440px) { .lista-materias-compacta { grid-template-columns: 1fr; } }
+
+/* Dos niveles de navegación: solo aparece el apartado seleccionado. */
+.navegacion-admin { position: sticky; top: 0; z-index: 20; margin-bottom: 1.25rem; background: var(--papel); }
+.navegacion-admin .menu-secciones { position: static; margin-bottom: 0; }
+.menu-subsecciones { display: flex; flex-wrap: wrap; gap: .3rem; padding: .5rem 0; border-bottom: 1px solid var(--linea); }
+.menu-subsecciones[hidden] { display: none; }
+.menu-subsecciones .pestana { font: inherit; font-size: .9rem; padding: .45rem .7rem; cursor: pointer; background: transparent; }
+.menu-subsecciones .pestana.activa { font-weight: 700; background: var(--blanco); }
+.menu-subsecciones .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+.navegacion-admin ~ .secciones .estado-panel { position: static; }
