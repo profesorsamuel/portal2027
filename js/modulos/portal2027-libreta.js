@@ -152,14 +152,53 @@
     return n;
   }
 
+  // Ventana con calendarios para elegir el inicio y el final de la semana. Devuelve {inicio, fin} (AAAA-MM-DD) o null si se cancela.
+  function pedirSemana(numero) {
+    return new Promise(function (resolver) {
+      function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+      function sumar(texto, dias) { var p = texto.split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2] + dias); return iso(d); }
+      var hoy = new Date(), lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - ((hoy.getDay() + 6) % 7));
+      var dlg = document.createElement('dialog'); dlg.className = 'portal2027-semana';
+      var h = document.createElement('h3'); h.textContent = 'Semana ' + numero;
+      function campo(rotulo, valor) {
+        var l = document.createElement('label'), i = document.createElement('input');
+        i.type = 'date'; i.required = true; i.value = valor;
+        l.append(rotulo, i); return { l: l, i: i };
+      }
+      var a = campo('Comienza el', iso(lunes)), b = campo('Termina el', sumar(iso(lunes), 4));
+      b.i.min = a.i.value;
+      a.i.addEventListener('change', function () {
+        if (!a.i.value) { return; }
+        b.i.min = a.i.value;
+        if (!b.i.value || b.i.value < a.i.value) { b.i.value = sumar(a.i.value, 4); }
+      });
+      var msg = document.createElement('p'); msg.className = 'semana-error'; msg.setAttribute('role', 'alert');
+      var ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'Crear semana';
+      var no = document.createElement('button'); no.type = 'button'; no.textContent = 'Cancelar';
+      var acciones = document.createElement('div'); acciones.className = 'semana-acciones'; acciones.append(no, ok);
+      var resultado = null;
+      ok.onclick = function () {
+        if (!a.i.value || !b.i.value) { msg.textContent = 'Elija las dos fechas.'; return; }
+        if (b.i.value < a.i.value) { msg.textContent = 'La fecha final no puede ser antes de la inicial.'; return; }
+        resultado = { inicio: a.i.value, fin: b.i.value }; dlg.close();
+      };
+      no.onclick = function () { dlg.close(); };
+      dlg.addEventListener('close', function () { dlg.remove(); resolver(resultado); });
+      dlg.append(h, a.l, b.l, msg, acciones);
+      document.body.appendChild(dlg); dlg.showModal(); a.i.focus();
+    });
+  }
+
   function agregarColumna(cat) {
     if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
     var tipo = '';
     if (cat === 'apreciacion' && window.confirm('¿Crear apreciación SEMANAL? Aceptar = semanal; Cancelar = suelta.')) {
       var siguiente = 1 + Math.max(0, ...S.evals.filter(function(e){return e.categoria==='apreciacion' && e.semana;}).map(function(e){return e.semana;}));
-      var inicio = window.prompt('Fecha inicial de la semana ' + siguiente + ' (AAAA-MM-DD):', ''); if (!inicio) return;
-      var fin = window.prompt('Fecha final de la semana (AAAA-MM-DD):', inicio); if (!fin) return;
-      llamar('portal2027_crear_apreciacion_semanal', {p_asignacion:S.asig.id,p_trimestre:S.trimestreId,p_inicio:inicio,p_fin:fin}, 'Apreciación semanal creada.'); return;
+      pedirSemana(siguiente).then(function (f) {
+        if (!f) { return; }
+        llamar('portal2027_crear_apreciacion_semanal', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_inicio: f.inicio, p_fin: f.fin }, 'Apreciación semanal creada.');
+      });
+      return;
     }
     if (cat === 'apreciacion') {
       var lista = TIPOS_APRECIACION.map(function (t, i) { return (i + 1) + ' = ' + t; }).join('\n');
