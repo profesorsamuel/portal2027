@@ -163,7 +163,7 @@
       function campo(rotulo, valor) {
         var l = document.createElement('label'), i = document.createElement('input');
         i.type = 'date'; i.required = true; i.value = valor;
-        l.append(rotulo, i); return { l: l, i: i };
+        l.append(rotulo, i); i.addEventListener('click', function () { if (typeof i.showPicker === 'function') { try { i.showPicker(); } catch (_) {} } }); return { l: l, i: i };
       }
       var a = campo('Comienza el', iso(lunes)), b = campo('Termina el', sumar(iso(lunes), 4));
       b.i.min = a.i.value;
