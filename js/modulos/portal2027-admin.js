@@ -562,8 +562,7 @@
 
     var selSalon = el('select', { required: true }, opciones(datos.salones, function (s) { return s.id; }, etiquetaSalon, 'Elija el grupo'));
     var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) {
-      var mats = materiasDe(docenteDe(p)).join(' / ');
-      return P.nombreCompleto(p) + (mats ? ' · ' + mats : '') + (p.telefono ? ' · ' + p.telefono : '');
+      return P.nombreCompleto(p);
     }, 'Elija el profesor'));
     var selMateria = el('select', null, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Sin materia (solo consejería)'));
     var cbCons = el('input', { type: 'checkbox', 'aria-label': 'Es consejero de este grupo' });
