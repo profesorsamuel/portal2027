@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ejemplo: sumas · C.E.B.G. El Jiral</title>
+  <link rel="stylesheet" href="../../assets/css/portal2027-base.css">
+  <link rel="stylesheet" href="../../assets/css/portal2027-componentes.css">
+  <link rel="stylesheet" href="../../assets/css/portal2027-clases.css">
+  <link rel="stylesheet" href="../../assets/css/portal2027-ejercicios.css">
+</head>
+<body data-raiz="../../">
+  <main class="portal" id="contenido">
+    <p class="texto-estado">Comprobando su sesión…</p>
+  </main>
+  <footer class="pie">
+    <p>C.E.B.G. El Jiral · Portal <span data-anio="2027">2027</span></p>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="../../js/core/portal2027-conexion.js"></script>
+  <script src="../../js/core/portal2027-permisos.js"></script>
+  <script src="../../js/core/portal2027-integracion-ejercicios.js"></script>
+  <script>
+  /* Juego de EJEMPLO con datos ficticios: 5 sumas. Nota = aciertos (0 a 5). Cumple el contrato
+     docs/portal2027-integracion-ejercicios.md: solo usa iniciarEjercicio y guardarIntento. */
+  (function () {
+    'use strict';
+    var P = window.portal2027, el = P.el, E = P.ejercicios;
+    var cont = document.getElementById('contenido');
+    var TOTAL = 5;
+
+    function salida(nodos) { cont.textContent = ''; nodos.forEach(function (n) { cont.appendChild(n); }); }
+    function volver() { return el('a', { clase: 'boton boton-secundario', href: P.rutaPanel('estudiante'), texto: 'Volver a mi panel' }); }
+    function cabecera(extra) {
+      return el('header', { clase: 'panel-cabecera' }, [el('div', null, [
+        el('p', { clase: 'panel-centro', texto: 'C.E.B.G. El Jiral · Ejercicio virtual' }),
+        el('h1', { texto: extra || 'Sumas (ejemplo)' }),
+        el('p', { clase: 'panel-datos', texto: 'Juego de ejemplo con datos ficticios.' })])]);
+    }
+    function error(texto) { salida([cabecera(), el('p', { clase: 'mensaje error', role: 'alert', texto: texto }), volver()]); }
+
+    async function iniciar() {
+      if (!P.db) { error(P.errorCarga); return; }
+      var info;
+      try { info = await P.cargarSesion(); } catch (e) { error(P.traducirError(e)); return; }
+      if (!info || info.roles.indexOf('estudiante') === -1) { window.location.replace(P.rutaInicio()); return; }
+      var id = new URLSearchParams(window.location.search).get('ejercicio');
+      if (!id) { error('Falta indicar el ejercicio. Abra el juego desde «Mis ejercicios virtuales».'); return; }
+      var ini = await E.iniciarEjercicio(id);
+      if (!ini.ok) { error('No se pudo abrir el ejercicio. ' + ini.error); return; }
+      if (!ini.puedeJugar) { error('No puede jugar ahora: ' + ini.motivo + '.'); return; }
+      jugar(ini);
+    }
+
+    function jugar(ini) {
+      var preguntas = [];
+      for (var i = 0; i < TOTAL; i++) { preguntas.push({ a: 1 + Math.floor(Math.random() * 20), b: 1 + Math.floor(Math.random() * 20) }); }
+      var campos = preguntas.map(function () { return el('input', { type: 'number', inputmode: 'numeric', 'aria-label': 'Respuesta' }); });
+      var aviso = el('p', { clase: 'mensaje', role: 'status', 'aria-live': 'polite', hidden: true });
+      var enviar = el('button', { clase: 'boton', type: 'submit', texto: 'Terminar' });
+      var form = el('form', null, preguntas.map(function (p, i) {
+        return el('div', { clase: 'juego-pregunta' }, [el('span', { texto: p.a + ' + ' + p.b + ' =' }), campos[i]]);
+      }).concat([enviar]));
+
+      salida([cabecera(ini.titulo), el('p', { clase: 'mensaje info', texto: ini.cuentaNota
+        ? 'Este ejercicio cuenta para la nota: se conserva su mejor intento.' : 'Es una práctica: se guarda el intento, pero no da nota.' }), form, aviso, volver()]);
+
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var aciertos = 0;
+        preguntas.forEach(function (p, i) { if (Number(campos[i].value) === p.a + p.b && campos[i].value !== '') { aciertos++; } });
+        enviar.disabled = true; campos.forEach(function (c) { c.disabled = true; });
+        guardar(ini, aciertos, aviso, form);
+      });
+    }
+
+    // Reintentar con la MISMA clave es seguro: si el primer envío sí llegó, la base no crea otro intento.
+    async function guardar(ini, nota, aviso, form) {
+      aviso.textContent = 'Guardando…'; aviso.className = 'mensaje info'; aviso.hidden = false;
+      var r = await E.guardarIntento(ini.ejercicioId, ini.claveEnvio, nota);
+      if (r.ok) {
+        aviso.className = 'mensaje ok';
+        aviso.textContent = 'Guardado. Sacó ' + nota + ' de ' + TOTAL + '. Su mejor nota guardada: ' + r.mejorNota + (r.cuentaNota ? '.' : ' (práctica, no cuenta).');
+        return;
+      }
+      aviso.className = 'mensaje error';
+      aviso.textContent = 'NO se guardó. ' + r.error;
+      var de = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Reintentar guardar', onclick: function () { de.remove(); guardar(ini, nota, aviso, form); } });
+      aviso.appendChild(document.createTextNode(' '));
+      aviso.appendChild(de);
+    }
+
+    iniciar();
+  })();
+  </script>
+</body>
+</html>
