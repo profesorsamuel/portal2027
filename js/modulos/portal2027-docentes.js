@@ -72,6 +72,39 @@
       window.XLSX.writeFile(libro, nombreArchivo);
     }
 
+
+    // Plantilla para crear las cuentas de los docentes de Premedia con el importador de profesores.
+    // Trae nombre, materia y consejería ya llenos; falta el teléfono (no está en esta lista pública).
+    var ROMANOS = { VII: '7', VIII: '8', IX: '9' };
+    function partirNombre(completo) {
+      var p = String(completo).trim().replace(/\s+/g, ' ').split(' ');
+      return { nombres: p[0], apellidos: p.slice(1).join(' ') };
+    }
+    function descargarPlantillaCuentas() {
+      if (!window.XLSX) { aviso.textContent = 'No se cargó la biblioteca de Excel. Revise su internet y recargue la página.'; aviso.className = 'mensaje error'; aviso.hidden = false; return; }
+      var COLS = ['nombre_completo', 'materia', 'telefono', 'correo', 'grupos', 'consejeria', 'contrasena'];
+      var filas = todos.filter(function (d) { return d.nivel === 'Premedia' && sinTildes(d.nombre) !== 'samuel ortega'; }).map(function (d) {
+        var n = partirNombre(d.nombre);
+        var materias = String(d.asignatura || '').split(/[–\/]/).map(function (m) { return m.trim(); }).filter(Boolean).join('; ');
+        var g = String(d.grupo || '').split('-');
+        var consejeria = d.tipo.indexOf('Consejero') === 0 ? (g.length === 2 && ROMANOS[g[0]] ? ROMANOS[g[0]] + g[1] : 'Sí') : '';
+        return [n.apellidos ? n.apellidos + ', ' + n.nombres : n.nombres, materias, '', '', '', consejeria, ''];
+      });
+      var libro = window.XLSX.utils.book_new();
+      var hoja = window.XLSX.utils.aoa_to_sheet([COLS].concat(filas));
+      hoja['!cols'] = [34, 28, 14, 34, 14, 14, 14].map(function (w) { return { wch: w }; });
+      [2, 6].forEach(function (c) {
+        for (var r = 1; r <= filas.length + 20; r++) {
+          var ref = window.XLSX.utils.encode_cell({ r: r, c: c });
+          if (!hoja[ref]) { hoja[ref] = { t: 's', v: '' }; }
+          hoja[ref].t = 's'; hoja[ref].z = '@';
+        }
+      });
+      hoja['!ref'] = window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length + 20, c: COLS.length - 1 } });
+      window.XLSX.utils.book_append_sheet(libro, hoja, 'Importar');
+      window.XLSX.writeFile(libro, 'portal2027-profesores-premedia.xlsx');
+    }
+
     NIVELES.forEach(function (n) {
       var b = el('button', { clase: 'pestana', type: 'button', texto: n.texto, 'aria-pressed': 'false' });
       b.addEventListener('click', function () { nivel = n.id; pintar(); });
@@ -83,6 +116,8 @@
     bTodo.addEventListener('click', function () { descargar(false); });
     var bVista = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Descargar lo que se ve' });
     bVista.addEventListener('click', function () { descargar(true); });
+    var bCuentas = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Plantilla para crear cuentas (Premedia)' });
+    bCuentas.addEventListener('click', descargarPlantillaCuentas);
 
     var tabla = el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
       el('thead', null, [el('tr', null, CAB.map(function (c) { return el('th', { scope: 'col', texto: c }); }))]),
@@ -93,7 +128,7 @@
       el('h2', { texto: 'Directorio de docentes' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Lista de docentes 2026 separada por Premedia y Primaria. El Excel «todos los niveles» trae una hoja por nivel y una hoja con todos.' }),
       el('div', { clase: 'filtro-docentes' }, NIVELES.map(function (n) { return botones[n.id]; })),
-      el('div', { clase: 'cabecera-acciones' }, [buscador, bTodo, bVista]),
+      el('div', { clase: 'cabecera-acciones' }, [buscador, bTodo, bVista, bCuentas]),
       aviso, resumen, tabla
     ]));
     pintar();
