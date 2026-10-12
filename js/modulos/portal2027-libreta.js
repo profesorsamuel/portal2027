@@ -87,6 +87,11 @@
 
   async function cargarLibreta() {
     var asigId = S.asig.id, trId = S.trimestreId;
+    // Sincroniza promedios heredados antes de leer la libreta. No modifica trimestres cerrados.
+    {
+      var sync = await db.rpc('portal2027_sincronizar_apreciaciones', { p_asignacion: asigId, p_trimestre: trId });
+      if (sync.error) { throw sync.error; }
+    }
     var r = await Promise.all([
       todas(function () {
         return db.from('portal2027_evaluaciones')
@@ -444,7 +449,7 @@
         borrar.onclick = async function () {
           if (!window.confirm('¿Eliminar este registro de ' + nombreEst(mat.estudiante) + '?')) { return; }
           var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: reg.id, p_version: reg.version });
-          if (q.error) { window.alert(P.traducirError(q.error)); } else { pintar(); }
+          if (q.error) { window.alert(P.traducirError(q.error)); } else { await recargar(); pintar(); }
         };
         return borrar;
       }
@@ -467,7 +472,8 @@
         if (!nuevaNota.error) {
           var dato = nuevaNota.data;
           S.notas[clave(ev.id,mat.id)] = dato ? { valor: dato.valor === null ? null : Number(dato.valor), version: dato.version, nota_manual: false } : { valor: null, version: 0, nota_manual: false };
-          // Actualizar las celdas al cerrar el desglose mediante la recarga existente.
+          // Actualización inmediata, sin pulsar Auto, Recargar ni cerrar el desglose.
+          await recargar();
         }
         if (reg) { reg.version = q.data.version; reg.valor = v; }
         else {
