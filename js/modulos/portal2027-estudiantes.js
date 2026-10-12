@@ -514,7 +514,7 @@
         tablaSimple(AYUDA_COLUMNAS[0], AYUDA_COLUMNAS.slice(1))
       ]));
       zonaImport.appendChild(el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]));
-      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. La cédula es la contraseña del estudiante y el sexo es Femenino o Masculino. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
+      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Plantilla versión 3 (nombre completo en una columna). Columnas: ' + COLUMNAS.join(', ') + '. La cédula es la contraseña del estudiante y el sexo es Femenino o Masculino. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
       zonaImport.appendChild(vista);
       zonaImport.appendChild(confirmar);
     }
