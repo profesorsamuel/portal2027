@@ -108,6 +108,148 @@
     S.mats = r[2].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.asist = {};
     r[3].forEach(function (a) { S.asist[clave(a.sesion_id, a.matricula_id)] = { estado: a.estado, version: a.version }; });
+    await cargarComportamiento();
+  }
+
+  /* ---------- comportamiento diario (Bien / Mal por cada sesión de clase) ---------- */
+  var zonaComp = null, filasComp = {}, resumenesComp = {};
+  async function cargarComportamiento() {
+    S.comp = {}; S.compError = '';
+    try {
+      var d = await todas(function () {
+        return db.from('portal2027_comportamiento')
+          .select('sesion_id,matricula_id,estado,version,sesion:portal2027_sesiones_asistencia!inner(asignacion_id,trimestre_id)')
+          .eq('sesion.asignacion_id', S.asig.id).eq('sesion.trimestre_id', S.trimestreId).order('id');
+      });
+      d.forEach(function (c) { S.comp[clave(c.sesion_id, c.matricula_id)] = { estado: c.estado, version: c.version }; });
+    } catch (e) {
+      S.compError = 'No se pudo cargar el comportamiento. ' + textoError(e) + ' (Verifique que la migración 0024 esté instalada.)';
+    }
+  }
+  function contarComp(matId) {
+    var bien = 0, mal = 0, ses = activas();
+    ses.forEach(function (x) {
+      var c = S.comp[clave(x.id, matId)];
+      if (c && c.estado === 'bien') { bien++; } else if (c && c.estado === 'mal') { mal++; }
+    });
+    return { bien: bien, mal: mal, sin: ses.length - bien - mal };
+  }
+  function actualizarFilaComp(matId) {
+    var f = filasComp[matId];
+    if (!f) { return; }
+    var c = contarComp(matId);
+    f.bien.textContent = String(c.bien); f.mal.textContent = String(c.mal); f.sin.textContent = String(c.sin);
+  }
+  function actualizarResumenComp(sesId) {
+    var span = resumenesComp[sesId];
+    if (!span) { return; }
+    var n = S.mats.filter(function (m) { var c = S.comp[clave(sesId, m.id)]; return c && c.estado; }).length;
+    span.textContent = n + ' de ' + S.mats.length + ' evaluados';
+  }
+  // Guarda el comportamiento elegido. Devuelve { ok, estado }: el estado que quedó guardado (el anterior si falló).
+  async function guardarComp(ses, mat, nuevo, marca) {
+    var k = clave(ses.id, mat.id);
+    var previa = S.comp[k] || { estado: null, version: 0 };
+    if (nuevo === previa.estado) { return { ok: true, estado: previa.estado }; }
+    marca('guardando');
+    try {
+      var r = await db.rpc('portal2027_guardar_comportamiento', { p_sesion: ses.id, p_matricula: mat.id, p_estado: nuevo, p_version: previa.version });
+      if (r.error) { throw r.error; }
+      S.comp[k] = { estado: r.data.estado, version: r.data.version };
+      marca('ok');
+      actualizarFilaComp(mat.id); actualizarResumenComp(ses.id);
+      aviso('Comportamiento guardado.', 'ok');
+      return { ok: true, estado: r.data.estado };
+    } catch (e) {
+      marca('error');
+      aviso('NO se guardó el comportamiento de ' + nombreEst(mat.estudiante) + '. ' + textoError(e), 'error');
+      return { ok: false, estado: previa.estado };
+    }
+  }
+  function moverComp(boton, df, dc) {
+    var f = Number(boton.dataset.fila) + df, c = Number(boton.dataset.col) + dc;
+    var dest = zonaComp.querySelector('button[data-fila="' + f + '"][data-col="' + c + '"]');
+    if (!dest || dest.disabled) { return false; }
+    dest.focus();
+    return true;
+  }
+  // Casilla de comportamiento: toque o teclado. Toque: — → Bien → Mal → —. Teclas: B = Bien, M = Mal, Supr = vaciar;
+  // Enter baja al siguiente estudiante; flechas se mueven entre casillas. Se guarda sola a los instantes.
+  function celdaComp(ses, mat, fila, col) {
+    var previa = S.comp[clave(ses.id, mat.id)] || { estado: null, version: 0 };
+    var deseado = previa.estado, temporizador = null, ocupado = false;
+    var boton = el('button', { type: 'button', clase: 'asis-toque', disabled: ses.bloqueada });
+    boton.dataset.fila = String(fila); boton.dataset.col = String(col);
+    var td = el('td', { clase: 'celda-asis' }, [boton]);
+    function marca(tipo) { td.className = 'celda-asis' + (tipo ? ' asis-' + tipo : ''); }
+    function pintar() {
+      var texto = deseado === 'bien' ? 'Bien' : (deseado === 'mal' ? 'Mal' : null);
+      boton.textContent = texto || '—';
+      boton.className = 'asis-toque ' + (deseado ? 'est-' + deseado : 'est-vacio');
+      boton.title = texto || 'Sin evaluar';
+      boton.setAttribute('aria-label', 'Comportamiento de ' + nombreEst(mat.estudiante) + ' el ' + fechaTexto(ses.fecha) + ': ' + (texto || 'sin evaluar') + '.');
+    }
+    async function enviar() {
+      if (ocupado) { return; }
+      ocupado = true;
+      var r = await guardarComp(ses, mat, deseado, marca);
+      ocupado = false;
+      if (!r.ok) { deseado = r.estado; pintar(); return; }
+      if (deseado !== r.estado && temporizador === null) { enviar(); }
+    }
+    function poner(e) {
+      deseado = e; pintar();
+      if (temporizador) { clearTimeout(temporizador); }
+      temporizador = setTimeout(function () { temporizador = null; enviar(); }, 450);
+    }
+    boton.addEventListener('click', function () { poner(deseado === null ? 'bien' : (deseado === 'bien' ? 'mal' : null)); });
+    boton.addEventListener('keydown', function (k) {
+      var t = k.key;
+      if (t === 'b' || t === 'B') { k.preventDefault(); poner('bien'); moverComp(boton, 1, 0); }
+      else if (t === 'm' || t === 'M') { k.preventDefault(); poner('mal'); moverComp(boton, 1, 0); }
+      else if (t === 'Delete' || t === 'Backspace') { k.preventDefault(); poner(null); }
+      else if (t === 'Enter') { k.preventDefault(); moverComp(boton, k.shiftKey ? -1 : 1, 0); }
+      else if (t === 'ArrowDown') { k.preventDefault(); moverComp(boton, 1, 0); }
+      else if (t === 'ArrowUp') { k.preventDefault(); moverComp(boton, -1, 0); }
+      else if (t === 'ArrowRight') { k.preventDefault(); moverComp(boton, 0, 1); }
+      else if (t === 'ArrowLeft') { k.preventDefault(); moverComp(boton, 0, -1); }
+    });
+    pintar();
+    return td;
+  }
+  function dibujarComportamiento() {
+    if (!zonaComp) { return; }
+    zonaComp.textContent = '';
+    filasComp = {}; resumenesComp = {};
+    if (S.compError) { zonaComp.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: S.compError })); return; }
+    var ses = activas();
+    var q = S.buscar.trim().toLowerCase();
+    var mats = S.mats.filter(function (m) { return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1; });
+    var cab = [el('th', { scope: 'col', clase: 'col-nombre', texto: 'Estudiante' })];
+    ses.forEach(function (x) {
+      var resumen = el('span', { clase: 'sesion-meta' }); resumenesComp[x.id] = resumen;
+      cab.push(el('th', { scope: 'col', clase: 'col-sesion' }, [
+        el('div', { clase: 'sesion-fecha', texto: diaSemana(x.fecha) + ' ' + fechaTexto(x.fecha) }),
+        el('span', { clase: 'sesion-meta', texto: 'Bloque ' + x.bloque }), resumen
+      ]));
+    });
+    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones con comportamiento Bien', texto: 'Bien' }));
+    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones con comportamiento Mal', texto: 'Mal' }));
+    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones sin evaluar', texto: 'Sin' }));
+    var cuerpo = mats.map(function (m, i) {
+      var celdas = [el('th', { scope: 'row', clase: 'col-nombre' }, [nombreEst(m.estudiante)])];
+      ses.forEach(function (x, j) { celdas.push(celdaComp(x, m, i, j)); });
+      var f = { bien: el('td', { clase: 'col-conteo' }), mal: el('td', { clase: 'col-conteo' }), sin: el('td', { clase: 'col-conteo' }) };
+      celdas.push(f.bien, f.mal, f.sin);
+      filasComp[m.id] = f;
+      return el('tr', null, celdas);
+    });
+    zonaComp.appendChild(el('div', { clase: 'libreta-scroll' }, [el('table', { clase: 'tabla-libreta' }, [
+      el('thead', null, [el('tr', null, cab)]), el('tbody', null, cuerpo)
+    ])]));
+    S.mats.forEach(function (m) { actualizarFilaComp(m.id); });
+    ses.forEach(function (x) { actualizarResumenComp(x.id); });
+    if (ses.length === 0) { zonaComp.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no hay sesiones en este trimestre.' })); }
   }
 
   async function recargar(mensaje) {
@@ -324,6 +466,7 @@
     if (ses.length === 0) {
       zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no hay sesiones en este trimestre. Agregue la primera con el formulario de arriba.' }));
     }
+    dibujarComportamiento();
   }
 
   function dibujarPapelera() {
@@ -416,6 +559,7 @@
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Asistencia recargada.'); } });
 
     zonaTabla = el('div');
+    zonaComp = el('div');
     var zonaExtra = el('div');
     btnHist.addEventListener('click', function () { zonaExtra.textContent = ''; var c = el('div'); zonaExtra.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Historial de asistencia' }), c])); dibujarHistorial(c); });
     btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
@@ -438,6 +582,11 @@
         el('p', { clase: 'bloque-ayuda', texto: 'Elija el estado en cada casilla; se guarda al instante. Una casilla vacía significa «sin marcar» (no cuenta como ausencia). Las columnas de la derecha solo cuentan sesiones por estado: aún no hay porcentajes ni pesos.' }),
         leyenda,
         zonaTabla
+      ]),
+      el('section', { clase: 'bloque' }, [
+        el('h2', { texto: 'Comportamiento' }),
+        el('p', { clase: 'bloque-ayuda', texto: 'Se evalúa en cada día de clase: Bien o Mal. Toque la casilla (— → Bien → Mal → —) o use el teclado: B = Bien, M = Mal, Supr = vaciar, Enter = siguiente estudiante, flechas = moverse. Se guarda al instante; vacío significa «sin evaluar».' }),
+        zonaComp
       ]),
       zonaExtra
     ]);
