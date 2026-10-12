@@ -55,7 +55,20 @@
     function jugar(ini) {
       var preguntas = [];
       for (var i = 0; i < TOTAL; i++) { preguntas.push({ a: 1 + Math.floor(Math.random() * 20), b: 1 + Math.floor(Math.random() * 20) }); }
-      var campos = preguntas.map(function () { return el('input', { type: 'number', inputmode: 'numeric', 'aria-label': 'Respuesta' }); });
+      // Texto con teclado numérico (no «number»): la rueda del mouse y las flechas nunca cambian una respuesta.
+      var campos = preguntas.map(function () { return el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '3', 'aria-label': 'Respuesta' }); });
+      campos.forEach(function (c, i) {
+        c.addEventListener('input', function () { c.value = c.value.replace(/\D/g, ''); });
+        c.addEventListener('keydown', function (k) {
+          var dest = null;
+          if (k.key === 'Enter' || k.key === 'ArrowDown') { dest = campos[i + 1] || null; }
+          else if (k.key === 'ArrowUp') { dest = campos[i - 1] || null; }
+          else { return; }
+          k.preventDefault();               // Enter no envía el formulario por accidente: solo pasa a la siguiente respuesta
+          if (dest) { dest.focus(); dest.select(); }
+          else if (k.key === 'Enter') { enviar.focus(); }   // en la última, el foco va a «Terminar»
+        });
+      });
       var aviso = el('p', { clase: 'mensaje', role: 'status', 'aria-live': 'polite', hidden: true });
       var enviar = el('button', { clase: 'boton', type: 'submit', texto: 'Terminar' });
       var form = el('form', null, preguntas.map(function (p, i) {
