@@ -476,25 +476,42 @@
       ]);
     });
     var selAnio = el('select', { required: true }, opciones(datos.anios, function (a) { return a.id; }, function (a) { return String(a.anio); }, 'Elija el año'));
-    var inGrado = el('input', { type: 'text', required: true, maxlength: '2', inputmode: 'numeric', placeholder: '9' });
-    var inSeccion = el('input', { type: 'text', required: true, maxlength: '2', placeholder: 'C' });
+    var anioActivo = datos.anios.filter(function (a) { return a.activo; })[0];
+    if (anioActivo) { selAnio.value = anioActivo.id; }
+    var selGrupo = el('select', { required: true, 'aria-label': 'Grupo de premedia' }, GRUPOS_PREMEDIA.map(function (g) {
+      return el('option', { value: g, texto: g });
+    }));
+    var crear = el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Crear grupo' });
+    var completar = el('button', { clase: 'boton', type: 'button', texto: 'Crear los 9 grupos de premedia' });
+    async function guardarGrupos(nombres, boton) {
+      if (!selAnio.value) { aviso('Elija el año de los grupos.', 'error'); return; }
+      var anioId = selAnio.value;
+      boton.disabled = true;
+      await ejecutar(async function () {
+        var faltantes = nombres.filter(function (g) {
+          return !datos.salones.some(function (s) { return s.anio_id === anioId && s.nombre === g; });
+        });
+        if (!faltantes.length) { return; }
+        var r = await db.from('portal2027_salones').upsert(faltantes.map(function (g) {
+          return { anio_id: anioId, grado: g.charAt(0), seccion: g.charAt(1) };
+        }), { onConflict: 'anio_id,grado,seccion', ignoreDuplicates: true });
+        if (r.error) { throw r.error; }
+      }, nombres.length === 9 ? 'Los nueve grupos de premedia están disponibles para el año seleccionado.' : 'Grupo disponible para el año seleccionado.');
+      boton.disabled = false;
+    }
+    completar.addEventListener('click', function () { return guardarGrupos(GRUPOS_PREMEDIA, completar); });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
-      campo('Año', selAnio), campo('Grado', inGrado), campo('Sección', inSeccion),
-      el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Crear grupo' })
+      campo('Año', selAnio), campo('Grupo', selGrupo), crear, completar
     ]);
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      var grado = inGrado.value.trim();
-      var seccion = inSeccion.value.trim().toUpperCase();
-      if (!selAnio.value) { aviso('Elija el año del grupo.', 'error'); return; }
-      if (!/^[0-9]{1,2}$/.test(grado)) { aviso('El grado debe ser un número (por ejemplo 9).', 'error'); return; }
-      if (!/^[A-Z]{1,2}$/.test(seccion)) { aviso('La sección debe ser una o dos letras (por ejemplo C).', 'error'); return; }
-      ejecutar(async function () {
-        var r = await db.from('portal2027_salones').insert({ anio_id: selAnio.value, grado: grado, seccion: seccion });
-        if (r.error) { throw r.error; }
-      }, 'Grupo creado.');
+      return guardarGrupos([selGrupo.value], crear);
     });
-    return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Grupos' }), tabla(['Grupo', 'Año', ''], filas, 'Todavía no hay grupos.'), form]);
+    return el('section', { clase: 'bloque' }, [
+      el('h2', { texto: 'Grupos' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Premedia: 7A, 7B, 7C, 8A, 8B, 8C, 9A, 9B y 9C. Seleccione el año y cree todos de una vez; los grupos existentes se conservan sin duplicarlos.' }),
+      form, tabla(['Grupo', 'Año', ''], filas, 'Todavía no hay grupos. Use «Crear los 9 grupos de premedia».')
+    ]);
   }
 
   /* ---------- Profesores por grupo: materias y consejería en un solo lugar ---------- */
