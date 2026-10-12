@@ -345,14 +345,11 @@
           if (tipo.length > 40 || descripcion.length > 120) { window.alert('Texto demasiado largo (tipo: máx. 40; descripción: máx. 120).'); return; }
           botonAgregar.disabled = true;
           var grupoId = nuevoGrupoId();
-          // Una fila por estudiante, sin nota. Si alguna falla, la columna queda y las celdas faltantes se crean al escribir la nota.
-          for (var i = 0; i < S.mats.length; i++) {
-            var g = await db.rpc('portal2027_guardar_registro_semana', {
-              p_id: null, p_evaluacion: ev.id, p_matricula: S.mats[i].id, p_tipo: tipo, p_descripcion: descripcion,
-              p_valor: null, p_version: 0, p_grupo: grupoId
-            });
-            if (g.error) { window.alert(P.traducirError(g.error)); break; }
-          }
+          // Una sola llamada: la base crea la columna completa (una celda vacía por estudiante) o no crea nada.
+          var g = await db.rpc('portal2027_crear_columna_registro_semana', {
+            p_evaluacion: ev.id, p_tipo: tipo, p_descripcion: descripcion, p_grupo: grupoId
+          });
+          if (g.error) { window.alert(P.traducirError(g.error)); }
           pintar();
         };
         contenido.appendChild(botonAgregar);
