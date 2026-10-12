@@ -28,3 +28,12 @@
 .importar-texto { width: 100%; margin: .6rem 0; padding: .5rem; font: inherit; font-size: .9rem; border: 1px solid #aebdba; border-radius: 8px; }
 .importar .fila-problema td { background: #fdecea; }
 .importar .fila-cambia td { background: #fff6d6; }
+
+/* Desglose semanal */
+.portal2027-desglose{width:min(96vw,1300px);max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:12px;padding:20px;background:#fff;color:#172033}
+.portal2027-desglose::backdrop{background:rgba(15,23,42,.65)}
+.portal2027-desglose table{min-width:650px;width:100%;border-collapse:collapse;margin-top:12px}
+.portal2027-desglose th,.portal2027-desglose td{padding:7px;border:1px solid #e2e8f0}
+.portal2027-desglose thead th{position:sticky;top:0;background:#eaf0f7}
+.portal2027-desglose tbody th{position:sticky;left:0;background:#fff}
+.nota-manual-marca{font-size:.85rem;color:#b45309;margin-left:3px}
