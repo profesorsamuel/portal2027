@@ -89,3 +89,11 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 /* Pasos de una importación (descargar, llenar, subir) */
 .paso-importar { margin-top: 1.1rem; padding: .9rem 1rem; border: 1px solid var(--linea); border-left: 4px solid var(--acento); border-radius: var(--radio); background: #fbfcfc; }
 .paso-importar > h3 { margin: 0 0 .4rem; }
+
+/* Directorio de docentes: filtro por nivel y buscador */
+.filtro-docentes { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0; }
+.filtro-docentes .pestana { font: inherit; font-weight: 600; font-size: .95rem; padding: .45rem .9rem; border: 1px solid var(--linea); border-radius: 999px; background: var(--blanco); color: var(--tinta); cursor: pointer; }
+.filtro-docentes .pestana:hover { background: #e7eeed; border-color: var(--tinta-suave); }
+.filtro-docentes .pestana.activa { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.filtro-docentes .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+.cabecera-acciones input[type="search"] { padding: .45rem .6rem; border: 1px solid #aebdba; border-radius: 8px; font: inherit; min-width: 15rem; }
