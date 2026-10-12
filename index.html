@@ -30,7 +30,24 @@
 
         <div id="vista-login" class="vista" hidden>
           <h2>Entrar al portal</h2>
-          <form id="form-login" novalidate>
+          <div class="pestanas" role="tablist" aria-label="Tipo de acceso">
+            <button type="button" role="tab" id="pestana-estudiante" class="pestana activa" aria-selected="true" aria-controls="form-estudiante">Soy estudiante</button>
+            <button type="button" role="tab" id="pestana-personal" class="pestana" aria-selected="false" aria-controls="form-login">Docente o familia</button>
+          </div>
+
+          <form id="form-estudiante" novalidate>
+            <label for="est-grupo">Grado</label>
+            <select id="est-grupo" name="grupo" required>
+              <option value="">Cargando grados…</option>
+            </select>
+            <label for="est-nombre">Nombre y apellido</label>
+            <input id="est-nombre" name="nombre" type="text" autocomplete="off" placeholder="Ej.: Ana Pérez" required>
+            <label for="est-cedula">Contraseña (su número de cédula)</label>
+            <input id="est-cedula" name="cedula" type="password" autocomplete="current-password" placeholder="Ej.: 8-123-456" required>
+            <button class="boton boton-principal" type="submit">Entrar</button>
+          </form>
+
+          <form id="form-login" novalidate hidden>
             <label for="login-correo">Correo electrónico</label>
             <input id="login-correo" name="correo" type="email" autocomplete="username" required data-foco>
             <label for="login-clave">Contraseña</label>
