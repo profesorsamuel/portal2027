@@ -68,3 +68,8 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 }
 .pestana:hover { color: var(--tinta); }
 .pestana.activa { color: var(--tinta); border-bottom-color: var(--acento); }
+
+/* Menú de secciones de Administración: barra fija arriba con botones que saltan a cada sección. */
+.menu-secciones { position: sticky; top: 0; z-index: 20; display: flex; gap: .5rem; overflow-x: auto; padding: .6rem 0; margin: 0 0 1rem; background: var(--papel); border-bottom: 1px solid var(--linea); }
+.menu-secciones .boton { white-space: nowrap; flex: 0 0 auto; }
+.secciones section { scroll-margin-top: 4rem; }
