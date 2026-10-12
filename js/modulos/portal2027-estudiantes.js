@@ -624,7 +624,7 @@
       try {
         matAnio = await todas(function () {
           return db.from('portal2027_matriculas')
-            .select('estado, salon:portal2027_salones(nombre), estudiante:portal2027_estudiantes(id,codigo,nombres,apellidos,sexo,correo_estudiante,usuario_id,invitado_en,foto_ruta)')
+            .select('estado, salon:portal2027_salones(nombre), estudiante:portal2027_estudiantes(id,codigo,nombres,apellidos,sexo,correo_estudiante,telefono_estudiante,nombre_acudiente,telefono_acudiente,direccion,usuario_id,invitado_en,foto_ruta)')
             .eq('anio_id', anioElegido).order('id');
         });
       } catch (e) { cuerpo.appendChild(el('p', { clase: 'mensaje error', texto: P.traducirError(e) })); return; }
@@ -672,11 +672,13 @@
           return el('tr', null, [
             el('td', { texto: e.codigo }), el('td', { texto: nombreEst(e) }), el('td', { texto: textoSexo(e.sexo) }),
             el('td', { texto: m.salon ? m.salon.nombre : '' }), el('td', { texto: m.estado }),
-            el('td', { texto: e.correo_estudiante || '' }), el('td', { texto: cuenta + (e.foto_ruta ? ' · con foto' : '') }),
+            el('td', null, [el('div', { texto: e.correo_estudiante || 'Sin correo' }), el('small', { texto: e.telefono_estudiante || 'Sin teléfono' })]),
+            el('td', null, [el('div', { texto: e.nombre_acudiente || 'Pendiente' }), el('small', { texto: e.telefono_acudiente || 'Sin teléfono' })]),
+            el('td', { texto: cuenta + (e.foto_ruta ? ' · con foto' : '') }),
             el('td', null, [el('div', { clase: 'cabecera-acciones' }, [ver, invitar])])
           ]);
         });
-        cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Sexo', 'Grupo', 'Estado', 'Correo', 'Cuenta', ''], filas,
+        cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Sexo', 'Grupo', 'Estado', 'Contacto del estudiante', 'Acudiente y teléfonos', 'Cuenta', ''], filas,
           anios.length ? 'No hay estudiantes matriculados en este año.' : 'Primero cree un año lectivo.'));
         if (lista.length > 200) { cuerpo.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran 200 de ' + lista.length + '. Use el buscador.' })); }
       }
@@ -732,7 +734,7 @@
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Mi información' })]);
     zona.appendChild(sec);
     var fichas = await consultar(db.from('portal2027_estudiantes')
-      .select('id,codigo,nombres,apellidos,foto_ruta,matriculas:portal2027_matriculas(estado, salon:portal2027_salones(nombre), anio:portal2027_anios(anio))')
+      .select('id,codigo,nombres,apellidos,correo_estudiante,telefono_estudiante,nombre_acudiente,telefono_acudiente,direccion,foto_ruta,matriculas:portal2027_matriculas(estado, salon:portal2027_salones(nombre), anio:portal2027_anios(anio))')
       .eq('usuario_id', info.sesion.user.id));
     if (fichas.length === 0) {
       sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Su cuenta está activa, pero todavía no está vinculada a una ficha de estudiante. Consulte con la administración.' }));
@@ -744,6 +746,44 @@
     sec.appendChild(textoTabla(['Año', 'Grupo', 'Estado'], mats.map(function (m) {
       return el('tr', null, [el('td', { texto: m.anio ? String(m.anio.anio) : '' }), el('td', { texto: m.salon ? m.salon.nombre : '' }), el('td', { texto: m.estado })]);
     }), 'Aún no tiene matrícula registrada.'));
+    sec.appendChild(el('h3', { texto: 'Completar mis datos de contacto' }));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Complete los datos pendientes o actualice sus contactos. El correo de contacto no cambia su contraseña ni su forma de entrar. El nombre, código y grupo los administra la escuela.' }));
+    var campos = [
+      ['correo_estudiante', 'Mi correo (opcional)', 'email', 254],
+      ['telefono_estudiante', 'Mi teléfono (opcional)', 'tel', 100],
+      ['nombre_acudiente', 'Nombre completo del acudiente', 'text', 150],
+      ['telefono_acudiente', 'Teléfono(s) del acudiente', 'tel', 200],
+      ['direccion', 'Dirección o comunidad (opcional)', 'text', 500]
+    ];
+    var controles = {};
+    var avisoContacto = crearAviso();
+    var guardarContacto = el('button', { clase: 'boton', type: 'submit', texto: 'Guardar mis datos' });
+    var formContacto = el('form', { clase: 'formulario-ficha' });
+    campos.forEach(function (c) {
+      var input = el('input', { type: c[2], value: f[c[0]] || '', maxlength: String(c[3]), required: c[0] === 'nombre_acudiente' || c[0] === 'telefono_acudiente' });
+      controles[c[0]] = input;
+      formContacto.appendChild(el('label', null, [c[1], input]));
+    });
+    formContacto.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Puede escribir varios teléfonos separados por /, por ejemplo: 6000-0001 / 6500-0002.' }));
+    formContacto.appendChild(guardarContacto);
+    formContacto.appendChild(avisoContacto);
+    if (!f.nombre_acudiente || !f.telefono_acudiente) { avisoContacto.mostrar('Falta completar el nombre o teléfono de su acudiente.', 'info'); }
+    formContacto.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      if (!formContacto.reportValidity()) { return; }
+      guardarContacto.disabled = true;
+      try {
+        var r = await db.rpc('portal2027_completar_mis_datos', {
+          p_correo: controles.correo_estudiante.value.trim(), p_telefono: controles.telefono_estudiante.value.trim(),
+          p_acudiente: controles.nombre_acudiente.value.trim(), p_telefono_acudiente: controles.telefono_acudiente.value.trim(),
+          p_direccion: controles.direccion.value.trim()
+        });
+        if (r.error) { throw r.error; }
+        avisoContacto.mostrar('Sus datos de contacto se guardaron correctamente.', 'ok');
+      } catch (e) { avisoContacto.mostrar(P.traducirError(e), 'error'); }
+      guardarContacto.disabled = false;
+    });
+    sec.appendChild(formContacto);
     sec.appendChild(el('h3', { texto: 'Mi foto' }));
     sec.appendChild(tarjetaFoto(f, null));
   }
