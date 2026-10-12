@@ -27,6 +27,7 @@ create trigger portal2027_periodos_ejercicio_tipo after insert or update of eval
 
 -- 4) Crear columna: ahora acepta el tipo (opcional).
 drop function if exists public.portal2027_crear_evaluacion(uuid, uuid, text, text);
+drop function if exists public.portal2027_crear_evaluacion(uuid, uuid, text, text, text);
 create function public.portal2027_crear_evaluacion(p_asignacion uuid, p_trimestre uuid, p_categoria text, p_tema text, p_tipo text default '')
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_id uuid; v_orden integer; v_tipo text := left(trim(coalesce(p_tipo, '')), 40);
@@ -46,6 +47,7 @@ end $$;
 
 -- 5) Actualizar columna: tema, tipo, ocultar o bloqueo. Parámetro nulo = no cambia.
 drop function if exists public.portal2027_actualizar_evaluacion(uuid, integer, text, boolean, boolean);
+drop function if exists public.portal2027_actualizar_evaluacion(uuid, integer, text, boolean, boolean, text);
 create function public.portal2027_actualizar_evaluacion(
   p_id uuid, p_version integer, p_tema text default null, p_oculta boolean default null, p_bloqueada boolean default null,
   p_tipo text default null)
