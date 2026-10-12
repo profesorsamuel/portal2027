@@ -36,6 +36,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `js/modulos/portal2027-avisos.js` | Etapa 7B: avisos a acudientes como borradores editables y copiables; no envía nada. |
 | `assets/css/portal2027-reportes.css` | Estilos de reportes, avisos e impresión. |
 | `js/modulos/portal2027-documentos.js` | Etapa 8B: documentos privados. Estudiante sube y sustituye; administración define tipos, revisa y ve faltantes; consejero revisa su grupo. |
+| `js/datos/portal2027-docentes-2026.js`, `js/modulos/portal2027-docentes.js` | Directorio de docentes 2026 por nivel (Premedia, Primaria, Apoyo) en «Personas», con búsqueda y descarga en Excel. Sin teléfonos: el sitio es público. |
 | `js/modulos/portal2027-respaldos.js` | Etapa 9B: sección «Respaldos» de administración (anotar copias externas con resultado real y ver el estado por tipo). La recuperación de notas está en el historial de la libreta. |
 | `js/core/portal2027-integracion-ejercicios.js` | Etapa 6A (guía): contrato de los juegos: `iniciarEjercicio` y `guardarIntento`. Nunca escribe notas; ver `docs/portal2027-integracion-ejercicios.md`. |
 | `js/modulos/portal2027-ejercicios.js` | Etapa 6B (guía): pantalla del profesor/administración: periodos, ejercicios, equipos, cierre y consolidación a la libreta. |
