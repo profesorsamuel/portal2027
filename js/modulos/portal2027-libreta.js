@@ -305,7 +305,26 @@
       'aria-label': 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + (ev.tema || M.ETIQUETAS[ev.categoria])
     });
     var td = el('td', { clase: 'celda-nota' }, [input]);
-    if (ev.semana && n && n.nota_manual) { td.appendChild(el('span', { clase: 'nota-manual-marca', texto: '✎', title: 'Nota semanal corregida manualmente' })); }
+    if (ev.semana && n && n.nota_manual) {
+      td.appendChild(el('span', { clase: 'nota-manual-marca', texto: '✎', title: 'Nota semanal corregida manualmente' }));
+      var auto = boton('↻ Auto', 'Quitar la corrección manual y recalcular el promedio de los registros de esta semana', async function () {
+        if (!window.confirm('¿Restaurar el promedio automático de ' + nombreEst(mat.estudiante) + '? Se quitará la corrección manual.')) { return; }
+        auto.disabled = true;
+        try {
+          var q = await db.rpc('portal2027_restaurar_nota_semanal', {
+            p_evaluacion: ev.id, p_matricula: mat.id, p_version: n.version
+          });
+          if (q.error) { throw q.error; }
+          await recargar();
+          aviso('Promedio semanal automático restaurado.', 'ok');
+        } catch (err) {
+          auto.disabled = false;
+          aviso('No se pudo restaurar el promedio: ' + textoError(err), 'error');
+        }
+      });
+      auto.type = 'button'; auto.disabled = ev.bloqueada || S.cerrado;
+      td.appendChild(auto);
+    }
     function marca(tipo) { td.className = 'celda-nota' + (tipo ? ' celda-' + tipo : ''); }
     input.addEventListener('change', function () { guardarCelda(ev, mat, input, marca); });
     input.addEventListener('keydown', function (k) {
