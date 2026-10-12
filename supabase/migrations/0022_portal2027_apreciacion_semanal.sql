@@ -53,7 +53,7 @@ BEGIN
  IF FOUND AND n.nota_manual THEN RETURN jsonb_build_object('manual',true,'version',n.version); END IF;
  SELECT round(avg(valor),2) INTO v_val FROM public.portal2027_registros_semana WHERE evaluacion_id=p_evaluacion AND matricula_id=p_matricula AND valor IS NOT NULL;
  v_ver:=CASE WHEN n.id IS NULL THEN 0 ELSE n.version END;
- RETURN public.portal2027_guardar_nota(p_evaluacion,p_matricula,v_val,v_ver,'Recálculo automático de apreciación semanal');
+ RETURN public.portal2027_guardar_nota(p_evaluacion,p_matricula,v_val,v_ver,CASE WHEN n.id IS NOT NULL AND n.valor IS DISTINCT FROM v_val THEN 'Recálculo automático de apreciación semanal' ELSE NULL END);
 END $$;
 
 CREATE OR REPLACE FUNCTION public.portal2027_guardar_registro_semana(p_id uuid,p_evaluacion uuid,p_matricula uuid,p_tipo text,p_descripcion text,p_valor numeric,p_version integer)

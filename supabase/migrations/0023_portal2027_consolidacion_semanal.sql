@@ -50,7 +50,7 @@ begin
     on conflict (periodo_id, matricula_id) do update
       set valor = excluded.valor, detalle = excluded.detalle, consolidado_por = auth.uid(), consolidado_en = now();
 
-    if v_val is not null then
+    if true then
       select r.id, r.version into v_reg from public.portal2027_registros_semana r
        where r.evaluacion_id=p.evaluacion_id and r.matricula_id=m.id
          and r.tipo='Ejercicio virtual' and r.descripcion=('Periodo ' || p_periodo::text)
