@@ -25,18 +25,23 @@
       var bloque = el('div', { clase: 'detalle-ficha' }, [el('h3', { texto: m.materia })]);
       if (!m.publicada) {
         bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'El profesor aún no ha publicado las notas de esta materia en este trimestre.' }));
-      } else if (m.evaluaciones.length === 0) {
-        bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay evaluaciones en esta materia.' }));
       } else {
-        var notas = {};
-        m.evaluaciones.forEach(function (e) { if (e.valor !== null && e.valor !== undefined) { notas[e.id] = Number(e.valor); } });
-        var r = M.calcular(m.evaluaciones, notas);
-        bloque.appendChild(tabla(['Categoría', 'Tema', 'Nota'], m.evaluaciones.map(function (e) {
-          return el('tr', null, [el('td', { texto: M.ETIQUETAS[e.categoria] || e.categoria }), el('td', { texto: e.tema || '—' }),
-            el('td', { texto: notas[e.id] === undefined ? '—' : String(notas[e.id]) })]);
-        })));
-        var partes = M.CATEGORIAS.map(function (c) { return M.ETIQUETAS[c] + ': ' + (r.categorias[c].texto || '—'); });
-        bloque.appendChild(el('p', { clase: 'bloque-ayuda', texto: partes.join(' · ') + ' · Final: ' + r.textoFinal }));
+        // Solo se muestran las dos notas semanales: Apreciación y Ejercicio escrito.
+        var VISIBLES = ['apreciacion', 'ejercicio_escrito'];
+        var evals = m.evaluaciones.filter(function (e) { return VISIBLES.indexOf(e.categoria) !== -1; });
+        if (evals.length === 0) {
+          bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay notas de apreciación ni de ejercicio escrito en esta materia.' }));
+        } else {
+          var notas = {};
+          evals.forEach(function (e) { if (e.valor !== null && e.valor !== undefined) { notas[e.id] = Number(e.valor); } });
+          var r = M.calcular(evals, notas);
+          bloque.appendChild(tabla(['Categoría', 'Tema', 'Nota'], evals.map(function (e) {
+            return el('tr', null, [el('td', { texto: M.ETIQUETAS[e.categoria] || e.categoria }), el('td', { texto: e.tema || '—' }),
+              el('td', { texto: notas[e.id] === undefined ? '—' : String(notas[e.id]) })]);
+          })));
+          var partes = VISIBLES.map(function (c) { return M.ETIQUETAS[c] + ': ' + (r.categorias[c].texto || '—'); });
+          bloque.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Promedios · ' + partes.join(' · ') }));
+        }
       }
       cont.appendChild(bloque);
     });
