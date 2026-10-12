@@ -69,7 +69,19 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .pestana:hover { color: var(--tinta); }
 .pestana.activa { color: var(--tinta); border-bottom-color: var(--acento); }
 
-/* Menú de secciones de Administración: barra fija arriba con botones que saltan a cada sección. */
-.menu-secciones { position: sticky; top: 0; z-index: 20; display: flex; gap: .5rem; overflow-x: auto; padding: .6rem 0; margin: 0 0 1rem; background: var(--papel); border-bottom: 1px solid var(--linea); }
-.menu-secciones .boton { white-space: nowrap; flex: 0 0 auto; }
-.secciones section { scroll-margin-top: 4rem; }
+/* Administración en pestañas: barra fija arriba; solo se ve la pestaña elegida. */
+.menu-secciones { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: .4rem; padding: .6rem 0 .7rem; margin: 0 0 1.25rem; background: var(--papel); border-bottom: 2px solid var(--linea); }
+.menu-secciones .pestana { font: inherit; font-weight: 600; font-size: .95rem; padding: .5rem .95rem; border: 1px solid var(--linea); border-radius: 999px; background: var(--blanco); color: var(--tinta); cursor: pointer; }
+.menu-secciones .pestana:hover { background: #e7eeed; border-color: var(--tinta-suave); }
+.menu-secciones .pestana.activa { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.menu-secciones .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+.menu-secciones ~ .secciones .estado-panel { top: 3.6rem; }
+.secciones .oculta { display: none !important; }
+.secciones.secciones-admin { display: contents; }
+
+/* Tablas más legibles */
+.tabla-datos tbody tr:nth-child(even) { background: #f7faf9; }
+.tabla-datos tbody tr:hover { background: #eef4f3; }
+.tabla-datos thead th { border-bottom: 2px solid var(--linea); text-transform: uppercase; letter-spacing: .03em; font-size: .78rem; }
+.bloque { box-shadow: 0 1px 2px rgba(20, 50, 59, .06); }
+.bloque > h2 { padding-bottom: .5rem; margin-bottom: .75rem; border-bottom: 1px solid var(--linea); }
