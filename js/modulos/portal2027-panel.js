@@ -36,21 +36,32 @@
   }
 
   async function vistaProfesor(info) {
-    var r = await P.db.from('portal2027_asignaciones')
-      .select('id, salon:portal2027_salones(nombre, anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)')
-      .eq('profesor_id', info.sesion.user.id);
+    var base = 'id, salon:portal2027_salones(nombre, anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)';
+    var r = await P.db.from('portal2027_asignaciones').select(base).eq('profesor_id', info.sesion.user.id);
     if (r.error) { throw r.error; }
+
+    // Administración sin grupos propios: ve todos los grupos del colegio para trabajarlos como profesor
+    // (la base ya le permite editar cualquier libreta, asistencia, clase y ejercicio).
+    var comoAdmin = false;
+    if (r.data.length === 0 && info.roles.indexOf('administrador') !== -1) {
+      var t = await P.db.from('portal2027_asignaciones').select(base + ', profesor:portal2027_perfiles(*)');
+      if (!t.error && t.data.length > 0) { r = t; comoAdmin = true; }
+    }
 
     var filas = r.data.map(function (a) {
       return {
         id: a.id,
         anio: a.salon && a.salon.anio ? a.salon.anio.anio : 0,
         grupo: a.salon ? a.salon.nombre : '',
-        materia: a.materia ? a.materia.nombre : ''
+        materia: a.materia ? a.materia.nombre : '',
+        profesor: comoAdmin && a.profesor ? P.nombreCompleto(a.profesor) : ''
       };
     }).sort(function (a, b) { return b.anio - a.anio || a.grupo.localeCompare(b.grupo) || a.materia.localeCompare(b.materia); });
 
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Mis grupos y materias' })]);
+    if (comoAdmin) {
+      sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Usted es administración y no tiene grupos propios: aquí aparecen todos los grupos del colegio. Puede abrir la libreta, la asistencia, las clases y los ejercicios de cualquiera.' }));
+    }
     if (filas.length === 0) {
       sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no tiene grupos asignados. Pida a la administración que se los asigne.' }));
       return sec;
@@ -58,7 +69,7 @@
     var tabla = el('table', { clase: 'tabla-datos' }, [
       el('thead', null, [el('tr', null, ['Año', 'Grupo', 'Materia', ''].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
       el('tbody', null, filas.map(function (f) {
-        return el('tr', null, [el('td', { texto: String(f.anio) }), el('td', { texto: f.grupo }), el('td', { texto: f.materia }),
+        return el('tr', null, [el('td', { texto: String(f.anio) }), el('td', { texto: f.grupo }), el('td', { texto: f.materia + (f.profesor ? ' · ' + f.profesor : '') }),
           el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' }),

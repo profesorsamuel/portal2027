@@ -585,7 +585,7 @@
         return el('div', { clase: 'cabecera-acciones' }, [
           el('strong', { texto: a.materia ? a.materia.nombre : '' }),
           enlace('portal2027-libreta.html', 'Libreta'), enlace('portal2027-asistencia.html', 'Asistencia'),
-          enlace('portal2027-clases.html', 'Clases y tareas'), quitar
+          enlace('portal2027-clases.html', 'Clases y tareas'), enlace('portal2027-ejercicios.html', 'Ejercicios virtuales'), quitar
         ]);
       });
       if (materias.length === 0) { materias = [el('span', { clase: 'bloque-ayuda', texto: 'Sin materia (solo consejería)' })]; }
