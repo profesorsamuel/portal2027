@@ -10,11 +10,11 @@
   var el = P.el;
   var db = P.db;
 
-  var COLUMNAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'grado', 'seccion', 'anio_lectivo',
+  var COLUMNAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo',
     'correo_estudiante', 'nombre_acudiente', 'telefono_acudiente', 'estado'];
   // La cédula nunca viaja a la función de importación de la base: solo va a la función de accesos.
   var COLUMNAS_BD = COLUMNAS.filter(function (c) { return c !== 'cedula'; });
-  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'grado', 'seccion', 'anio_lectivo'];
+  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo'];
   var MIN_CEDULA = 6;
   var BUCKET = 'portal2027-fotos';
   var MAX_FOTO = 2 * 1024 * 1024;
@@ -52,6 +52,15 @@
 
   // Igual que en la pantalla de entrada y en el servidor: solo letras y números, en mayúsculas.
   function normCedula(c) { return String(c || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
+  // Acepta Femenino/Masculino o F/M (sin importar mayúsculas). Devuelve 'F', 'M', '' (vacío) o null (no válido).
+  function normSexo(v) {
+    var t = String(v || '').trim().toLowerCase();
+    if (t === '') { return ''; }
+    if (t === 'f' || t === 'femenino') { return 'F'; }
+    if (t === 'm' || t === 'masculino') { return 'M'; }
+    return null;
+  }
+  function textoSexo(v) { return v === 'F' ? 'Femenino' : (v === 'M' ? 'Masculino' : ''); }
   function ocultarCedula(c) { var n = normCedula(c); return n ? '••••' + n.slice(-3) : ''; }
 
   function norm(t) { return String(t === null || t === undefined ? '' : t).trim(); }
@@ -178,7 +187,7 @@
     async function cargarBase() {
       var r = await Promise.all([
         consultar(db.from('portal2027_anios').select('id,anio,activo').order('anio', { ascending: false })),
-        todas(function () { return db.from('portal2027_estudiantes').select('id,codigo,nombres,apellidos,correo_estudiante,nombre_acudiente,telefono_acudiente,usuario_id').order('id'); }),
+        todas(function () { return db.from('portal2027_estudiantes').select('id,codigo,nombres,apellidos,correo_estudiante,nombre_acudiente,telefono_acudiente,usuario_id,sexo').order('id'); }),
         todas(function () { return db.from('portal2027_matriculas').select('estudiante_id,anio_id,estado,salon_id').order('id'); }),
         consultar(db.from('portal2027_salones').select('id,anio_id,nombre'))
       ]);
@@ -217,7 +226,7 @@
       if (matriz.length === 0) { throw new Error('La hoja «Importar» está vacía.'); }
       var cab = matriz[0].map(function (c) { return norm(c).replace(/^\uFEFF/, '').toLowerCase().replace(/\s+/g, '_'); });
       var faltan = OBLIGATORIAS.filter(function (c) { return cab.indexOf(c) === -1; });
-      if (faltan.length) { throw new Error('Faltan columnas en la hoja: ' + faltan.join(', ') + '. Si su Excel es antiguo, descargue la plantilla nueva (trae la columna cedula).'); }
+      if (faltan.length) { throw new Error('Faltan columnas en la hoja: ' + faltan.join(', ') + '. Si su Excel es antiguo, descargue la plantilla nueva (trae las columnas cedula y sexo).'); }
       var filas = [];
       for (var i = 1; i < matriz.length; i++) {
         var o = { _fila: i + 1 };
@@ -267,6 +276,11 @@
           if (cedulasArchivo[ced] && cedulasArchivo[ced] !== cod) { f.errores.push('La cédula está repetida en otro código del archivo'); }
           cedulasArchivo[ced] = cod;
         }
+        // Sexo: obligatorio si el estudiante es nuevo o aún no lo tiene registrado.
+        var sx = normSexo(f.sexo);
+        if (sx === null) { f.errores.push('Sexo no válido (escriba Femenino o Masculino)'); }
+        else if (sx === '' && !(porCodigo[cod] && porCodigo[cod].sexo)) { f.errores.push('Falta el sexo (Femenino o Masculino)'); }
+        f.sexo = sx === null ? f.sexo : sx;
         var correo = f.correo_estudiante.toLowerCase();
         if (correo && !RE_CORREO.test(correo)) { f.errores.push('Correo no válido'); }
         if (correo) {
@@ -288,6 +302,7 @@
           if (mat) {
             var igual = salonActual && salonActual.nombre === grupo && mat.estado === f.estadoNorm
               && ex.nombres === f.nombres && ex.apellidos === f.apellidos
+              && (!f.sexo || ex.sexo === f.sexo)
               && (!f.correo_estudiante || (ex.correo_estudiante || '').toLowerCase() === correo)
               && (!f.nombre_acudiente || ex.nombre_acudiente === f.nombre_acudiente)
               && (!f.telefono_acudiente || ex.telefono_acudiente === f.telefono_acudiente);
@@ -325,12 +340,13 @@
           el('td', { texto: f.codigo_estudiante }),
           el('td', { texto: (f.nombres + ' ' + f.apellidos).trim() }),
           el('td', { texto: ocultarCedula(f.cedula) }),
+          el('td', { texto: textoSexo(f.sexo) }),
           el('td', { texto: f.grado + f.seccion }),
           el('td', { texto: f.anio_lectivo }),
           el('td', { texto: f.errores.length ? f.errores.join('; ') : f.accion, clase: f.errores.length ? 'celda-error' : '' })
         ]);
       });
-      contenedor.appendChild(textoTabla(['Fila', 'Código', 'Nombre', 'Cédula', 'Grupo', 'Año', 'Resultado'], cuerpo, ''));
+      contenedor.appendChild(textoTabla(['Fila', 'Código', 'Nombre', 'Cédula', 'Sexo', 'Grupo', 'Año', 'Resultado'], cuerpo, ''));
       if (filas.length > mostrar.length) {
         contenedor.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran las filas con error primero y un máximo de 60. Se importan todas.' }));
       }
@@ -409,10 +425,10 @@
 
       /* ----- plantilla incrustada: ejemplo en pantalla y Excel generado en el navegador ----- */
       var EJEMPLO = [
-        ['E0001', 'Ana María', 'Pérez Gómez', '8-123-456', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
-        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '4-567-890', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
-        ['E0003', 'María José', 'Castillo Ruiz', 'E-8-123456', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
-        ['E0004', 'Pedro', 'Santos Vega', 'PE-12-345', '7', 'B', '2027', '', '', '', '']
+        ['E0001', 'Ana María', 'Pérez Gómez', '8-123-456', 'Femenino', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
+        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '4-567-890', 'Masculino', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
+        ['E0003', 'María José', 'Castillo Ruiz', 'E-8-123456', 'Femenino', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
+        ['E0004', 'Pedro', 'Santos Vega', 'PE-12-345', 'Masculino', '7', 'B', '2027', '', '', '', '']
       ];
       var AYUDA_COLUMNAS = [
         ['Columna', '¿Obligatoria?', 'Qué escribir', 'Ejemplo'],
@@ -420,6 +436,7 @@
         ['nombres', 'Sí', 'Nombres del estudiante.', 'Ana María'],
         ['apellidos', 'Sí', 'Apellidos del estudiante.', 'Pérez Gómez'],
         ['cedula', 'Sí', 'Cédula del estudiante. Es su contraseña de entrada al portal; puede llevar guiones. No se repite. Mínimo 6 letras o números. Dé a la columna formato «Texto». Si el estudiante ya tiene acceso, puede dejarla vacía.', '8-123-456'],
+        ['sexo', 'Sí', 'Escriba Femenino o Masculino (también vale F o M). Si el estudiante ya tiene el sexo registrado, puede dejarla vacía.', 'Femenino'],
         ['grado', 'Sí', 'Solo el número del grado (uno o dos dígitos).', '9'],
         ['seccion', 'Sí', 'Solo la letra de la sección. Grado 9 + sección C = grupo 9C.', 'C'],
         ['anio_lectivo', 'Sí', 'Año con cuatro cifras. Debe existir en Años lectivos.', '2027'],
@@ -441,7 +458,7 @@
         if (!window.XLSX) { aviso.mostrar('No se cargó la biblioteca de Excel. Recargue la página e intente de nuevo.', 'error'); return; }
         var libro = XLSX.utils.book_new();
         var hojaImportar = XLSX.utils.aoa_to_sheet([COLUMNAS].concat(EJEMPLO));
-        hojaImportar['!cols'] = [18, 18, 20, 16, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
+        hojaImportar['!cols'] = [18, 18, 20, 16, 12, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
         // Columna cedula como texto, para que Excel no quite guiones ni ceros.
         var colCed = COLUMNAS.indexOf('cedula');
         for (var rr = 1; rr <= 300; rr++) {
@@ -472,7 +489,7 @@
         tablaSimple(AYUDA_COLUMNAS[0], AYUDA_COLUMNAS.slice(1))
       ]));
       zonaImport.appendChild(el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]));
-      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. La cédula es la contraseña del estudiante. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
+      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. La cédula es la contraseña del estudiante y el sexo es Femenino o Masculino. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
       zonaImport.appendChild(vista);
       zonaImport.appendChild(confirmar);
     }
@@ -565,7 +582,7 @@
       try {
         matAnio = await todas(function () {
           return db.from('portal2027_matriculas')
-            .select('estado, salon:portal2027_salones(nombre), estudiante:portal2027_estudiantes(id,codigo,nombres,apellidos,correo_estudiante,usuario_id,invitado_en,foto_ruta)')
+            .select('estado, salon:portal2027_salones(nombre), estudiante:portal2027_estudiantes(id,codigo,nombres,apellidos,sexo,correo_estudiante,usuario_id,invitado_en,foto_ruta)')
             .eq('anio_id', anioElegido).order('id');
         });
       } catch (e) { cuerpo.appendChild(el('p', { clase: 'mensaje error', texto: P.traducirError(e) })); return; }
@@ -611,13 +628,13 @@
             detalle.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           } });
           return el('tr', null, [
-            el('td', { texto: e.codigo }), el('td', { texto: nombreEst(e) }),
+            el('td', { texto: e.codigo }), el('td', { texto: nombreEst(e) }), el('td', { texto: textoSexo(e.sexo) }),
             el('td', { texto: m.salon ? m.salon.nombre : '' }), el('td', { texto: m.estado }),
             el('td', { texto: e.correo_estudiante || '' }), el('td', { texto: cuenta + (e.foto_ruta ? ' · con foto' : '') }),
             el('td', null, [el('div', { clase: 'cabecera-acciones' }, [ver, invitar])])
           ]);
         });
-        cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Grupo', 'Estado', 'Correo', 'Cuenta', ''], filas,
+        cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Sexo', 'Grupo', 'Estado', 'Correo', 'Cuenta', ''], filas,
           anios.length ? 'No hay estudiantes matriculados en este año.' : 'Primero cree un año lectivo.'));
         if (lista.length > 200) { cuerpo.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran 200 de ' + lista.length + '. Use el buscador.' })); }
       }
