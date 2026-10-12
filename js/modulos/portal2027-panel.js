@@ -70,25 +70,72 @@
     return sec;
   }
 
-  // Barra fija con un botón por sección: lleva directo a la que se quiere ver o editar.
+  // Administración en pestañas: una barra fija arriba y, debajo, solo las secciones de la pestaña elegida.
+  var PESTANAS = [
+    { id: 'personas', texto: 'Personas', titulos: ['Personas y roles', 'Importar profesores desde Excel'] },
+    { id: 'estructura', texto: 'Años, grupos y materias', titulos: ['Años lectivos', 'Grupos', 'Materias', 'Profesores por grupo', 'Consejeros por grupo'] },
+    { id: 'estudiantes', texto: 'Estudiantes', titulos: ['Estudiantes'] },
+    { id: 'documentos', texto: 'Documentos', titulos: ['Documentos de estudiantes'] },
+    { id: 'config', texto: 'Configuración', titulos: ['Configuración académica'] },
+    { id: 'respaldos', texto: 'Respaldos', titulos: ['Respaldos'] }
+  ];
+
   function menuSecciones(zona) {
-    var titulos = [];
-    Array.prototype.forEach.call(zona.querySelectorAll('section > h2'), function (h) {
-      var t = h.textContent.trim();
-      if (t && titulos.indexOf(t) === -1) { titulos.push(t); }
-    });
-    if (titulos.length < 2) { return; }
-    var nav = el('nav', { clase: 'menu-secciones', 'aria-label': 'Ir a una sección' });
-    titulos.forEach(function (t) {
-      var b = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: t.replace(/^Importar /, 'Importar ') });
-      b.addEventListener('click', function () {
-        // Se busca al momento del clic: las secciones se redibujan al guardar cambios.
-        var h = Array.prototype.filter.call(zona.querySelectorAll('section > h2'), function (x) { return x.textContent.trim() === t; })[0];
-        if (h) { h.parentNode.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    var activa = PESTANAS[0].id;
+    try { var g = window.sessionStorage.getItem('portal2027-pestana-admin'); if (g) { activa = g; } } catch (e) { /* sin almacenamiento */ }
+    if (!PESTANAS.some(function (t) { return t.id === activa; })) { activa = PESTANAS[0].id; }
+
+    // Cada «unidad» es una sección (o el bloque de configuración); se reconoce por su primer título.
+    function unidades() {
+      var salida = [];
+      Array.prototype.forEach.call(zona.children, function (c) {
+        if (c.classList.contains('secciones-admin')) { Array.prototype.forEach.call(c.children, function (x) { salida.push(x); }); }
+        else if (c.tagName === 'SECTION' || c.classList.contains('secciones')) { salida.push(c); }
       });
+      return salida;
+    }
+    function ubicar(u) {
+      var h = u.querySelector('h2');
+      var t = h ? h.textContent.trim() : '';
+      for (var i = 0; i < PESTANAS.length; i++) {
+        var pos = PESTANAS[i].titulos.indexOf(t);
+        if (pos !== -1) { return { pestana: PESTANAS[i].id, orden: pos }; }
+      }
+      return { pestana: 'otros', orden: 99 };
+    }
+
+    var nav = el('nav', { clase: 'menu-secciones', role: 'tablist', 'aria-label': 'Secciones de administración' });
+    var botones = {};
+    function aplicar() {
+      var hay = {};
+      unidades().forEach(function (u) {
+        var d = ubicar(u);
+        hay[d.pestana] = true;
+        u.style.order = String(d.orden);
+        u.classList.toggle('oculta', d.pestana !== activa);
+      });
+      Object.keys(botones).forEach(function (id) {
+        var on = id === activa;
+        botones[id].setAttribute('aria-selected', on ? 'true' : 'false');
+        botones[id].classList.toggle('activa', on);
+        botones[id].hidden = id === 'otros' && !hay.otros;
+      });
+    }
+    PESTANAS.concat([{ id: 'otros', texto: 'Otros' }]).forEach(function (t) {
+      var b = el('button', { clase: 'pestana', type: 'button', role: 'tab', texto: t.texto });
+      b.addEventListener('click', function () {
+        activa = t.id;
+        try { window.sessionStorage.setItem('portal2027-pestana-admin', activa); } catch (e) { /* sin almacenamiento */ }
+        aplicar();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      botones[t.id] = b;
       nav.appendChild(b);
     });
     zona.parentNode.insertBefore(nav, zona);
+    aplicar();
+    // Las secciones se redibujan al guardar cambios: se vuelve a aplicar la pestaña elegida.
+    new MutationObserver(aplicar).observe(zona, { childList: true });
   }
 
   async function iniciar() {
