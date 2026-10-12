@@ -1,4 +1,4 @@
-# portal2027 — estructura (etapas 1 a 6)
+# portal2027 — estructura (etapas 1 a 8)
 
 Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages desde `main` / raíz, con Supabase (Auth y base de datos).
 
@@ -35,6 +35,8 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 | `pages/portal2027-reporte.html`, `js/modulos/portal2027-reporte.js` | Etapa 7B: reporte del trimestre por materia y grupo (copia de cierre o datos actuales), imprimible, con avisos en borrador. |
 | `js/modulos/portal2027-avisos.js` | Etapa 7B: avisos a acudientes como borradores editables y copiables; no envía nada. |
 | `assets/css/portal2027-reportes.css` | Estilos de reportes, avisos e impresión. |
+| `js/modulos/portal2027-documentos.js` | Etapa 8B: documentos privados. Estudiante sube y sustituye; administración define tipos, revisa y ve faltantes; consejero revisa su grupo. |
+| `assets/css/portal2027-documentos.css` | Estilos de documentos. |
 | `supabase/functions/portal2027-invitar-estudiante/` | Etapa 2: invitación validada en el servidor. |
 | `supabase/migrations/` | SQL numerado (ver `portal2027-base-de-datos.md`). |
 
@@ -50,6 +52,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 - Consejería (etapa 5): administración asigna consejeros a grupos; el consejero ve estudiantes, acudiente y conteo de asistencia por estado.
 - Estudiante (etapa 6): ve sus notas solo de materias publicadas por el profesor y su asistencia, por trimestre. El profesor publica o retira desde la libreta.
 - Clases y tareas (guía, etapa 5): el profesor publica materiales y tareas con plazo, revisa entregas y, si la tarea cuenta para nota, la guarda en la libreta con historial; el estudiante entrega sus archivos en Storage privado.
+- Documentos (guía, etapa 8): el estudiante sube sus documentos (PDF, JPG o PNG, hasta 5 MB) al bucket privado y los sustituye mientras no estén aprobados; administración define los tipos, revisa y ve los faltantes por grupo; el consejero revisa su grupo. Los archivos se abren con enlace temporal.
 - Estudiante: su ficha, grupo y foto propia (etapa 2).
 - Administración: importación de estudiantes desde Excel con vista previa, invitación de cuentas y fotos (etapa 2).
 - Los permisos los aplica la base (RLS); la interfaz solo decide qué mostrar.
