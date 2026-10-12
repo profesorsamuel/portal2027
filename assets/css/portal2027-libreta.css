@@ -24,3 +24,5 @@
 .celda-error .nota-input { background: #fdecea; border-color: #b3261e; border-width: 2px; }
 .etiqueta-check { display: flex !important; flex-direction: row; align-items: center; gap: 0.4rem; }
 @media (max-width: 640px) { .tabla-libreta .col-nombre { min-width: 8rem; white-space: normal; } }
+.col-rotulo { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--tinta); }
+.tipo-select { width: 100%; min-width: 6.5rem; margin-bottom: 0.25rem; padding: 0.2rem 0.3rem; font: inherit; font-size: 0.8rem; font-weight: 700; border: 1px solid #aebdba; border-radius: 6px; background: #fff; }
