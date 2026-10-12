@@ -1,0 +1,79 @@
+/* portal2027-libreta.css — estilos de la libreta */
+.portal-ancho { max-width: 1400px; }
+.libreta-scroll { overflow-x: auto; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--blanco); margin-top: 0.75rem; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+/* Sin barra vertical: todos los estudiantes se ven de una vez; solo hay desplazamiento horizontal. */
+.tabla-libreta { border-collapse: separate; border-spacing: 0; font-size: 0.92rem; min-width: 100%; }
+.tabla-libreta th, .tabla-libreta td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--linea); border-right: 1px solid var(--linea); text-align: center; vertical-align: middle; }
+.tabla-libreta thead th { background: #eef4f3; font-weight: 600; }
+.tabla-libreta .col-nombre { position: sticky; left: 0; z-index: 3; background: var(--blanco); text-align: left; min-width: 11rem; white-space: nowrap; box-shadow: 2px 0 4px -1px rgba(0,0,0,.18); }
+.tabla-libreta thead .col-nombre { background: #eef4f3; z-index: 4; }
+.col-eval { min-width: 7.5rem; }
+.col-oculta { background: #f3ece0 !important; }
+.col-prom, .col-final { background: #f7f9f8; font-weight: 600; min-width: 3.5rem; }
+.col-final { background: #fdf6e3; }
+.grupo-cat { white-space: nowrap; }
+.nota-input { width: 3.6rem; text-align: center; padding: 0.3rem; font: inherit; border: 1px solid #aebdba; border-radius: 6px; }
+.nota-input:disabled { background: #eceeed; color: var(--texto-suave); }
+.tema-input { width: 100%; min-width: 6.5rem; padding: 0.25rem 0.35rem; font: inherit; font-size: 0.85rem; border: 1px solid #aebdba; border-radius: 6px; }
+.col-acciones { display: flex; justify-content: center; gap: 0.2rem; margin-top: 0.25rem; }
+.mini { border: 1px solid var(--linea); background: var(--blanco); border-radius: 6px; padding: 0.1rem 0.4rem; font: inherit; font-size: 0.85rem; cursor: pointer; min-height: 1.8rem; min-width: 1.8rem; }
+.mini.mas { font-weight: 700; background: var(--acento); border-color: var(--acento-oscuro); }
+.celda-guardando .nota-input { background: #fff6d6; }
+.celda-ok .nota-input { background: #e8f5ec; border-color: var(--ok); }
+.celda-error .nota-input { background: #fdecea; border-color: #b3261e; border-width: 2px; }
+.etiqueta-check { display: flex !important; flex-direction: row; align-items: center; gap: 0.4rem; }
+@media (max-width: 640px) { .tabla-libreta { font-size: 0.85rem; } .tabla-libreta .col-nombre { min-width: 6.5rem; max-width: 7.5rem; white-space: normal; font-size: 0.8rem; padding: 0.3rem; } }
+.col-rotulo { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--tinta); }
+.tipo-select { width: 100%; min-width: 6.5rem; margin-bottom: 0.25rem; padding: 0.2rem 0.3rem; font: inherit; font-size: 0.8rem; font-weight: 700; border: 1px solid #aebdba; border-radius: 6px; background: #fff; }
+.importar-texto { width: 100%; margin: .6rem 0; padding: .5rem; font: inherit; font-size: .9rem; border: 1px solid #aebdba; border-radius: 8px; }
+.importar .fila-problema td { background: #fdecea; }
+.importar .fila-cambia td { background: #fff6d6; }
+
+/* Desglose semanal: diálogo a pantalla completa */
+.portal2027-desglose{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:#f4f7f6;color:var(--tinta,#14323b);overflow:hidden}
+.portal2027-desglose[open]{display:flex;flex-direction:column}
+.portal2027-desglose::backdrop{background:rgba(15,23,42,.65)}
+.desglose-encabezado{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.9rem 1.5rem;background:var(--tinta,#14323b);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);flex:0 0 auto}
+.desglose-titulos h3{margin:0;font-size:1.35rem;font-family:var(--fuente-titulo,inherit);color:#fff}
+.desglose-info{margin:.2rem 0 0;font-size:.9rem;color:#cfe0de}
+.desglose-acciones{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.desglose-agregar{display:contents}
+.portal2027-desglose button{font:inherit;cursor:pointer}
+.desglose-agregar-btn,.desglose-cerrar{padding:.55rem 1.1rem;border-radius:8px;font-weight:700;border:1px solid transparent;min-height:2.5rem}
+.desglose-agregar-btn{background:var(--acento,#e8a317);color:#2b1d00}
+.desglose-agregar-btn:hover:not(:disabled){filter:brightness(1.08)}
+.desglose-agregar-btn:disabled{opacity:.5;cursor:not-allowed}
+.desglose-cerrar{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+.desglose-cerrar:hover{background:rgba(255,255,255,.15)}
+.desglose-cuerpo{flex:1 1 auto;overflow:auto;padding:1rem 1.5rem 2rem;-webkit-overflow-scrolling:touch}
+.desglose-vacio{margin:2rem auto;max-width:36rem;text-align:center;padding:2rem;background:#fff;border:1px dashed var(--linea,#d5dedc);border-radius:12px;color:var(--texto-suave,#556a6e)}
+.tabla-desglose{width:100%;min-width:max-content;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--linea,#d5dedc);border-radius:10px;font-size:.95rem}
+.tabla-desglose th,.tabla-desglose td{padding:.5rem .75rem;border-bottom:1px solid #e6ecea;border-right:1px solid #eef2f1;text-align:center;vertical-align:middle}
+.tabla-desglose thead th{position:sticky;top:0;z-index:2;background:#e3eeec;color:var(--tinta,#14323b);font-weight:700;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;border-bottom:2px solid #b9cdca;white-space:nowrap}
+.tabla-desglose .col-est{position:sticky;left:0;z-index:1;text-align:left;background:#fff;font-weight:600;white-space:nowrap;min-width:12rem;box-shadow:2px 0 4px -1px rgba(0,0,0,.12)}
+.tabla-desglose thead .col-est{z-index:3;background:#e3eeec}
+.tabla-desglose tbody tr:nth-child(even) td,.tabla-desglose tbody tr:nth-child(even) .col-est{background:#f8fbfa}
+.tabla-desglose tbody tr:hover td,.tabla-desglose tbody tr:hover .col-est{background:#fff8e6}
+.tabla-desglose tbody tr:last-child th,.tabla-desglose tbody tr:last-child td{border-bottom:0}
+.desglose-celda{display:inline-flex;align-items:center;gap:.35rem}
+.portal2027-desglose .nota-input{width:4.2rem;padding:.4rem;font-size:1rem;background:#fff}
+.portal2027-desglose .nota-input:focus{outline:3px solid var(--acento,#e8a317);outline-offset:1px}
+.desglose-borrar{width:1.7rem;height:1.7rem;padding:0;line-height:1;border:1px solid #d9b8b4;background:#fff;color:#b3261e;border-radius:6px;font-weight:700}
+.desglose-borrar:hover:not(:disabled){background:#b3261e;color:#fff;border-color:#b3261e}
+.desglose-borrar:disabled{opacity:.4;cursor:not-allowed}
+@media (max-width:640px){
+  .desglose-encabezado{padding:.7rem 1rem}
+  .desglose-titulos h3{font-size:1.1rem}
+  .desglose-info{font-size:.8rem}
+  .desglose-cuerpo{padding:.6rem .6rem 1.5rem}
+  .tabla-desglose .col-est{min-width:7.5rem;white-space:normal;font-size:.85rem}
+}
+.nota-manual-marca{font-size:.85rem;color:#b45309;margin-left:3px}
+
+.portal2027-semana{width:min(92vw,360px);border:1px solid #cbd5e1;border-radius:12px;padding:20px;background:#fff;color:#172033}
+.portal2027-semana::backdrop{background:rgba(15,23,42,.65)}
+.portal2027-semana h3{margin:0 0 12px}
+.portal2027-semana label{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-weight:600}
+.portal2027-semana input[type=date]{font:inherit;padding:8px;border:1px solid #94a3b8;border-radius:8px}
+.portal2027-semana .semana-error{color:#b91c1c;min-height:1.2em;margin:0 0 8px}
+.portal2027-semana .semana-acciones{display:flex;gap:8px;justify-content:flex-end}
