@@ -1,5 +1,6 @@
 -- 0012_portal2027_cierre_trimestral.sql
 -- Etapa 7 (guía), parte A: cierre trimestral por asignación (materia + grupo) y trimestre.
+-- VERSIÓN REPETIBLE: se puede ejecutar varias veces sin error "already exists".
 -- Ejecutar en Supabase > SQL Editor del proyecto meduca2027, después de 0001-0011.
 -- Al cerrar se guarda una COPIA versionada de lo que había (columnas, notas y conteo de asistencia) y la base
 -- bloquea todo cambio de columnas, notas y asistencia de ese trimestre. Solo administración puede reabrir, con motivo.
@@ -7,7 +8,7 @@
 -- a la copia. No hay promedio anual ni criterios de honor (pendientes de definir).
 
 -- ---------- Tablas ----------
-create table public.portal2027_cierres (
+create table if not exists public.portal2027_cierres (
   asignacion_id   uuid not null references public.portal2027_asignaciones (id) on delete restrict,
   trimestre_id    uuid not null references public.portal2027_trimestres (id) on delete restrict,
   cerrado         boolean not null default false,
@@ -17,7 +18,7 @@ create table public.portal2027_cierres (
 );
 
 -- Copias del cierre: una por cierre, numeradas (1, 2, … si se reabre y se vuelve a cerrar). Solo se agregan.
-create table public.portal2027_resultados_cierre (
+create table if not exists public.portal2027_resultados_cierre (
   id            uuid primary key default gen_random_uuid(),
   asignacion_id uuid not null references public.portal2027_asignaciones (id) on delete restrict,
   trimestre_id  uuid not null references public.portal2027_trimestres (id) on delete restrict,
@@ -28,7 +29,7 @@ create table public.portal2027_resultados_cierre (
   unique (asignacion_id, trimestre_id, version)
 );
 
-create table public.portal2027_historial_cierres (
+create table if not exists public.portal2027_historial_cierres (
   id            uuid primary key default gen_random_uuid(),
   asignacion_id uuid not null references public.portal2027_asignaciones (id) on delete restrict,
   trimestre_id  uuid not null references public.portal2027_trimestres (id) on delete restrict,
@@ -39,13 +40,15 @@ create table public.portal2027_historial_cierres (
   creado_en     timestamptz not null default now()
 );
 
+drop trigger if exists portal2027_resultados_cierre_inmutable on public.portal2027_resultados_cierre;
 create trigger portal2027_resultados_cierre_inmutable before update or delete on public.portal2027_resultados_cierre
   for each row execute function public.portal2027_historial_inmutable();
+drop trigger if exists portal2027_historial_cierres_inmutable on public.portal2027_historial_cierres;
 create trigger portal2027_historial_cierres_inmutable before update or delete on public.portal2027_historial_cierres
   for each row execute function public.portal2027_historial_inmutable();
 
 -- ---------- Consulta de estado ----------
-create function public.portal2027_trimestre_cerrado(p_asignacion uuid, p_trimestre uuid)
+create or replace function public.portal2027_trimestre_cerrado(p_asignacion uuid, p_trimestre uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select coalesce((select c.cerrado from public.portal2027_cierres c
                    where c.asignacion_id = p_asignacion and c.trimestre_id = p_trimestre), false);
@@ -54,7 +57,7 @@ $$;
 -- ---------- Bloqueo en la base ----------
 -- Columnas, notas, sesiones y marcas de asistencia no se pueden insertar, cambiar ni borrar con el trimestre cerrado,
 -- sin importar quién escriba ni por qué función pase.
-create function public.portal2027_bloquear_si_cerrado()
+create or replace function public.portal2027_bloquear_si_cerrado()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare v_asig uuid; v_tr uuid; r record; i integer;
 begin
@@ -80,12 +83,16 @@ begin
   return new;
 end $$;
 
+drop trigger if exists portal2027_evaluaciones_cierre on public.portal2027_evaluaciones;
 create trigger portal2027_evaluaciones_cierre before insert or update or delete on public.portal2027_evaluaciones
   for each row execute function public.portal2027_bloquear_si_cerrado();
+drop trigger if exists portal2027_notas_cierre on public.portal2027_notas;
 create trigger portal2027_notas_cierre before insert or update or delete on public.portal2027_notas
   for each row execute function public.portal2027_bloquear_si_cerrado();
+drop trigger if exists portal2027_sesiones_cierre on public.portal2027_sesiones_asistencia;
 create trigger portal2027_sesiones_cierre before insert or update or delete on public.portal2027_sesiones_asistencia
   for each row execute function public.portal2027_bloquear_si_cerrado();
+drop trigger if exists portal2027_asistencia_cierre on public.portal2027_asistencia;
 create trigger portal2027_asistencia_cierre before insert or update or delete on public.portal2027_asistencia
   for each row execute function public.portal2027_bloquear_si_cerrado();
 
@@ -97,16 +104,19 @@ grant select on public.portal2027_cierres, public.portal2027_resultados_cierre, 
 alter table public.portal2027_cierres            enable row level security;
 alter table public.portal2027_resultados_cierre  enable row level security;
 alter table public.portal2027_historial_cierres  enable row level security;
+drop policy if exists portal2027_cierres_ver on public.portal2027_cierres;
 create policy portal2027_cierres_ver on public.portal2027_cierres
   for select to authenticated using (public.portal2027_puede_editar_asignacion(asignacion_id));
+drop policy if exists portal2027_resultados_cierre_ver on public.portal2027_resultados_cierre;
 create policy portal2027_resultados_cierre_ver on public.portal2027_resultados_cierre
   for select to authenticated using (public.portal2027_puede_editar_asignacion(asignacion_id));
+drop policy if exists portal2027_historial_cierres_ver on public.portal2027_historial_cierres;
 create policy portal2027_historial_cierres_ver on public.portal2027_historial_cierres
   for select to authenticated using (public.portal2027_puede_editar_asignacion(asignacion_id));
 
 -- ---------- Revisión previa ----------
 -- Solo cuenta; no impide cerrar (qué es obligatorio lo decide el colegio). Vacío no es cero.
-create function public.portal2027_revision_cierre(p_asignacion uuid, p_trimestre uuid)
+create or replace function public.portal2027_revision_cierre(p_asignacion uuid, p_trimestre uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare v_est integer; v_ev integer; v_con_nota integer; v_por_ev jsonb; v_sin_rev integer; v_ses integer; v_marcas integer;
 begin
@@ -145,7 +155,7 @@ begin
 end $$;
 
 -- ---------- Cerrar ----------
-create function public.portal2027_cerrar_trimestre(p_asignacion uuid, p_trimestre uuid, p_confirmar boolean)
+create or replace function public.portal2027_cerrar_trimestre(p_asignacion uuid, p_trimestre uuid, p_confirmar boolean)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_version integer; v_datos jsonb;
 begin
@@ -210,7 +220,7 @@ begin
 end $$;
 
 -- ---------- Reabrir (solo administración, con motivo) ----------
-create function public.portal2027_reabrir_trimestre(p_asignacion uuid, p_trimestre uuid, p_motivo text)
+create or replace function public.portal2027_reabrir_trimestre(p_asignacion uuid, p_trimestre uuid, p_motivo text)
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_motivo text := nullif(trim(coalesce(p_motivo, '')), '');
 begin

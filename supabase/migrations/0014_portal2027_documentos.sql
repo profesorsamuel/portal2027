@@ -1,12 +1,41 @@
 -- 0014_portal2027_documentos.sql
 -- Etapa 8 (guía), parte A: documentos privados por estudiante y año. Bucket privado portal2027-documentos.
+-- VERSIÓN REPETIBLE: se puede ejecutar varias veces sin error "already exists".
 -- Ejecutar en Supabase > SQL Editor del proyecto meduca2027, después de 0001-0013.
 -- Las tablas de documentos NO se escriben directamente: todo cambio pasa por portal2027_registrar_documento y
 -- portal2027_revisar_documento. Los tipos de documento los gestiona administración (no se inventó ninguno).
 -- Aquí NO se calcula nada de notas ni de honor.
 
+-- ---------- Reparación de versión anterior ----------
+-- Si las tablas de documentos quedaron creadas con una versión vieja de este script (columnas distintas, p. ej. sin
+-- "hecho_en"), "create table if not exists" las salta y luego falla. Si están VACÍAS se borran para recrearlas bien.
+-- Si ya tienen datos, se detiene con un aviso para no perder nada.
+do $$
+declare v_n bigint := 0;
+begin
+  if to_regclass('public.portal2027_historial_documentos') is not null
+     and not exists (select 1 from information_schema.columns
+                     where table_schema = 'public' and table_name = 'portal2027_historial_documentos' and column_name = 'hecho_en') then
+    if to_regclass('public.portal2027_documentos') is not null then
+      execute 'select count(*) from public.portal2027_documentos' into v_n;
+    end if;
+    if v_n = 0 then
+      execute 'select count(*) from public.portal2027_historial_documentos' into v_n;
+    end if;
+    if v_n = 0 and to_regclass('public.portal2027_tipos_documento') is not null then
+      execute 'select count(*) from public.portal2027_tipos_documento' into v_n;
+    end if;
+    if v_n > 0 then
+      raise exception 'Las tablas de documentos tienen datos y una estructura distinta a la actual. No se borró nada: pida revisión antes de continuar';
+    end if;
+    drop table if exists public.portal2027_historial_documentos cascade;
+    drop table if exists public.portal2027_documentos cascade;
+    drop table if exists public.portal2027_tipos_documento cascade;
+  end if;
+end $$;
+
 -- ---------- Tablas ----------
-create table public.portal2027_tipos_documento (
+create table if not exists public.portal2027_tipos_documento (
   id          uuid primary key default gen_random_uuid(),
   codigo      text not null check (codigo ~ '^[a-z0-9_]{2,40}$'),
   nombre      text not null check (length(trim(nombre)) > 0 and length(nombre) <= 120),
@@ -14,10 +43,10 @@ create table public.portal2027_tipos_documento (
   activo      boolean not null default true,
   creado_en   timestamptz not null default now()
 );
-create unique index portal2027_tipos_documento_codigo_uq on public.portal2027_tipos_documento (lower(codigo));
+create unique index if not exists portal2027_tipos_documento_codigo_uq on public.portal2027_tipos_documento (lower(codigo));
 
 -- Un documento vigente por estudiante, año y tipo. Sustituir reemplaza el vigente; lo anterior queda en el historial.
-create table public.portal2027_documentos (
+create table if not exists public.portal2027_documentos (
   id             uuid primary key default gen_random_uuid(),
   estudiante_id  uuid not null references public.portal2027_estudiantes (id) on delete restrict,
   anio_id        uuid not null references public.portal2027_anios (id) on delete restrict,
@@ -36,10 +65,10 @@ create table public.portal2027_documentos (
   unique (estudiante_id, anio_id, tipo_id),
   foreign key (estudiante_id, anio_id) references public.portal2027_matriculas (estudiante_id, anio_id) on delete restrict
 );
-create index portal2027_documentos_anio_idx on public.portal2027_documentos (anio_id, estudiante_id);
+create index if not exists portal2027_documentos_anio_idx on public.portal2027_documentos (anio_id, estudiante_id);
 
 -- Historial: solo se agrega. Cada registro y cada revisión dejan una fila con la ruta del archivo de ese momento.
-create table public.portal2027_historial_documentos (
+create table if not exists public.portal2027_historial_documentos (
   id             uuid primary key default gen_random_uuid(),
   documento_id   uuid not null references public.portal2027_documentos (id) on delete restrict,
   estudiante_id  uuid not null,
@@ -56,19 +85,20 @@ create table public.portal2027_historial_documentos (
   hecho_por      uuid references public.portal2027_perfiles (id) on delete set null,
   hecho_en       timestamptz not null default now()
 );
-create index portal2027_historial_documentos_doc_idx on public.portal2027_historial_documentos (documento_id, hecho_en);
+create index if not exists portal2027_historial_documentos_doc_idx on public.portal2027_historial_documentos (documento_id, hecho_en);
 
-create function public.portal2027_historial_documentos_solo_agregar()
+create or replace function public.portal2027_historial_documentos_solo_agregar()
 returns trigger language plpgsql as $$
 begin
   raise exception 'El historial de documentos no se puede modificar ni borrar';
 end $$;
+drop trigger if exists portal2027_historial_documentos_inmutable on public.portal2027_historial_documentos;
 create trigger portal2027_historial_documentos_inmutable before update or delete
   on public.portal2027_historial_documentos for each row execute function public.portal2027_historial_documentos_solo_agregar();
 
 -- ---------- Funciones de apoyo para RLS ----------
 -- Revisar: administración o el consejero del grupo donde el estudiante está matriculado ese año.
-create function public.portal2027_reviso_documentos(p_estudiante uuid, p_anio uuid)
+create or replace function public.portal2027_reviso_documentos(p_estudiante uuid, p_anio uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select public.portal2027_es_admin()
     or (public.portal2027_tiene_rol('consejero') and exists (
@@ -79,7 +109,7 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- Ver documentos de un estudiante en un año: administración, el propio estudiante o el consejero de su grupo ese año.
-create function public.portal2027_ve_documentos(p_estudiante uuid, p_anio uuid)
+create or replace function public.portal2027_ve_documentos(p_estudiante uuid, p_anio uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select public.portal2027_es_admin()
     or public.portal2027_es_mi_ficha(p_estudiante)
@@ -88,7 +118,7 @@ $$;
 
 -- Subir: el estudiante dueño (o administración), con matrícula ese año, tipo activo, y sin sustituir un documento aprobado
 -- (administración sí puede).
-create function public.portal2027_puede_subir_documento(p_estudiante uuid, p_anio uuid, p_tipo uuid)
+create or replace function public.portal2027_puede_subir_documento(p_estudiante uuid, p_anio uuid, p_tipo uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select (public.portal2027_es_admin() or public.portal2027_es_mi_ficha(p_estudiante))
     and exists (select 1 from public.portal2027_matriculas m where m.estudiante_id = p_estudiante and m.anio_id = p_anio)
@@ -114,15 +144,20 @@ alter table public.portal2027_tipos_documento       enable row level security;
 alter table public.portal2027_documentos            enable row level security;
 alter table public.portal2027_historial_documentos  enable row level security;
 
+drop policy if exists portal2027_tipos_documento_ver on public.portal2027_tipos_documento;
 create policy portal2027_tipos_documento_ver on public.portal2027_tipos_documento
   for select to authenticated using (public.portal2027_tiene_algun_rol());
+drop policy if exists portal2027_tipos_documento_ins on public.portal2027_tipos_documento;
 create policy portal2027_tipos_documento_ins on public.portal2027_tipos_documento
   for insert to authenticated with check (public.portal2027_es_admin());
+drop policy if exists portal2027_tipos_documento_upd on public.portal2027_tipos_documento;
 create policy portal2027_tipos_documento_upd on public.portal2027_tipos_documento
   for update to authenticated using (public.portal2027_es_admin()) with check (public.portal2027_es_admin());
 
+drop policy if exists portal2027_documentos_ver on public.portal2027_documentos;
 create policy portal2027_documentos_ver on public.portal2027_documentos
   for select to authenticated using (public.portal2027_ve_documentos(estudiante_id, anio_id));
+drop policy if exists portal2027_historial_documentos_ver on public.portal2027_historial_documentos;
 create policy portal2027_historial_documentos_ver on public.portal2027_historial_documentos
   for select to authenticated using (public.portal2027_ve_documentos(estudiante_id, anio_id));
 
@@ -134,12 +169,14 @@ on conflict (id) do update set public = false, file_size_limit = 5242880,
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- Ruta: <estudiante>/<año>/<tipo>/<archivo>. Sin políticas de actualizar ni borrar: los archivos viejos se conservan.
+drop policy if exists portal2027_documentos_obj_ver on storage.objects;
 create policy portal2027_documentos_obj_ver on storage.objects for select to authenticated
   using (bucket_id = 'portal2027-documentos'
     and public.portal2027_uuid_o_nulo((storage.foldername(name))[1]) is not null
     and public.portal2027_uuid_o_nulo((storage.foldername(name))[2]) is not null
     and public.portal2027_ve_documentos(public.portal2027_uuid_o_nulo((storage.foldername(name))[1]),
                                         public.portal2027_uuid_o_nulo((storage.foldername(name))[2])));
+drop policy if exists portal2027_documentos_obj_subir on storage.objects;
 create policy portal2027_documentos_obj_subir on storage.objects for insert to authenticated
   with check (bucket_id = 'portal2027-documentos'
     and public.portal2027_uuid_o_nulo((storage.foldername(name))[1]) is not null
@@ -153,7 +190,8 @@ create policy portal2027_documentos_obj_subir on storage.objects for insert to a
 -- Se llama DESPUÉS de subir el archivo. Tamaño y tipo se toman del objeto guardado en Storage, no de lo que diga el navegador.
 -- Si ya había documento de ese tipo: lo reemplaza, vuelve a «pendiente» y lo anterior queda en el historial con su ruta.
 -- Registrar dos veces la misma ruta no duplica nada.
-create function public.portal2027_registrar_documento(
+drop function if exists public.portal2027_registrar_documento(uuid, uuid, uuid, text, text);
+create or replace function public.portal2027_registrar_documento(
   p_estudiante uuid, p_anio uuid, p_tipo uuid, p_ruta text, p_nombre text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -215,7 +253,8 @@ begin
 end $$;
 
 -- Aprobar o rechazar. Rechazar exige observación. Una revisión sobre una versión vieja se rechaza con «CONFLICTO».
-create function public.portal2027_revisar_documento(
+drop function if exists public.portal2027_revisar_documento(uuid, integer, text, text);
+create or replace function public.portal2027_revisar_documento(
   p_documento uuid, p_version integer, p_estado text, p_observacion text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare d record; v_obs text; v_version integer;
@@ -244,7 +283,8 @@ end $$;
 
 -- Faltantes del grupo en un año: tipos obligatorios y activos sin documento o con documento rechazado.
 -- Los pendientes de revisión no son faltantes; se informan aparte. No se filtra por estado de la matrícula.
-create function public.portal2027_faltantes_documentos(p_salon uuid, p_anio uuid)
+drop function if exists public.portal2027_faltantes_documentos(uuid, uuid);
+create or replace function public.portal2027_faltantes_documentos(p_salon uuid, p_anio uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare v_falt jsonb; v_pend jsonb; v_obl integer;
 begin
