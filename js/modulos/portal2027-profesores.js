@@ -226,17 +226,32 @@
       confirmar.disabled = false; entrada.disabled = false;
     });
 
+    function paso(n, titulo, hijos) {
+      return el('div', { clase: 'paso-importar' }, [
+        el('h3', { texto: n + '. ' + titulo })
+      ].concat(hijos));
+    }
+
     zona.appendChild(el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Importar profesores desde Excel' }),
-      el('p', { clase: 'bloque-ayuda' }, [botonPlantilla, ' Llénela (borre las filas de ejemplo) y súbala aquí. Reimportar el mismo archivo no duplica.']),
-      el('details', null, [
-        el('summary', { texto: 'Ver cómo llenar el Excel (ejemplo)' }),
-        tablaSimple(COLUMNAS, EJEMPLO),
-        tablaSimple(AYUDA[0], AYUDA.slice(1))
+      el('p', { clase: 'bloque-ayuda', texto: 'Cargue a todos los profesores de una vez: nombre, materia y teléfono (y, si quiere, grupos y consejería). Reimportar el mismo archivo no duplica: actualiza lo que cambió.' }),
+      paso(1, 'Descargue la plantilla', [
+        el('p', { clase: 'bloque-ayuda' }, ['Es un Excel con la hoja «Importar» y una hoja «Instrucciones». ']),
+        el('div', { clase: 'cabecera-acciones' }, [botonPlantilla])
       ]),
-      aviso,
-      el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]),
-      vista, confirmar, recargar
+      paso(2, 'Llénela así (una fila por profesor)', [
+        el('p', { clase: 'bloque-ayuda', texto: 'Ejemplo. Las filas de ejemplo de la plantilla son ficticias: bórrelas y escriba las suyas. No cambie los nombres de la primera fila.' }),
+        tablaSimple(COLUMNAS, EJEMPLO),
+        el('details', null, [
+          el('summary', { texto: 'Qué lleva cada columna' }),
+          tablaSimple(AYUDA[0], AYUDA.slice(1))
+        ])
+      ]),
+      paso(3, 'Súbala aquí y confirme', [
+        aviso,
+        el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]),
+        vista, confirmar, recargar
+      ])
     ]));
   };
 })();
