@@ -84,15 +84,20 @@
         await P.renderAdmin(zona, info);
         await P.renderEstudiantesAdmin(zona, info);
         await P.renderConsejeriaAdmin(zona, info);
+        await P.renderDocumentosAdmin(zona, info);
         await P.renderConfigAdmin(zona, info);
       } else if (rol === 'profesor') {
         zona.appendChild(await vistaProfesor(info));
         await P.renderEstudiantesProfesor(zona, info);
-      } else if (rol === 'consejero') { await P.renderConsejeria(zona, info); }
+      } else if (rol === 'consejero') {
+        await P.renderConsejeria(zona, info);
+        await P.renderDocumentosConsejeria(zona, info);
+      }
       else {
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
         await P.renderEstudianteClases(zona, info);
+        await P.renderDocumentosEstudiante(zona, info);
       }
     } catch (e) {
       zona.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: P.traducirError(e) }));
