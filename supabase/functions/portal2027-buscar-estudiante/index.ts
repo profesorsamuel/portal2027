@@ -41,15 +41,31 @@ Deno.serve(async (req) => {
   // Búsqueda por grupo + nombre. Se exigen al menos dos palabras (nombre y apellido).
   const grupo = String(cuerpo.grupo || '').trim().toUpperCase();
   const pedidas = palabras(cuerpo.nombre || '');
-  if (!grupo || pedidas.length < 2) return responder({ candidatos: [] });
+  if (!grupo || (cuerpo.accion !== 'estudiantes' && pedidas.length < 2)) return responder({ candidatos: [] });
 
   const { data: salon } = await servicio.from('portal2027_salones').select('id')
     .eq('anio_id', anio.id).eq('nombre', grupo).maybeSingle();
   if (!salon) return responder({ candidatos: [] });
 
-  const { data: mats } = await servicio.from('portal2027_matriculas')
+  const { data: mats, error: errorMatriculas } = await servicio.from('portal2027_matriculas')
     .select('estudiante:portal2027_estudiantes(nombres, apellidos, usuario_id)')
     .eq('salon_id', salon.id).eq('estado', 'activo').limit(2000);
+
+  if (errorMatriculas) return responder({ error: 'No se pudo leer la matrícula del salón' }, 500);
+
+  if (cuerpo.accion === 'estudiantes') {
+    const alumnos = (mats || []).map((m: any) => m.estudiante).filter((e: any) => e && e.usuario_id);
+    if (!alumnos.length) return responder({ estudiantes: [] });
+    const { data: cuentas, error } = await servicio.from('portal2027_perfiles')
+      .select('id').in('id', alumnos.map((e: any) => e.usuario_id)).eq('activo', true);
+    if (error) return responder({ error: 'No se pudieron leer las cuentas de estudiantes' }, 500);
+    const activos = new Set((cuentas || []).map((c) => c.id));
+    // Solo nombres: nunca cédulas, teléfonos, correos ni contraseñas.
+    const estudiantes = alumnos.filter((e: any) => activos.has(e.usuario_id))
+      .map((e: any) => ({ nombre: [e.nombres, e.apellidos].filter(Boolean).join(' ').trim() }))
+      .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre, 'es'));
+    return responder({ estudiantes });
+  }
 
   const idsCoinciden: string[] = [];
   for (const m of (mats || []) as any[]) {
