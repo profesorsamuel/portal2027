@@ -70,6 +70,27 @@
     return sec;
   }
 
+  // Barra fija con un botón por sección: lleva directo a la que se quiere ver o editar.
+  function menuSecciones(zona) {
+    var titulos = [];
+    Array.prototype.forEach.call(zona.querySelectorAll('section > h2'), function (h) {
+      var t = h.textContent.trim();
+      if (t && titulos.indexOf(t) === -1) { titulos.push(t); }
+    });
+    if (titulos.length < 2) { return; }
+    var nav = el('nav', { clase: 'menu-secciones', 'aria-label': 'Ir a una sección' });
+    titulos.forEach(function (t) {
+      var b = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: t.replace(/^Importar /, 'Importar ') });
+      b.addEventListener('click', function () {
+        // Se busca al momento del clic: las secciones se redibujan al guardar cambios.
+        var h = Array.prototype.filter.call(zona.querySelectorAll('section > h2'), function (x) { return x.textContent.trim() === t; })[0];
+        if (h) { h.parentNode.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      });
+      nav.appendChild(b);
+    });
+    zona.parentNode.insertBefore(nav, zona);
+  }
+
   async function iniciar() {
     var info = await P.requerirRol(rol);
     if (info === null) { return; }
@@ -89,6 +110,7 @@
         await P.renderDocumentosAdmin(zona, info);
         await P.renderConfigAdmin(zona, info);
         await P.renderRespaldosAdmin(zona, info);
+        menuSecciones(zona);
       } else if (rol === 'profesor') {
         zona.appendChild(await vistaProfesor(info));
         await P.renderEstudiantesProfesor(zona, info);
