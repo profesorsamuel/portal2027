@@ -153,6 +153,37 @@
     });
 
     var inAnio = el('input', { type: 'number', min: '2000', max: '2100', required: true, inputmode: 'numeric' });
+    var sugerencia = el('p', { clase: 'bloque-ayuda', hidden: true });
+    selProfesor.addEventListener('change', function () {
+      sugerencia.hidden = true;
+      var perfil = perfilDe[selProfesor.value];
+      var d = perfil ? docenteDe(perfil) : null;
+      if (!d) { return; }
+      var partes = [];
+      // Materia: la primera del directorio que exista en la lista de materias.
+      var mats = materiasDe(d);
+      var hallada = '';
+      mats.forEach(function (m) {
+        if (hallada) { return; }
+        var op = datos.materias.filter(function (x) { return sinTildes(x.nombre) === sinTildes(m); })[0];
+        if (op) { hallada = op.id; }
+      });
+      if (hallada) { selMateria.value = hallada; }
+      if (mats.length) { partes.push('materia(s): ' + mats.join(', ')); }
+      // Grupo: solo si el directorio lo trae y existe ese grupo en el sistema (año activo primero).
+      var local = grupoLocal(d.grupo);
+      if (local) {
+        var activo = datos.anios.filter(function (a) { return a.activo; })[0];
+        var cand = datos.salones.filter(function (x) { return x.nombre === local; });
+        var salon = cand.filter(function (x) { return activo && x.anio && x.anio.anio === activo.anio; })[0] || cand[0];
+        if (salon) { selSalon.value = salon.id; cbCons.checked = /consejer/i.test(d.tipo || ''); partes.push('grupo ' + local + (cbCons.checked ? ' (consejería)' : '')); }
+        else { partes.push('grupo ' + d.grupo + ' (aún no existe en «Grupos»)'); }
+      }
+      if (partes.length) {
+        sugerencia.textContent = 'Según el directorio de docentes: ' + partes.join(' · ') + '. Se rellenó solo; cámbielo si hace falta y pulse «Asignar».';
+        sugerencia.hidden = false;
+      }
+    });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
       campo('Nuevo año lectivo', inAnio),
       el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Crear año' })
@@ -287,6 +318,31 @@
   /* ---------- Profesores por grupo: materias y consejería en un solo lugar ---------- */
   function etiquetaSalon(s) { return s ? s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : '') : ''; }
 
+  /* Directorio de docentes (js/datos/portal2027-docentes-2026.js): sirve para sugerir materia y grupo al elegir al profesor. */
+  var ROMANOS = { I: '1', II: '2', III: '3', IV: '4', V: '5', VI: '6', VII: '7', VIII: '8', IX: '9' };
+  function sinTildes(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+  function palabras(t) {
+    return sinTildes(t).replace(/[^a-z0-9ñ ]+/g, ' ').split(/\s+/).filter(function (w) { return w && ['de', 'del', 'la', 'las', 'los'].indexOf(w) === -1; });
+  }
+  // Busca al docente en el directorio: todas las palabras de su nombre deben estar en el nombre de la cuenta.
+  function docenteDe(perfil) {
+    var lista = P.docentes2026 || [];
+    var mias = palabras(P.nombreCompleto(perfil));
+    for (var i = 0; i < lista.length; i++) {
+      var w = palabras(lista[i].nombre);
+      if (w.length >= 2 && w.every(function (x) { return mias.indexOf(x) !== -1; })) { return lista[i]; }
+    }
+    return null;
+  }
+  function materiasDe(d) {
+    return d && d.asignatura ? d.asignatura.split(/[\/\u2013;,]/).map(function (x) { return x.trim(); }).filter(Boolean) : [];
+  }
+  // «VII-C» -> «7C». Si no tiene esa forma (primaria), devuelve ''.
+  function grupoLocal(g) {
+    var m = /^([IVX]+)-([A-Z])$/.exec(String(g || '').trim().toUpperCase());
+    return m && ROMANOS[m[1]] ? ROMANOS[m[1]] + m[2] : '';
+  }
+
   function seccionAsignaciones() {
     // Se ofrecen todas las cuentas activas que no sean solo de estudiante; al asignar se les da el rol Profesor si no lo tienen.
     var profesores = datos.perfiles.filter(function (p) {
@@ -361,7 +417,10 @@
     });
 
     var selSalon = el('select', { required: true }, opciones(datos.salones, function (s) { return s.id; }, etiquetaSalon, 'Elija el grupo'));
-    var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) { return P.nombreCompleto(p) + (p.telefono ? ' · ' + p.telefono : ''); }, 'Elija el profesor'));
+    var selProfesor = el('select', { required: true }, opciones(profesores, function (p) { return p.id; }, function (p) {
+      var mats = materiasDe(docenteDe(p)).join(' / ');
+      return P.nombreCompleto(p) + (mats ? ' · ' + mats : '') + (p.telefono ? ' · ' + p.telefono : '');
+    }, 'Elija el profesor'));
     var selMateria = el('select', null, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Sin materia (solo consejería)'));
     var cbCons = el('input', { type: 'checkbox', 'aria-label': 'Es consejero de este grupo' });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
@@ -395,6 +454,7 @@
       hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Personas y roles» o importe la lista de profesores desde Excel.' }));
     }
     hijos.push(form);
+    hijos.push(sugerencia);
     return el('section', { clase: 'bloque' }, hijos);
   }
 
