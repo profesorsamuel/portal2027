@@ -62,7 +62,8 @@
           el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases y tareas' })])])]);
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases y tareas' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-ejercicios.html?asignacion=' + encodeURIComponent(f.id), texto: 'Ejercicios virtuales' })])])]);
       }))
     ]);
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [tabla]));
@@ -98,6 +99,7 @@
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
         await P.renderEstudianteClases(zona, info);
+        await P.renderEstudianteEjercicios(zona, info);
         await P.renderDocumentosEstudiante(zona, info);
       }
     } catch (e) {
