@@ -112,3 +112,12 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .salones-docente .asignada { background: #e8f5ec; }
 .opcion-salon small { font-weight: 400; font-size: .75rem; color: var(--texto-suave); }
 @media (max-width: 420px) { .salones-docente { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Catálogo compacto de materias */
+.lista-materias-compacta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem .6rem; list-style: none; margin: .65rem 0; padding: 0; }
+.materia-compacta { display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .35rem .45rem; border: 1px solid var(--linea); border-radius: 6px; background: #f7faf9; font-size: .88rem; }
+.materia-compacta > span { min-width: 0; overflow-wrap: anywhere; }
+.materia-compacta .boton { flex-shrink: 0; padding: .2rem .4rem; font-size: .75rem; }
+.bloque-materias .formulario-fila { margin-top: .45rem; }
+@media (max-width: 700px) { .lista-materias-compacta { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 440px) { .lista-materias-compacta { grid-template-columns: 1fr; } }
