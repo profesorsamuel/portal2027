@@ -195,7 +195,42 @@
   /* ---------- Grupos ---------- */
   function seccionSalones() {
     var filas = datos.salones.map(function (s) {
-      return el('tr', null, [el('td', { texto: s.nombre }), el('td', { texto: s.anio ? String(s.anio.anio) : '' })]);
+      var eliminar = el('button', {
+        clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Eliminar',
+        onclick: async function () {
+          var etiqueta = s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : '');
+          eliminar.disabled = true;
+          try {
+            // Un grupo con estudiantes matriculados no se puede borrar: primero hay que moverlos o eliminarlos.
+            var m = await db.from('portal2027_matriculas').select('id', { count: 'exact', head: true }).eq('salon_id', s.id);
+            if (m.error) { throw m.error; }
+            if (m.count > 0) {
+              aviso('El grupo ' + etiqueta + ' tiene ' + m.count + ' estudiante(s) matriculado(s), por eso no se puede eliminar. '
+                + 'Cambie a esos estudiantes de grupo (reimporte el Excel con el grupo correcto) y vuelva a intentarlo.', 'error');
+              eliminar.disabled = false;
+              return;
+            }
+            // Las asignaciones (materia + profesor) del grupo se borran con él, junto con lo que cuelga de ellas.
+            var asig = await db.from('portal2027_asignaciones').select('id', { count: 'exact', head: true }).eq('salon_id', s.id);
+            if (asig.error) { throw asig.error; }
+            var aviso2 = asig.count > 0
+              ? '\n\nOJO: este grupo tiene ' + asig.count + ' asignación(es) de materia y profesor. También se borrarán, con sus notas, asistencia y tareas.' : '';
+            if (!window.confirm('¿Eliminar el grupo ' + etiqueta + '? Esta acción no se puede deshacer.' + aviso2)) { eliminar.disabled = false; return; }
+          } catch (e) {
+            aviso(P.traducirError(e), 'error');
+            eliminar.disabled = false;
+            return;
+          }
+          ejecutar(async function () {
+            var r = await db.from('portal2027_salones').delete().eq('id', s.id);
+            if (r.error) { throw r.error; }
+          }, 'Grupo eliminado.');
+        }
+      });
+      return el('tr', null, [
+        el('td', { texto: s.nombre }), el('td', { texto: s.anio ? String(s.anio.anio) : '' }),
+        el('td', null, [el('div', { clase: 'cabecera-acciones' }, [eliminar])])
+      ]);
     });
     var selAnio = el('select', { required: true }, opciones(datos.anios, function (a) { return a.id; }, function (a) { return String(a.anio); }, 'Elija el año'));
     var inGrado = el('input', { type: 'text', required: true, maxlength: '2', inputmode: 'numeric', placeholder: '9' });
@@ -216,7 +251,7 @@
         if (r.error) { throw r.error; }
       }, 'Grupo creado.');
     });
-    return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Grupos' }), tabla(['Grupo', 'Año'], filas, 'Todavía no hay grupos.'), form]);
+    return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Grupos' }), tabla(['Grupo', 'Año', ''], filas, 'Todavía no hay grupos.'), form]);
   }
 
   /* ---------- Asignaciones ---------- */
