@@ -107,7 +107,7 @@
             if (r.error) { throw r.error; }
           }, 'Rol actualizado.').then(function () { /* el dibujo se rehace en ejecutar */ });
         });
-        return el('td', { clase: 'centro' }, [cb]);
+        return el('label', { clase: 'rol-docente' }, [cb, P.ROLES[rol].etiqueta]);
       });
 
       var activo = el('input', { type: 'checkbox', checked: p.activo, 'aria-label': 'Cuenta activa de ' + P.nombreCompleto(p) });
@@ -143,23 +143,38 @@
         });
         accionesBaja.push(retirar);
       }
-      return el('tr', null, [
-        el('td', { texto: p.correo || '' }),
-        el('td', null, [nombres]),
-        el('td', { texto: p.telefono || '—' }),
-        el('td', null, [guardar]),
+      var fila = el('tr', null, [
+        el('td', null, [nombres, guardar]),
+        el('td', { clase: 'contacto-docente' }, [el('div', { texto: p.correo || 'Sin correo' }), el('small', { texto: p.telefono || 'Sin teléfono' })]),
         el('td', null, [resumenAsignaciones(p.id), el('button', {
-          clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Materias y salones',
+          clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Asignar materias y salones',
           onclick: function () { abrirAsignacionesDocente(zonaAsignar, p); }
-        })])
-      ].concat(celdasRoles).concat([el('td', { clase: 'centro' }, [activo]), el('td', null, accionesBaja)]));
+        })]),
+        el('td', null, [el('details', { clase: 'roles-docente' }, [
+          el('summary', { texto: 'Permisos de la cuenta' })
+        ].concat(celdasRoles))]),
+        el('td', null, [el('label', { clase: 'rol-docente' }, [activo, ' Activa'])].concat(accionesBaja))
+      ]);
+      fila.setAttribute('data-busqueda', (nombreOriginal + ' ' + (p.correo || '') + ' ' + (p.telefono || '') + ' ' + resumenAsignaciones(p.id).textContent).toLocaleLowerCase('es'));
+      return fila;
     });
 
-    var cab = ['Correo', 'Nombre completo', 'Teléfono', '', 'Materias y salones'].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa', 'Baja del profesor']);
-    return el('section', { clase: 'bloque' }, [
-      el('h2', { texto: 'Personas y roles' }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Las cuentas nuevas se crean en Supabase (Authentication → Users). Aparecen aquí sin roles; marque los roles que correspondan.' }),
-      el('label', { clase: 'bloque-ayuda' }, [verInactivos, ' Mostrar cuentas dadas de baja']),
+    var cab = ['Profesor', 'Contacto', 'Materias y salones', 'Permisos', 'Estado'];
+    var buscar = el('input', { type: 'search', placeholder: 'Buscar profesor, materia o salón…', 'aria-label': 'Buscar profesor, materia o salón' });
+    var contador = el('span', { clase: 'bloque-ayuda', texto: filas.length + ' cuenta(s)' });
+    buscar.addEventListener('input', function () {
+      var termino = buscar.value.trim().toLocaleLowerCase('es');
+      var total = 0;
+      filas.forEach(function (fila) {
+        fila.hidden = (fila.getAttribute('data-busqueda') || '').indexOf(termino) === -1;
+        if (!fila.hidden) { total++; }
+      });
+      contador.textContent = total + ' de ' + filas.length + ' cuenta(s)';
+    });
+    return el('section', { clase: 'bloque listado-profesores' }, [
+      el('h2', { texto: 'Profesores y materias que imparten' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Consulte qué materias imparte cada profesor y qué salones atiende. Use «Asignar materias y salones» para agregar varias materias y grupos; abra «Permisos de la cuenta» para cambiar sus roles.' }),
+      el('div', { clase: 'herramientas-profesores' }, [buscar, contador, el('label', { clase: 'bloque-ayuda' }, [verInactivos, ' Mostrar cuentas dadas de baja'])]),
       tabla(cab, filas, 'No hay cuentas activas. Marque «Mostrar cuentas dadas de baja» para verlas.'),
       zonaAsignar
     ]);
@@ -619,7 +634,7 @@
       tabla(['Grupo', 'Profesor', 'Teléfono', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
     ];
     if (profesores.length === 0) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Personas y roles» o importe la lista de profesores desde Excel.' }));
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Profesores y materias que imparten» o importe la lista de profesores desde Excel.' }));
     }
     hijos.push(el('div', { clase: 'formulario-fila' }, [campo('Profesor', selProfesor)]));
     hijos.push(editor);

@@ -72,7 +72,7 @@
 
   // Administración en pestañas: una barra fija arriba y, debajo, solo las secciones de la pestaña elegida.
   var PESTANAS = [
-    { id: 'personas', texto: 'Personas', titulos: ['Personas y roles', 'Importar profesores desde Excel', 'Directorio de docentes'] },
+    { id: 'personas', texto: 'Personas', titulos: ['Profesores y materias que imparten', 'Importar profesores desde Excel', 'Directorio de docentes'] },
     { id: 'estructura', texto: 'Años, grupos y materias', titulos: ['Años lectivos', 'Grupos', 'Materias', 'Profesores por grupo', 'Consejeros por grupo'] },
     { id: 'estudiantes', texto: 'Estudiantes', titulos: ['Estudiantes'] },
     { id: 'documentos', texto: 'Documentos', titulos: ['Documentos de estudiantes'] },
