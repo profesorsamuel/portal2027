@@ -86,6 +86,7 @@
         await P.renderConsejeriaAdmin(zona, info);
         await P.renderDocumentosAdmin(zona, info);
         await P.renderConfigAdmin(zona, info);
+        await P.renderRespaldosAdmin(zona, info);
       } else if (rol === 'profesor') {
         zona.appendChild(await vistaProfesor(info));
         await P.renderEstudiantesProfesor(zona, info);
