@@ -599,6 +599,7 @@
 
     /* ----- lista, invitación y foto ----- */
     var anioElegido = null;
+    var salonElegido = '7A';
     var texto = '';
 
     async function dibujarLista() {
@@ -612,6 +613,10 @@
       }));
       var buscar = el('input', { type: 'search', placeholder: 'Buscar por código o nombre', value: texto, 'aria-label': 'Buscar estudiante' });
       zonaLista.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Año', selAnio]), el('label', null, ['Buscar', buscar])]));
+      var pestanasSalones = el('div', { clase: 'pestanas', role: 'tablist', 'aria-label': 'Salones de estudiantes', style: 'display:flex;flex-wrap:wrap;gap:6px;margin:12px 0' });
+      zonaLista.appendChild(pestanasSalones);
+      var resumenSalon = el('p', { clase: 'bloque-ayuda', 'aria-live': 'polite' });
+      zonaLista.appendChild(resumenSalon);
       var cuerpo = el('div');
       var detalle = el('div', { clase: 'detalle-ficha' });
       zonaLista.appendChild(cuerpo);
@@ -634,12 +639,27 @@
         return ga.localeCompare(gb, 'es', { numeric: true }) || a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es');
       });
 
+      var gruposLista = ['7A', '7B', '7C', '8A', '8B', '8C', '9A', '9B', '9C'];
+      function grupoDe(m) { return m.salon ? String(m.salon.nombre || '').trim().toUpperCase() : 'Sin salón'; }
+      matAnio.forEach(function (m) { var g = grupoDe(m); if (gruposLista.indexOf(g) === -1) { gruposLista.push(g); } });
+      var botonesSalones = [];
+      gruposLista.forEach(function (g) {
+        var total = matAnio.filter(function (m) { return grupoDe(m) === g; }).length;
+        var boton = el('button', { type: 'button', role: 'tab', clase: 'pestana', texto: g + ' (' + total + ')', 'aria-selected': 'false' });
+        boton.addEventListener('click', function () { salonElegido = g; detalle.textContent = ''; pintar(); });
+        botonesSalones.push({ grupo: g, boton: boton });
+        pestanasSalones.appendChild(boton);
+      });
+      if (!matAnio.some(function (m) { return grupoDe(m) === salonElegido; }) && matAnio.length) { salonElegido = grupoDe(matAnio[0]); }
       function pintar() {
         cuerpo.textContent = '';
+        botonesSalones.forEach(function (b) { b.boton.classList.toggle('activa', b.grupo === salonElegido); b.boton.setAttribute('aria-selected', String(b.grupo === salonElegido)); });
         var q = texto.trim().toLowerCase();
         var lista = matAnio.filter(function (m) {
-          return !q || m.estudiante.codigo.toLowerCase().indexOf(q) !== -1 || nombreEst(m.estudiante).toLowerCase().indexOf(q) !== -1;
+          return grupoDe(m) === salonElegido && (!q || m.estudiante.codigo.toLowerCase().indexOf(q) !== -1 || nombreEst(m.estudiante).toLowerCase().indexOf(q) !== -1);
         });
+        var totalSalon = matAnio.filter(function (m) { return grupoDe(m) === salonElegido; }).length;
+        resumenSalon.textContent = 'Salón ' + salonElegido + ' · ' + totalSalon + ' estudiantes' + (q ? ' · ' + lista.length + ' encontrados' : '');
         var filas = lista.slice(0, 200).map(function (m) {
           var e = m.estudiante;
           var cuenta = e.usuario_id ? 'Vinculada' : (e.correo_estudiante ? 'Sin cuenta' : 'Sin correo');
@@ -679,7 +699,7 @@
           ]);
         });
         cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Sexo', 'Grupo', 'Estado', 'Contacto del estudiante', 'Acudiente y teléfonos', 'Cuenta', ''], filas,
-          anios.length ? 'No hay estudiantes matriculados en este año.' : 'Primero cree un año lectivo.'));
+          anios.length ? (q ? 'No hay coincidencias en este salón.' : 'No hay estudiantes matriculados en el salón ' + salonElegido + ' para este año.') : 'Primero cree un año lectivo.'));
         if (lista.length > 200) { cuerpo.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran 200 de ' + lista.length + '. Use el buscador.' })); }
       }
       pintar();
