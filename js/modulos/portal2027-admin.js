@@ -28,9 +28,9 @@
       consultar(db.from('portal2027_perfiles').select('id,nombres,apellidos,correo,telefono,activo').order('apellidos').order('correo')),
       consultar(db.from('portal2027_roles_usuario').select('usuario_id,rol')),
       consultar(db.from('portal2027_anios').select('id,anio,activo,trimestres:portal2027_trimestres(numero)').order('anio', { ascending: false })),
-      consultar(db.from('portal2027_salones').select('id,nombre,anio:portal2027_anios(anio)').order('nombre')),
+      consultar(db.from('portal2027_salones').select('id,nombre,anio_id,anio:portal2027_anios(anio)').order('nombre')),
       consultar(db.from('portal2027_materias').select('id,nombre').order('nombre')),
-      consultar(db.from('portal2027_asignaciones').select('id,salon_id,profesor_id,salon:portal2027_salones(nombre,anio:portal2027_anios(anio)),materia:portal2027_materias(nombre),profesor:portal2027_perfiles(nombres,apellidos,correo)')),
+      consultar(db.from('portal2027_asignaciones').select('id,salon_id,materia_id,profesor_id,salon:portal2027_salones(nombre,anio:portal2027_anios(anio)),materia:portal2027_materias(nombre),profesor:portal2027_perfiles(nombres,apellidos,correo)')),
       consultar(db.from('portal2027_consejeros_salon').select('salon_id,consejero_id'))
     ]);
     datos = { perfiles: r[0], roles: r[1], anios: r[2], salones: r[3], materias: r[4], asignaciones: r[5], consejerias: r[6] };
@@ -69,14 +69,20 @@
 
   /* ---------- Personas y roles ---------- */
   function seccionPersonas() {
+    var zonaAsignar = el('div', { clase: 'editor-docente', hidden: true });
     var filas = datos.perfiles.map(function (p) {
-      var nombres = el('input', { type: 'text', value: p.nombres || '', 'aria-label': 'Nombres de ' + P.nombreCompleto(p) });
-      var apellidos = el('input', { type: 'text', value: p.apellidos || '', 'aria-label': 'Apellidos de ' + P.nombreCompleto(p) });
+      var nombreOriginal = ((p.nombres || '') + ' ' + (p.apellidos || '')).trim();
+      var nombres = el('input', { type: 'text', value: nombreOriginal, style: 'min-width:240px', 'aria-label': 'Nombre completo de ' + P.nombreCompleto(p) });
       var guardar = el('button', {
         clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Guardar nombre',
         onclick: function () {
           ejecutar(async function () {
-            var r = await db.from('portal2027_perfiles').update({ nombres: nombres.value.trim(), apellidos: apellidos.value.trim() }).eq('id', p.id);
+            var completo = nombres.value.trim();
+            if (!completo) { throw new Error('Escriba el nombre completo.'); }
+            var cambios = completo === nombreOriginal
+              ? { nombres: p.nombres || '', apellidos: p.apellidos || '' }
+              : { nombres: completo, apellidos: '' };
+            var r = await db.from('portal2027_perfiles').update(cambios).eq('id', p.id);
             if (r.error) { throw r.error; }
           }, 'Nombre guardado.');
         }
@@ -118,18 +124,187 @@
       return el('tr', null, [
         el('td', { texto: p.correo || '' }),
         el('td', null, [nombres]),
-        el('td', null, [apellidos]),
         el('td', { texto: p.telefono || '—' }),
-        el('td', null, [guardar])
+        el('td', null, [guardar]),
+        el('td', null, [resumenAsignaciones(p.id), el('button', {
+          clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Materias y salones',
+          onclick: function () { abrirAsignacionesDocente(zonaAsignar, p); }
+        })])
       ].concat(celdasRoles).concat([el('td', { clase: 'centro' }, [activo])]));
     });
 
-    var cab = ['Correo', 'Nombres', 'Apellidos', 'Teléfono', ''].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa']);
+    var cab = ['Correo', 'Nombre completo', 'Teléfono', '', 'Materias y salones'].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa']);
     return el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Personas y roles' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Las cuentas nuevas se crean en Supabase (Authentication → Users). Aparecen aquí sin roles; marque los roles que correspondan.' }),
-      tabla(cab, filas, 'Todavía no hay cuentas.')
+      tabla(cab, filas, 'Todavía no hay cuentas.'),
+      zonaAsignar
     ]);
+  }
+
+  /* Cada materia conserva sus propios salones. Las asignaciones alimentan los paneles,
+     libretas, asistencia, clases y tareas que ya consultan portal2027_asignaciones. */
+  var GRUPOS_PREMEDIA = ['7A', '7B', '7C', '8A', '8B', '8C', '9A', '9B', '9C'];
+
+  function resumenAsignaciones(profesorId) {
+    var activo = datos.anios.filter(function (a) { return a.activo; })[0];
+    var asigs = datos.asignaciones.filter(function (a) {
+      return a.profesor_id === profesorId && (!activo || (a.salon && a.salon.anio && a.salon.anio.anio === activo.anio));
+    });
+    var lista = {};
+    asigs.forEach(function (a) {
+      var nombre = a.materia ? a.materia.nombre : 'Materia';
+      if (!lista[nombre]) { lista[nombre] = []; }
+      if (a.salon && lista[nombre].indexOf(a.salon.nombre) === -1) { lista[nombre].push(a.salon.nombre); }
+    });
+    return el('div', { clase: 'resumen-asignaciones' }, [
+      el('small', { texto: activo ? 'Año ' + activo.anio : 'Todos los años' })
+    ].concat(Object.keys(lista).sort(function (a, b) { return a.localeCompare(b, 'es'); }).map(function (m) {
+      return el('div', { texto: m + ': ' + lista[m].sort().join(', ') });
+    })).concat(asigs.length ? [] : [el('div', { texto: 'Sin materias asignadas' })]));
+  }
+
+  function abrirAsignacionesDocente(zonaEditor, perfil) {
+    zonaEditor.hidden = false;
+    zonaEditor.replaceChildren();
+    var activo = datos.anios.filter(function (a) { return a.activo; })[0];
+    var selAnio = el('select', { 'aria-label': 'Año de las asignaciones' }, opciones(datos.anios, function (a) { return a.id; }, function (a) { return String(a.anio); }, 'Elija el año'));
+    selAnio.value = activo ? activo.id : '';
+    var cuerpo = el('div');
+    var mensaje = el('p', { clase: 'mensaje info', role: 'status', hidden: true });
+    var guardar = el('button', { clase: 'boton', type: 'button', texto: 'Guardar materias y salones' });
+    var filas = [];
+    var ocupada = false;
+    var agregar = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Agregar otra materia' });
+    var cerrar = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar' });
+
+    function informar(t, error) {
+      mensaje.textContent = t;
+      mensaje.className = 'mensaje ' + (error ? 'error' : 'info');
+      mensaje.hidden = false;
+    }
+    function salonesDelAnio() { return datos.salones.filter(function (s) { return s.anio_id === selAnio.value; }); }
+    function existentes(materiaId) {
+      var ids = salonesDelAnio().map(function (s) { return s.id; });
+      return datos.asignaciones.filter(function (a) { return a.profesor_id === perfil.id && a.materia_id === materiaId && ids.indexOf(a.salon_id) !== -1; });
+    }
+    function agregarFila(materiaId) {
+      var selector = el('select', { 'aria-label': 'Materia del docente' }, opciones(datos.materias, function (m) { return m.id; }, function (m) { return m.nombre; }, 'Elija una materia'));
+      selector.value = materiaId || '';
+      var checks = [];
+      var rejilla = el('div', { clase: 'salones-docente' });
+      var fila = el('div', { clase: 'fila-asignacion-docente' });
+      var detalle = el('p', { clase: 'bloque-ayuda' });
+      function dibujarChecks() {
+        rejilla.replaceChildren();
+        checks = [];
+        var salones = salonesDelAnio();
+        var nombres = GRUPOS_PREMEDIA.concat(salones.map(function (s) { return s.nombre; }).filter(function (n) { return GRUPOS_PREMEDIA.indexOf(n) === -1; }));
+        var asigs = existentes(selector.value);
+        nombres.forEach(function (nombre) {
+          var salon = salones.filter(function (s) { return s.nombre === nombre; })[0];
+          var ya = !!salon && asigs.some(function (a) { return a.salon_id === salon.id; });
+          var cb = el('input', { type: 'checkbox', checked: ya, disabled: ya || !selAnio.value || !selector.value, 'aria-label': nombre + ' para ' + (selector.selectedOptions[0] ? selector.selectedOptions[0].textContent : 'materia') });
+          checks.push({ nombre: nombre, control: cb, guardada: ya });
+          rejilla.appendChild(el('label', { clase: 'opcion-salon' + (ya ? ' asignada' : '') }, [cb, nombre, el('small', { texto: ya ? 'Guardado' : salon ? '' : 'Se creará' })]));
+        });
+        detalle.textContent = asigs.length ? 'Los salones guardados se conservan. Puede agregar más salones a esta materia.' : 'Marque los salones donde impartirá esta materia.';
+      }
+      selector.addEventListener('change', dibujarChecks);
+      var quitar = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Quitar esta fila', onclick: function () {
+        if (ocupada) { return; }
+        filas = filas.filter(function (f) { return f.elemento !== fila; });
+        fila.remove();
+      } });
+      fila.appendChild(el('div', { clase: 'cabecera-acciones' }, [campo('Materia', selector), quitar]));
+      fila.appendChild(rejilla);
+      fila.appendChild(detalle);
+      cuerpo.appendChild(fila);
+      filas.push({ elemento: fila, selector: selector, seleccion: function () { return checks.filter(function (c) { return c.control.checked; }); } });
+      dibujarChecks();
+    }
+    function cargarFilas() {
+      cuerpo.replaceChildren();
+      filas = [];
+      mensaje.hidden = true;
+      var ids = salonesDelAnio().map(function (s) { return s.id; });
+      var materias = [];
+      datos.asignaciones.forEach(function (a) {
+        if (a.profesor_id === perfil.id && ids.indexOf(a.salon_id) !== -1 && materias.indexOf(a.materia_id) === -1) { materias.push(a.materia_id); }
+      });
+      materias.forEach(agregarFila);
+      if (!materias.length) { agregarFila(); }
+      agregar.disabled = !selAnio.value;
+      guardar.disabled = !selAnio.value || perfil.activo === false;
+      if (!datos.anios.length) { informar('Cree primero el año lectivo en «Años, grupos y materias».', true); }
+      else if (perfil.activo === false) { informar('Active la cuenta del docente antes de guardar asignaciones.', true); }
+    }
+    selAnio.addEventListener('change', cargarFilas);
+    agregar.addEventListener('click', function () { if (!ocupada) { agregarFila(); } });
+    cerrar.addEventListener('click', function () { if (!ocupada) { zonaEditor.hidden = true; } });
+    guardar.addEventListener('click', async function () {
+      if (ocupada) { return; }
+      if (!selAnio.value || perfil.activo === false) { informar('Seleccione un año y una cuenta activa.', true); return; }
+      var pares = [];
+      var claves = {};
+      for (var i = 0; i < filas.length; i++) {
+        var f = filas[i];
+        var seleccion = f.seleccion();
+        if (!f.selector.value) { informar('Elija una materia en cada fila o quite la fila vacía.', true); return; }
+        if (!seleccion.length) { informar('Marque al menos un salón para cada materia.', true); return; }
+        seleccion.forEach(function (c) {
+          var k = f.selector.value + '|' + c.nombre;
+          if (!c.guardada && !claves[k]) { claves[k] = true; pares.push({ materiaId: f.selector.value, nombre: c.nombre }); }
+        });
+      }
+      if (!pares.length) { informar('No hay asignaciones nuevas. Las materias y salones guardados ya aparecen en el portal.'); return; }
+      ocupada = true;
+      selAnio.disabled = agregar.disabled = cerrar.disabled = guardar.disabled = true;
+      cuerpo.querySelectorAll('select, button, input').forEach(function (n) { n.disabled = true; });
+      informar('Guardando materias y salones…');
+      try {
+        var nombres = pares.map(function (p) { return p.nombre; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
+        var actuales = salonesDelAnio();
+        var faltantes = nombres.filter(function (n) { return !actuales.some(function (s) { return s.nombre === n; }); });
+        if (faltantes.length) {
+          var rg = await db.from('portal2027_salones').upsert(faltantes.map(function (n) {
+            var partes = /^(\d+)([A-Z]+)$/.exec(n);
+            return { anio_id: selAnio.value, grado: partes[1], seccion: partes[2] };
+          }), { onConflict: 'anio_id,grado,seccion', ignoreDuplicates: true });
+          if (rg.error) { throw rg.error; }
+        }
+        var rs = await db.from('portal2027_salones').select('id,nombre').eq('anio_id', selAnio.value);
+        if (rs.error) { throw rs.error; }
+        var idDe = {};
+        (rs.data || []).forEach(function (s) { idDe[s.nombre] = s.id; });
+        if (nombres.some(function (n) { return !idDe[n]; })) { throw new Error('No se pudieron localizar todos los salones.'); }
+        var rr = await db.from('portal2027_roles_usuario').upsert({ usuario_id: perfil.id, rol: 'profesor' }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
+        if (rr.error) { throw rr.error; }
+        var ra = await db.from('portal2027_asignaciones').upsert(pares.map(function (p) {
+          return { salon_id: idDe[p.nombre], materia_id: p.materiaId, profesor_id: perfil.id };
+        }), { onConflict: 'salon_id,materia_id,profesor_id', ignoreDuplicates: true });
+        if (ra.error) { throw ra.error; }
+        await cargar();
+        dibujar();
+        aviso('Materias y salones guardados para ' + P.nombreCompleto(perfil) + '. Ya se usan en su panel, libreta, asistencia y clases.', 'ok');
+      } catch (e) {
+        informar(P.traducirError(e) + ' Puede volver a intentar guardar: no se duplicarán las asignaciones.', true);
+        selAnio.disabled = agregar.disabled = cerrar.disabled = guardar.disabled = false;
+        cuerpo.querySelectorAll('select, button').forEach(function (n) { n.disabled = false; });
+        filas.forEach(function (f) { f.seleccion().forEach(function (c) { c.control.disabled = c.guardada; }); });
+        // Restore unchecked choices too after a failed request.
+        cuerpo.querySelectorAll('input[type="checkbox"]').forEach(function (n) { if (!n.closest('.asignada')) { n.disabled = false; } });
+      } finally { ocupada = false; }
+    });
+    zonaEditor.appendChild(el('h3', { texto: 'Materias y salones de ' + P.nombreCompleto(perfil) }));
+    zonaEditor.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Agregue una fila por materia y marque sus salones. Ejemplo: Ciencias Naturales en 7A y 7B; Cívica en 9A y 9C. Los salones que falten se crean al guardar. La consejería se asigna por separado en «Profesores por grupo».' }));
+    zonaEditor.appendChild(campo('Año lectivo', selAnio));
+    zonaEditor.appendChild(cuerpo);
+    zonaEditor.appendChild(el('div', { clase: 'cabecera-acciones' }, [agregar, guardar, cerrar]));
+    zonaEditor.appendChild(mensaje);
+    zonaEditor.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Para quitar una asignación guardada, use «Profesores por grupo» en «Años, grupos y materias». Revise primero si tiene notas o tareas registradas.' }));
+    cargarFilas();
+    zonaEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   /* ---------- Años y trimestres ---------- */
