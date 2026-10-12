@@ -224,7 +224,10 @@
         if (r.error) {
           var det = '';
           try { det = (await r.error.context.json()).error; } catch (x) { /* sin detalle */ }
-          throw new Error('Se importaron los estudiantes, pero fallaron los accesos: ' + (det || r.error.message));
+          if (!det && r.error.name === 'FunctionsFetchError') {
+            det = 'no se pudo contactar la función «portal2027-crear-accesos». Revise en Supabase > Edge Functions que esté creada y con «Verify JWT» DESACTIVADO.';
+          }
+          throw new Error(det || r.error.message);
         }
         r.data.resultados.forEach(function (x) {
           if (x.estado === 'creado') { res.creados++; } else if (x.estado === 'actualizado') { res.actualizados++; } else { res.errores.push(x); }
@@ -428,7 +431,21 @@
           if (r.error) { throw r.error; }
           var d = r.data;
           aviso.mostrar('Estudiantes importados. Creando accesos con cédula…', 'info');
-          var acc = await crearAccesosEnLotes(conCedula);
+          var acc;
+          try { acc = await crearAccesosEnLotes(conCedula); }
+          catch (errAcc) {
+            vista.textContent = '';
+            confirmar.hidden = true;
+            entrada.value = '';
+            resultadoActual = null;
+            aviso.mostrar('Los estudiantes SÍ se importaron, pero NO se pudieron crear los accesos con cédula: ' + (errAcc.message || 'error')
+              + ' Cuando la función esté lista, vuelva a subir el mismo Excel (no duplica) para crear los accesos.', 'error');
+            await cargarBase();
+            dibujarLista();
+            confirmar.disabled = false;
+            entrada.disabled = false;
+            return;
+          }
           vista.textContent = '';
           confirmar.hidden = true;
           entrada.value = '';
