@@ -82,3 +82,7 @@
 .portal2027-semana input[type=date]{font:inherit;padding:8px;border:1px solid #94a3b8;border-radius:8px}
 .portal2027-semana .semana-error{color:#b91c1c;min-height:1.2em;margin:0 0 8px}
 .portal2027-semana .semana-acciones{display:flex;gap:8px;justify-content:flex-end}
+
+/* Sin flechitas de subir/bajar en ninguna casilla de nota */
+.nota-input::-webkit-outer-spin-button,.nota-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.nota-input{-moz-appearance:textfield;appearance:textfield}
