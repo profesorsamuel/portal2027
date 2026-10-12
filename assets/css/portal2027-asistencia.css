@@ -10,3 +10,16 @@
 .col-conteo { background: #f7f9f8; font-weight: 600; min-width: 3rem; }
 .leyenda-asis { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--texto-suave); }
 .leyenda-asis strong { color: var(--texto); }
+/* Casilla de toque: un botón grande que cambia de estado en cada toque */
+.asis-toque { font: inherit; font-weight: 700; font-size: 1.05rem; min-width: 3.4rem; min-height: 2.8rem; padding: .2rem .5rem; border: 2px solid #aebdba; border-radius: 10px; background: #fff; color: var(--texto); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; }
+.asis-toque:active { transform: scale(.95); }
+.asis-toque:disabled { background: #eceeed; color: var(--texto-suave); cursor: default; }
+.asis-toque.est-presente { background: #e6f3ea; border-color: #3a8f5b; color: #1d5b34; }
+.asis-toque.est-ausente { background: #fbe9e7; border-color: #c0392b; color: #9b2c1f; }
+.asis-toque.est-tardanza { background: #fff3d6; border-color: #d9a017; color: #7a5600; }
+.asis-toque.est-justificada { background: #e4eefb; border-color: #3b78c4; color: #1f4f8f; }
+.asis-toque.est-vacio { color: var(--texto-suave); }
+.asis-guardando .asis-toque { outline: 3px solid #f0c040; }
+.asis-error .asis-toque { outline: 3px solid #b3261e; }
+.leyenda-toque { flex-basis: 100%; font-size: .85rem; }
+@media (max-width: 640px) { .asis-toque { min-width: 3.8rem; min-height: 3rem; } }
