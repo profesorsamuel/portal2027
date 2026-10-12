@@ -104,37 +104,95 @@
       return { pestana: 'otros', orden: 99 };
     }
 
-    var nav = el('nav', { clase: 'menu-secciones', role: 'tablist', 'aria-label': 'Secciones de administración' });
+    var elegidas = {};
+    try { elegidas = JSON.parse(window.sessionStorage.getItem('portal2027-subpestanas-admin') || '{}') || {}; } catch (e) { /* sin almacenamiento */ }
+    if (typeof elegidas !== 'object' || Array.isArray(elegidas)) { elegidas = {}; }
+    var barra = el('div', { clase: 'navegacion-admin' });
+    var nav = el('nav', { clase: 'menu-secciones', 'aria-label': 'Secciones de administración' });
+    var subnav = el('nav', { clase: 'menu-subsecciones', role: 'tablist', 'aria-label': 'Apartados de administración' });
     var botones = {};
+    function guardar() {
+      try {
+        window.sessionStorage.setItem('portal2027-pestana-admin', activa);
+        window.sessionStorage.setItem('portal2027-subpestanas-admin', JSON.stringify(elegidas));
+      } catch (e) { /* sin almacenamiento */ }
+    }
     function aplicar() {
       var hay = {};
-      unidades().forEach(function (u) {
+      var lista = unidades().map(function (u, i) {
         var d = ubicar(u);
+        var h = u.querySelector('h2');
+        d.titulo = h ? h.textContent.trim() : 'Apartado ' + (i + 1);
+        d.unidad = u;
+        d.id = 'admin-apartado-' + i;
         hay[d.pestana] = true;
-        u.style.order = String(d.orden);
-        u.classList.toggle('oculta', d.pestana !== activa);
+        return d;
+      });
+      var disponibles = lista.filter(function (d) { return d.pestana === activa; }).sort(function (a, b) { return a.orden - b.orden; });
+      if (!disponibles.some(function (d) { return d.titulo === elegidas[activa]; }) && disponibles.length) {
+        elegidas[activa] = disponibles[0].titulo;
+      }
+      subnav.replaceChildren();
+      subnav.hidden = disponibles.length < 2;
+      disponibles.forEach(function (d) {
+        var on = d.titulo === elegidas[activa];
+        var b = el('button', { clase: 'pestana' + (on ? ' activa' : ''), type: 'button', role: 'tab',
+          id: d.id + '-tab', texto: d.titulo === 'Importar profesores desde Excel' ? 'Importar profesores' : d.titulo,
+          'aria-controls': d.id, 'aria-selected': on ? 'true' : 'false', tabindex: on ? '0' : '-1' });
+        b.addEventListener('click', function () {
+          elegidas[activa] = d.titulo;
+          guardar();
+          aplicar();
+          var nuevo = document.getElementById(d.id + '-tab');
+          if (nuevo) { nuevo.focus(); }
+        });
+        b.addEventListener('keydown', function (e) {
+          var i = disponibles.indexOf(d), siguiente;
+          if (e.key === 'ArrowRight') { siguiente = (i + 1) % disponibles.length; }
+          else if (e.key === 'ArrowLeft') { siguiente = (i + disponibles.length - 1) % disponibles.length; }
+          else if (e.key === 'Home') { siguiente = 0; }
+          else if (e.key === 'End') { siguiente = disponibles.length - 1; }
+          else { return; }
+          e.preventDefault();
+          elegidas[activa] = disponibles[siguiente].titulo;
+          guardar();
+          aplicar();
+          var nuevo = document.getElementById(disponibles[siguiente].id + '-tab');
+          if (nuevo) { nuevo.focus(); }
+        });
+        subnav.appendChild(b);
+      });
+      lista.forEach(function (d) {
+        var on = d.pestana === activa && d.titulo === elegidas[activa];
+        d.unidad.id = d.id;
+        d.unidad.style.order = String(d.orden);
+        d.unidad.classList.toggle('oculta', !on);
+        d.unidad.setAttribute('role', 'tabpanel');
+        d.unidad.setAttribute('aria-labelledby', d.id + '-tab');
       });
       Object.keys(botones).forEach(function (id) {
         var on = id === activa;
-        botones[id].setAttribute('aria-selected', on ? 'true' : 'false');
+        botones[id].setAttribute('aria-pressed', on ? 'true' : 'false');
         botones[id].classList.toggle('activa', on);
         botones[id].hidden = id === 'otros' && !hay.otros;
       });
     }
     PESTANAS.concat([{ id: 'otros', texto: 'Otros' }]).forEach(function (t) {
-      var b = el('button', { clase: 'pestana', type: 'button', role: 'tab', texto: t.texto });
+      var b = el('button', { clase: 'pestana', type: 'button', texto: t.texto });
       b.addEventListener('click', function () {
         activa = t.id;
-        try { window.sessionStorage.setItem('portal2027-pestana-admin', activa); } catch (e) { /* sin almacenamiento */ }
         aplicar();
+        guardar();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
       botones[t.id] = b;
       nav.appendChild(b);
     });
-    zona.parentNode.insertBefore(nav, zona);
+    barra.appendChild(nav);
+    barra.appendChild(subnav);
+    zona.parentNode.insertBefore(barra, zona);
     aplicar();
-    // Las secciones se redibujan al guardar cambios: se vuelve a aplicar la pestaña elegida.
+    // Mantiene el apartado seleccionado después de guardar o redibujar las secciones.
     new MutationObserver(aplicar).observe(zona, { childList: true });
   }
 
