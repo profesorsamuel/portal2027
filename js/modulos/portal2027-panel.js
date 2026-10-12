@@ -83,6 +83,7 @@
     try {
       if (rol === 'administrador') {
         await P.renderAdmin(zona, info);
+        await P.renderProfesoresAdmin(zona, info);
         await P.renderEstudiantesAdmin(zona, info);
         await P.renderConsejeriaAdmin(zona, info);
         await P.renderDocumentosAdmin(zona, info);
