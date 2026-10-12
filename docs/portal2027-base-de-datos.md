@@ -1,4 +1,4 @@
-# portal2027 — inventario de base de datos (etapas 1 a 6 y clases y tareas, parte A)
+# portal2027 — inventario de base de datos (etapas 1 a 9, parte A)
 
 Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo propio lleva el prefijo `portal2027`.
 
@@ -32,6 +32,7 @@ Proyecto Supabase: meduca2027 (nuevo, separado de control-notas-jiral). Todo lo 
 | `portal2027_cierres` | Estado cerrado/abierto por asignación y trimestre. |
 | `portal2027_resultados_cierre` | Copias numeradas del cierre (columnas, estudiantes, notas, conteo de asistencia); solo se agregan. |
 | `portal2027_historial_cierres` | Historial inmutable de cierres y reaperturas (quién, cuándo, motivo). |
+| `portal2027_respaldos` | Registro (solo se agrega, solo administración lo ve) de cada copia hecha fuera de Supabase: tipo, resultado real, responsable, ubicación. Sin claves. |
 | `portal2027_historial_asistencia` | Historial inmutable de cada cambio de marca (anterior, nuevo, versión, quién, cuándo). |
 
 ## Funciones y disparadores
@@ -64,7 +65,7 @@ Etapa 6: el estudiante no lee las tablas de notas ni de asistencia; recibe solo 
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias · `0011` clases y tareas (materiales, tareas, entregas y buckets privados) · `0012` cierre trimestral (copia versionada y bloqueo en la base). · `0013` consejería: notas del grupo (solo materias publicadas) · `0014` documentos privados. Todas viven en `supabase/migrations/`.
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias · `0011` clases y tareas (materiales, tareas, entregas y buckets privados) · `0012` cierre trimestral (copia versionada y bloqueo en la base). · `0013` consejería: notas del grupo (solo materias publicadas) · `0014` documentos privados · `0015` respaldos y recuperación de notas. Todas viven en `supabase/migrations/`.
 
 Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
@@ -79,6 +80,8 @@ Cierre trimestral (guía, etapa 7, parte A): se cierra con `portal2027_cerrar_tr
 Consejería con notas (guía, etapa 7, parte B): `portal2027_notas_salon(salon, trimestre)` (migración 0013) devuelve al consejero del grupo (o a administración) las columnas y notas SOLO de las materias que el profesor publicó; las materias sin publicar llegan sin columnas ni notas. No calcula nada: el motor único lo hace en la pantalla.
 
 Documentos privados (guía, etapa 8, parte A, migración 0014): tablas `portal2027_tipos_documento` (los define administración), `portal2027_documentos` (uno vigente por estudiante, año y tipo) y `portal2027_historial_documentos` (solo se agrega). Bucket privado `portal2027-documentos` (5 MB; PDF, JPG, PNG; ruta `estudiante/año/tipo/archivo`). Se leen con RLS (el propio estudiante, administración y el consejero del grupo) y se escriben solo con `portal2027_registrar_documento` y `portal2027_revisar_documento`; `portal2027_faltantes_documentos(salon, año)` lista los obligatorios sin documento o rechazados.
+
+Respaldos y recuperación (guía, etapa 9, parte A, migración 0015): `portal2027_recuperar_nota(historial, versión, motivo)` devuelve una nota al valor anterior a un cambio usando el guardado común (permisos, bloqueo, cierre y versión iguales; deja nueva fila de historial). `portal2027_registrar_respaldo` y `portal2027_estado_respaldos` (solo administración). Ver `portal2027-etapa9-parteA.md`.
 
 ## Edge Function
 
