@@ -368,6 +368,12 @@
     document.body.appendChild(ventana);
     ventana.showModal();
 
+    // Seguridad extra: si por cualquier motivo una casilla fuera numérica, la rueda del mouse no debe cambiarle el valor.
+    ventana.addEventListener('wheel', function () {
+      var a = document.activeElement;
+      if (a && a.tagName === 'INPUT' && a.type === 'number') { a.blur(); }
+    }, { passive: true });
+
     // Guardados en orden (uno tras otro) y una sola recarga de la libreta cuando la cola queda vacía.
     var cola = Promise.resolve(), pendientes = 0, celdasPromedio = {};
     function encolar(tarea) {
