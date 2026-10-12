@@ -10,6 +10,7 @@
   var yo = null;
   var zona = null;
   var estado = null;
+  var mostrarInactivos = false;
 
   function aviso(texto, tipo) {
     estado.textContent = texto;
@@ -70,7 +71,9 @@
   /* ---------- Personas y roles ---------- */
   function seccionPersonas() {
     var zonaAsignar = el('div', { clase: 'editor-docente', hidden: true });
-    var filas = datos.perfiles.map(function (p) {
+    var verInactivos = el('input', { type: 'checkbox', checked: mostrarInactivos });
+    verInactivos.addEventListener('change', function () { mostrarInactivos = verInactivos.checked; dibujar(); });
+    var filas = datos.perfiles.filter(function (p) { return mostrarInactivos || p.activo !== false; }).map(function (p) {
       var nombreOriginal = ((p.nombres || '') + ' ' + (p.apellidos || '')).trim();
       var nombres = el('input', { type: 'text', value: nombreOriginal, style: 'min-width:240px', 'aria-label': 'Nombre completo de ' + P.nombreCompleto(p) });
       var guardar = el('button', {
@@ -121,6 +124,25 @@
         }, marcado ? 'Cuenta activada.' : 'Cuenta desactivada.');
       });
 
+      var accionesBaja = [];
+      if (tieneRol(p.id, 'profesor') || tieneRol(p.id, 'consejero')) {
+        var retirar = el('button', {
+          clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button',
+          texto: p.activo === false ? 'Profesor dado de baja' : 'Retirar profesor',
+          disabled: p.activo === false || p.id === yo.sesion.user.id,
+          onclick: async function () {
+            if (p.id === yo.sesion.user.id || p.activo === false) { return; }
+            if (!window.confirm('¿Dar de baja a ' + P.nombreCompleto(p) + '?\n\nNo podrá acceder al portal ni recibir nuevas asignaciones. Se conservan sus notas, grupos e historial. Puede reactivarlo marcando «Activa» en las cuentas dadas de baja.')) { return; }
+            retirar.disabled = true;
+            await ejecutar(async function () {
+              var r = await db.from('portal2027_perfiles').update({ activo: false }).eq('id', p.id);
+              if (r.error) { throw r.error; }
+            }, 'Profesor dado de baja. Sus notas e historial se conservan.');
+            retirar.disabled = p.activo === false;
+          }
+        });
+        accionesBaja.push(retirar);
+      }
       return el('tr', null, [
         el('td', { texto: p.correo || '' }),
         el('td', null, [nombres]),
@@ -130,14 +152,15 @@
           clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Materias y salones',
           onclick: function () { abrirAsignacionesDocente(zonaAsignar, p); }
         })])
-      ].concat(celdasRoles).concat([el('td', { clase: 'centro' }, [activo])]));
+      ].concat(celdasRoles).concat([el('td', { clase: 'centro' }, [activo]), el('td', null, accionesBaja)]));
     });
 
-    var cab = ['Correo', 'Nombre completo', 'Teléfono', '', 'Materias y salones'].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa']);
+    var cab = ['Correo', 'Nombre completo', 'Teléfono', '', 'Materias y salones'].concat(P.ORDEN.map(function (r) { return P.ROLES[r].etiqueta; })).concat(['Activa', 'Baja del profesor']);
     return el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Personas y roles' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Las cuentas nuevas se crean en Supabase (Authentication → Users). Aparecen aquí sin roles; marque los roles que correspondan.' }),
-      tabla(cab, filas, 'Todavía no hay cuentas.'),
+      el('label', { clase: 'bloque-ayuda' }, [verInactivos, ' Mostrar cuentas dadas de baja']),
+      tabla(cab, filas, 'No hay cuentas activas. Marque «Mostrar cuentas dadas de baja» para verlas.'),
       zonaAsignar
     ]);
   }
