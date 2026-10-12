@@ -29,13 +29,45 @@
 .importar .fila-problema td { background: #fdecea; }
 .importar .fila-cambia td { background: #fff6d6; }
 
-/* Desglose semanal */
-.portal2027-desglose{width:min(96vw,1300px);max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:12px;padding:20px;background:#fff;color:#172033}
+/* Desglose semanal: diálogo a pantalla completa */
+.portal2027-desglose{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:#f4f7f6;color:var(--tinta,#14323b);overflow:hidden}
+.portal2027-desglose[open]{display:flex;flex-direction:column}
 .portal2027-desglose::backdrop{background:rgba(15,23,42,.65)}
-.portal2027-desglose table{min-width:650px;width:100%;border-collapse:collapse;margin-top:12px}
-.portal2027-desglose th,.portal2027-desglose td{padding:7px;border:1px solid #e2e8f0}
-.portal2027-desglose thead th{position:sticky;top:0;background:#eaf0f7}
-.portal2027-desglose tbody th{position:sticky;left:0;background:#fff}
+.desglose-encabezado{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:.9rem 1.5rem;background:var(--tinta,#14323b);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);flex:0 0 auto}
+.desglose-titulos h3{margin:0;font-size:1.35rem;font-family:var(--fuente-titulo,inherit);color:#fff}
+.desglose-info{margin:.2rem 0 0;font-size:.9rem;color:#cfe0de}
+.desglose-acciones{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.desglose-agregar{display:contents}
+.portal2027-desglose button{font:inherit;cursor:pointer}
+.desglose-agregar-btn,.desglose-cerrar{padding:.55rem 1.1rem;border-radius:8px;font-weight:700;border:1px solid transparent;min-height:2.5rem}
+.desglose-agregar-btn{background:var(--acento,#e8a317);color:#2b1d00}
+.desglose-agregar-btn:hover:not(:disabled){filter:brightness(1.08)}
+.desglose-agregar-btn:disabled{opacity:.5;cursor:not-allowed}
+.desglose-cerrar{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+.desglose-cerrar:hover{background:rgba(255,255,255,.15)}
+.desglose-cuerpo{flex:1 1 auto;overflow:auto;padding:1rem 1.5rem 2rem;-webkit-overflow-scrolling:touch}
+.desglose-vacio{margin:2rem auto;max-width:36rem;text-align:center;padding:2rem;background:#fff;border:1px dashed var(--linea,#d5dedc);border-radius:12px;color:var(--texto-suave,#556a6e)}
+.tabla-desglose{width:100%;min-width:max-content;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--linea,#d5dedc);border-radius:10px;font-size:.95rem}
+.tabla-desglose th,.tabla-desglose td{padding:.5rem .75rem;border-bottom:1px solid #e6ecea;border-right:1px solid #eef2f1;text-align:center;vertical-align:middle}
+.tabla-desglose thead th{position:sticky;top:0;z-index:2;background:#e3eeec;color:var(--tinta,#14323b);font-weight:700;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;border-bottom:2px solid #b9cdca;white-space:nowrap}
+.tabla-desglose .col-est{position:sticky;left:0;z-index:1;text-align:left;background:#fff;font-weight:600;white-space:nowrap;min-width:12rem;box-shadow:2px 0 4px -1px rgba(0,0,0,.12)}
+.tabla-desglose thead .col-est{z-index:3;background:#e3eeec}
+.tabla-desglose tbody tr:nth-child(even) td,.tabla-desglose tbody tr:nth-child(even) .col-est{background:#f8fbfa}
+.tabla-desglose tbody tr:hover td,.tabla-desglose tbody tr:hover .col-est{background:#fff8e6}
+.tabla-desglose tbody tr:last-child th,.tabla-desglose tbody tr:last-child td{border-bottom:0}
+.desglose-celda{display:inline-flex;align-items:center;gap:.35rem}
+.portal2027-desglose .nota-input{width:4.2rem;padding:.4rem;font-size:1rem;background:#fff}
+.portal2027-desglose .nota-input:focus{outline:3px solid var(--acento,#e8a317);outline-offset:1px}
+.desglose-borrar{width:1.7rem;height:1.7rem;padding:0;line-height:1;border:1px solid #d9b8b4;background:#fff;color:#b3261e;border-radius:6px;font-weight:700}
+.desglose-borrar:hover:not(:disabled){background:#b3261e;color:#fff;border-color:#b3261e}
+.desglose-borrar:disabled{opacity:.4;cursor:not-allowed}
+@media (max-width:640px){
+  .desglose-encabezado{padding:.7rem 1rem}
+  .desglose-titulos h3{font-size:1.1rem}
+  .desglose-info{font-size:.8rem}
+  .desglose-cuerpo{padding:.6rem .6rem 1.5rem}
+  .tabla-desglose .col-est{min-width:7.5rem;white-space:normal;font-size:.85rem}
+}
 .nota-manual-marca{font-size:.85rem;color:#b45309;margin-left:3px}
 
 .portal2027-semana{width:min(92vw,360px);border:1px solid #cbd5e1;border-radius:12px;padding:20px;background:#fff;color:#172033}
