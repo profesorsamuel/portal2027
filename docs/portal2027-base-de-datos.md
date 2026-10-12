@@ -86,3 +86,5 @@ Respaldos y recuperación (guía, etapa 9, parte A, migración 0015): `portal202
 ## Edge Function
 
 `portal2027-invitar-estudiante` (servidor): valida que quien llama sea administrador activo, invita al correo de la ficha o vincula una cuenta existente, y asigna el rol estudiante.
+
+Ejercicios virtuales (guía, etapa 6, parte A, migración 0016): tablas `portal2027_periodos_ejercicio`, `portal2027_ejercicios`, `portal2027_equipos_ejercicio`, `portal2027_equipo_integrantes`, `portal2027_intentos` (solo se agregan), `portal2027_consolidaciones` y `portal2027_config_ejercicios` (método y faltantes por año, «sin definir» hasta que administración los fije). Se leen con RLS (profesor de la asignación y administración) y se escriben solo con funciones `portal2027_*` (`crear_periodo_ejercicio`, `cerrar_periodo_ejercicio`, `crear_ejercicio`, `papelera_ejercicio`, `crear_equipo`, `disolver_equipo`, `confirmar_equipo`, `mis_ejercicios`, `iniciar_ejercicio`, `guardar_intento`, `consolidar_periodo`). El juego nunca escribe notas; la consolidación usa `portal2027_guardar_nota`. Ver `portal2027-ejercicios-parteA.md` y `portal2027-integracion-ejercicios.md`.
