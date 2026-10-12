@@ -301,32 +301,14 @@
     var input = el('input', {
       type: 'text', inputmode: 'decimal', clase: 'nota-input', maxlength: '4',
       value: n && n.valor !== null ? String(n.valor) : '',
-      disabled: ev.bloqueada || S.cerrado,
+      disabled: ev.bloqueada || S.cerrado || !!ev.semana,
+      title: ev.semana ? 'Promedio automático: edite las notas en Desglose' : '',
       'aria-label': 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + (ev.tema || M.ETIQUETAS[ev.categoria])
     });
     var td = el('td', { clase: 'celda-nota' }, [input]);
-    if (ev.semana && n && n.nota_manual) {
-      td.appendChild(el('span', { clase: 'nota-manual-marca', texto: '✎', title: 'Nota semanal corregida manualmente' }));
-      var auto = el('button', { clase: 'mini', type: 'button', texto: '↻ Auto', title: 'Quitar la corrección manual y recalcular el promedio de los registros de esta semana', onclick: async function () {
-        if (!window.confirm('¿Restaurar el promedio automático de ' + nombreEst(mat.estudiante) + '? Se quitará la corrección manual.')) { return; }
-        auto.disabled = true;
-        try {
-          var q = await db.rpc('portal2027_restaurar_nota_semanal', {
-            p_evaluacion: ev.id, p_matricula: mat.id, p_version: n.version
-          });
-          if (q.error) { throw q.error; }
-          await recargar();
-          aviso('Promedio semanal automático restaurado.', 'ok');
-        } catch (err) {
-          auto.disabled = false;
-          aviso('No se pudo restaurar el promedio: ' + textoError(err), 'error');
-        }
-      } });
-      auto.disabled = ev.bloqueada || S.cerrado;
-      td.appendChild(auto);
-    }
+    // La nota semanal se obtiene exclusivamente de sus registros; no se corrige a mano.
     function marca(tipo) { td.className = 'celda-nota' + (tipo ? ' celda-' + tipo : ''); }
-    input.addEventListener('change', function () { guardarCelda(ev, mat, input, marca); });
+    if (!ev.semana) { input.addEventListener('change', function () { guardarCelda(ev, mat, input, marca); }); }
     input.addEventListener('keydown', function (k) {
       if (k.key === 'Enter') { k.preventDefault(); if (!moverFoco(input, k.shiftKey ? -1 : 1, 0)) { input.blur(); } }
       else if (k.key === 'ArrowDown') { k.preventDefault(); moverFoco(input, 1, 0); }
@@ -480,6 +462,13 @@
           p_valor: v, p_version: reg ? reg.version : 0, p_grupo: g.grupo
         });
         if (q.error) { window.alert(P.traducirError(q.error)); inp.value = anterior; return; }
+        // El servidor recalcula la semana al guardar; sincronizar la libreta principal.
+        var nuevaNota = await db.from('portal2027_notas').select('valor,version,nota_manual').eq('evaluacion_id',ev.id).eq('matricula_id',mat.id).maybeSingle();
+        if (!nuevaNota.error) {
+          var dato = nuevaNota.data;
+          S.notas[clave(ev.id,mat.id)] = dato ? { valor: dato.valor === null ? null : Number(dato.valor), version: dato.version, nota_manual: false } : { valor: null, version: 0, nota_manual: false };
+          // Actualizar las celdas al cerrar el desglose mediante la recarga existente.
+        }
         if (reg) { reg.version = q.data.version; reg.valor = v; }
         else {
           reg = { id: q.data.id, version: q.data.version, valor: v };
