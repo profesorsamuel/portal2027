@@ -23,3 +23,8 @@
 .asis-error .asis-toque { outline: 3px solid #b3261e; }
 .leyenda-toque { flex-basis: 100%; font-size: .85rem; }
 @media (max-width: 640px) { .asis-toque { min-width: 3.8rem; min-height: 3rem; } }
+
+/* Comportamiento diario */
+.asis-toque.est-bien { background: #e6f3ea; border-color: #3a8f5b; color: #1d5b34; }
+.asis-toque.est-mal { background: #fbe9e7; border-color: #c0392b; color: #9b2c1f; }
+.asis-toque:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
