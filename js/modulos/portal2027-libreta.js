@@ -345,15 +345,23 @@
     ventana.className = 'portal2027-desglose';
     var bloqueado = S.cerrado || ev.bloqueada;
 
+    var encabezado = document.createElement('header'); encabezado.className = 'desglose-encabezado';
+    var bloqueTitulo = document.createElement('div'); bloqueTitulo.className = 'desglose-titulos';
     var titulo = document.createElement('h3');
     titulo.textContent = 'Desglose · Apreciación ' + ev.semana;
-    var cerrar = document.createElement('button');
-    cerrar.type = 'button'; cerrar.textContent = 'Cerrar y actualizar libreta';
-    cerrar.onclick = function () { ventana.close(); };
-    var info = document.createElement('p');
+    var info = document.createElement('p'); info.className = 'desglose-info';
     info.textContent = 'Cada registro tiene una nota de 0 a 5; vacío no cuenta. La nota semanal es su promedio.';
-    var contenido = document.createElement('div');
-    ventana.append(titulo, cerrar, info, contenido);
+    bloqueTitulo.append(titulo, info);
+    var acciones = document.createElement('div'); acciones.className = 'desglose-acciones';
+    var cerrar = document.createElement('button');
+    cerrar.type = 'button'; cerrar.textContent = 'Cerrar y actualizar libreta'; cerrar.className = 'desglose-cerrar';
+    cerrar.onclick = function () { ventana.close(); };
+    // El botón «+ Agregar registro» se coloca aquí cuando se pinta la tabla.
+    var zonaAgregar = document.createElement('div'); zonaAgregar.className = 'desglose-agregar';
+    acciones.append(zonaAgregar, cerrar);
+    encabezado.append(bloqueTitulo, acciones);
+    var contenido = document.createElement('div'); contenido.className = 'desglose-cuerpo';
+    ventana.append(encabezado, contenido);
 
     // Se cierre con el botón, con la tecla Esc o de cualquier otra forma: siempre se quita el diálogo y se actualiza la libreta.
     ventana.addEventListener('close', function () { ventana.remove(); recargar(); });
@@ -361,7 +369,7 @@
     ventana.showModal();
 
     async function pintar() {
-      contenido.textContent = '';
+      contenido.textContent = ''; zonaAgregar.textContent = '';
       try {
         var r = await db.from('portal2027_registros_semana')
           .select('id,evaluacion_id,matricula_id,tipo,descripcion,valor,version,grupo').eq('evaluacion_id', ev.id);
@@ -381,7 +389,7 @@
         });
 
         var botonAgregar = document.createElement('button');
-        botonAgregar.type = 'button'; botonAgregar.textContent = '+ Agregar registro'; botonAgregar.disabled = bloqueado;
+        botonAgregar.type = 'button'; botonAgregar.className = 'desglose-agregar-btn'; botonAgregar.textContent = '+ Agregar registro'; botonAgregar.disabled = bloqueado;
         botonAgregar.onclick = async function () {
           var tipo = window.prompt('Tipo de registro (ejemplo: Tarea, Laboratorio):', 'Tarea');
           if (tipo === null || tipo.trim() === '') { return; }
@@ -397,18 +405,19 @@
           if (g.error) { window.alert(P.traducirError(g.error)); }
           pintar();
         };
-        contenido.appendChild(botonAgregar);
+        zonaAgregar.appendChild(botonAgregar);
 
         if (grupos.length === 0) {
           var vacio = document.createElement('p');
+          vacio.className = 'desglose-vacio';
           vacio.textContent = 'Esta semana todavía no tiene registros. Use «+ Agregar registro».';
           contenido.appendChild(vacio);
           return;
         }
 
-        var tabla = document.createElement('table'); tabla.className = 'tabla-datos';
+        var tabla = document.createElement('table'); tabla.className = 'tabla-desglose';
         var thead = document.createElement('thead'), fila = document.createElement('tr');
-        var thEst = document.createElement('th'); thEst.textContent = 'Estudiante'; fila.appendChild(thEst);
+        var thEst = document.createElement('th'); thEst.textContent = 'Estudiante'; thEst.className = 'col-est'; fila.appendChild(thEst);
         grupos.forEach(function (g) {
           var th = document.createElement('th');
           th.textContent = g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
@@ -419,7 +428,7 @@
         var body = document.createElement('tbody');
         S.mats.forEach(function (mat) {
           var tr = document.createElement('tr'), nom = document.createElement('th');
-          nom.textContent = nombreEst(mat.estudiante); tr.appendChild(nom);
+          nom.textContent = nombreEst(mat.estudiante); nom.className = 'col-est'; tr.appendChild(nom);
           grupos.forEach(function (g) { tr.appendChild(celdaRegistro(g, mat)); });
           body.appendChild(tr);
         });
@@ -433,19 +442,20 @@
     // Celda de un estudiante en una columna de registros. Si el estudiante aún no tiene su registro, se crea al escribir la nota.
     function celdaRegistro(g, mat) {
       var td = document.createElement('td');
+      var caja = document.createElement('div'); caja.className = 'desglose-celda'; td.appendChild(caja);
       var inp = document.createElement('input');
       inp.type = 'number'; inp.min = '0'; inp.max = '5'; inp.step = '0.01'; inp.className = 'nota-input'; inp.disabled = bloqueado;
       inp.setAttribute('aria-label', 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + g.tipo + (g.descripcion ? ' ' + g.descripcion : ''));
       var reg = g.porMat[mat.id] || null;
       inp.value = reg && reg.valor !== null ? reg.valor : '';
-      td.appendChild(inp);
+      caja.appendChild(inp);
 
       var borrar = null;
-      if (reg) { td.appendChild(botonBorrar()); }
+      if (reg) { caja.appendChild(botonBorrar()); }
 
       function botonBorrar() {
         borrar = document.createElement('button');
-        borrar.type = 'button'; borrar.textContent = '×'; borrar.title = 'Eliminar este registro'; borrar.disabled = bloqueado;
+        borrar.type = 'button'; borrar.className = 'desglose-borrar'; borrar.setAttribute('aria-label', 'Eliminar registro'); borrar.textContent = '×'; borrar.title = 'Eliminar este registro'; borrar.disabled = bloqueado;
         borrar.onclick = async function () {
           if (!window.confirm('¿Eliminar este registro de ' + nombreEst(mat.estudiante) + '?')) { return; }
           var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: reg.id, p_version: reg.version });
@@ -479,7 +489,7 @@
         else {
           reg = { id: q.data.id, version: q.data.version, valor: v };
           g.porMat[mat.id] = reg;
-          td.appendChild(botonBorrar());
+          caja.appendChild(botonBorrar());
         }
       };
       return td;
