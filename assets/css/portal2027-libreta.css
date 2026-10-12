@@ -57,6 +57,11 @@
 .tabla-desglose tbody tr:last-child th,.tabla-desglose tbody tr:last-child td{border-bottom:0}
 .desglose-celda{display:inline-flex;align-items:center;gap:.35rem}
 .portal2027-desglose .nota-input{width:4.2rem;padding:.4rem;font-size:1rem;background:#fff}
+.portal2027-desglose .nota-input{scroll-margin-top:3.5rem;scroll-margin-left:13rem}
+.tabla-desglose .col-prom-sem{position:sticky;right:0;background:#fdf6e3;font-weight:700;min-width:7rem;box-shadow:-2px 0 4px -1px rgba(0,0,0,.12)}
+.tabla-desglose thead .col-prom-sem{background:#f3e6c0;z-index:3}
+.tabla-desglose tbody tr:nth-child(even) td.col-prom-sem,.tabla-desglose tbody tr:hover td.col-prom-sem{background:#fdf6e3}
+.celda-guardando .nota-input{background:#fff6d6}
 .portal2027-desglose .nota-input:focus{outline:3px solid var(--acento,#e8a317);outline-offset:1px}
 .desglose-borrar{width:1.7rem;height:1.7rem;padding:0;line-height:1;border:1px solid #d9b8b4;background:#fff;color:#b3261e;border-radius:6px;font-weight:700}
 .desglose-borrar:hover:not(:disabled){background:#b3261e;color:#fff;border-color:#b3261e}
