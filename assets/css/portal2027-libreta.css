@@ -37,3 +37,11 @@
 .portal2027-desglose thead th{position:sticky;top:0;background:#eaf0f7}
 .portal2027-desglose tbody th{position:sticky;left:0;background:#fff}
 .nota-manual-marca{font-size:.85rem;color:#b45309;margin-left:3px}
+
+.portal2027-semana{width:min(92vw,360px);border:1px solid #cbd5e1;border-radius:12px;padding:20px;background:#fff;color:#172033}
+.portal2027-semana::backdrop{background:rgba(15,23,42,.65)}
+.portal2027-semana h3{margin:0 0 12px}
+.portal2027-semana label{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-weight:600}
+.portal2027-semana input[type=date]{font:inherit;padding:8px;border:1px solid #94a3b8;border-radius:8px}
+.portal2027-semana .semana-error{color:#b91c1c;min-height:1.2em;margin:0 0 8px}
+.portal2027-semana .semana-acciones{display:flex;gap:8px;justify-content:flex-end}
