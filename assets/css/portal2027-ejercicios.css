@@ -1,0 +1,6 @@
+/* portal2027-ejercicios.css — ejercicios virtuales (pantalla del profesor, lista del estudiante y juegos) */
+.lista-marcas { display: grid; gap: 0.3rem; max-height: 14rem; overflow-y: auto; padding: 0.5rem 0.65rem; border: 1px solid var(--linea); border-radius: 8px; background: var(--blanco); }
+.lista-marcas label { display: flex; gap: 0.4rem; align-items: center; margin: 0; font-size: 0.92rem; }
+.juego-pregunta { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; font-size: 1.2rem; margin: 0.5rem 0; }
+.juego-pregunta input { width: 6rem; font: inherit; padding: 0.4rem 0.5rem; border: 1px solid #aebdba; border-radius: 8px; }
+.juego-resultado { font-size: 1.1rem; font-weight: 600; }
