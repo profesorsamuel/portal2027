@@ -10,11 +10,12 @@
   var el = P.el;
   var db = P.db;
 
-  var COLUMNAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo',
+  var COLUMNAS = ['codigo_estudiante', 'nombres', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo',
     'correo_estudiante', 'nombre_acudiente', 'telefono_acudiente', 'estado'];
   // La cédula nunca viaja a la función de importación de la base: solo va a la función de accesos.
-  var COLUMNAS_BD = COLUMNAS.filter(function (c) { return c !== 'cedula'; });
-  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo'];
+  // Lo que recibe la base: sin cédula y con los apellidos ya separados del nombre.
+  var COLUMNAS_BD = COLUMNAS.filter(function (c) { return c !== 'cedula'; }).concat(['apellidos']);
+  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo'];
   var MIN_CEDULA = 6;
   var BUCKET = 'portal2027-fotos';
   var MAX_FOTO = 2 * 1024 * 1024;
@@ -48,6 +49,25 @@
       n.hidden = !texto;
     };
     return n;
+  }
+
+  // Pasa «BEST; LIANELYS» o «Abrego, Yerlyn» a Title Case, sin tocar lo que ya viene bien escrito.
+  function arreglarMayusculas(t) {
+    if (!t || t !== t.toUpperCase()) { return t; }
+    return t.toLowerCase().replace(/(^|[\s'-])([a-záéíóúüñ])/g, function (m, a, b) { return a + b.toUpperCase(); })
+      .replace(/\s(De|Del|La|Las|Los|Y)(?=\s)/g, function (m) { return m.toLowerCase(); });
+  }
+
+  // La hoja trae el nombre completo en una columna. Con coma o punto y coma («Pérez Gómez, Ana María») se separa
+  // el apellido (antes) del nombre (después). Sin separador, todo queda en «nombres» y los apellidos vacíos.
+  function partirNombre(texto) {
+    var t = norm(texto).replace(/\s+/g, ' ');
+    var i = t.search(/[;,]/);
+    if (i === -1) { return { nombres: arreglarMayusculas(t), apellidos: '' }; }
+    var ape = norm(t.slice(0, i)).replace(/\s+/g, ' ');
+    var nom = norm(t.slice(i + 1).replace(/[;,]/g, ' ')).replace(/\s+/g, ' ');
+    if (!nom) { return { nombres: arreglarMayusculas(ape), apellidos: '' }; }
+    return { nombres: arreglarMayusculas(nom), apellidos: arreglarMayusculas(ape) };
   }
 
   // Igual que en la pantalla de entrada y en el servidor: solo letras y números, en mayúsculas.
@@ -235,7 +255,13 @@
           o[c] = pos === -1 ? '' : norm(matriz[i][pos]);
         });
         var vacia = COLUMNAS.every(function (c) { return o[c] === ''; });
-        if (!vacia) { filas.push(o); }
+        if (vacia) { continue; }
+        o.nombre_original = o.nombres;
+        var posApe = cab.indexOf('apellidos'); // Excel antiguo: si trae apellidos aparte, se respetan.
+        var apeAparte = posApe === -1 ? '' : norm(matriz[i][posApe]);
+        if (apeAparte) { o.apellidos = apeAparte; o.nombre_original = (o.nombres + ' ' + apeAparte).trim(); }
+        else { var par = partirNombre(o.nombres); o.nombres = par.nombres; o.apellidos = par.apellidos; }
+        filas.push(o);
       }
       return filas;
     }
@@ -260,7 +286,7 @@
         var cod = f.codigo_estudiante.toLowerCase();
         f.seccion = f.seccion.toUpperCase();
         f.estadoNorm = f.estado ? f.estado.toLowerCase() : 'activo';
-        if (!f.codigo_estudiante || !f.nombres || !f.apellidos) { f.errores.push('Faltan código, nombres o apellidos'); }
+        if (!f.codigo_estudiante || !f.nombres) { f.errores.push('Faltan el código o el nombre'); }
         if (!/^[0-9]{1,2}$/.test(f.grado)) { f.errores.push('Grado no válido'); }
         if (!/^[A-Z]{1,2}$/.test(f.seccion)) { f.errores.push('Sección no válida'); }
         var anio = /^[0-9]{4}$/.test(f.anio_lectivo) ? parseInt(f.anio_lectivo, 10) : NaN;
@@ -338,7 +364,7 @@
         return el('tr', null, [
           el('td', { texto: String(f._fila) }),
           el('td', { texto: f.codigo_estudiante }),
-          el('td', { texto: (f.nombres + ' ' + f.apellidos).trim() }),
+          el('td', { texto: (f.apellidos ? f.apellidos + ', ' + f.nombres : f.nombres) }),
           el('td', { texto: ocultarCedula(f.cedula) }),
           el('td', { texto: textoSexo(f.sexo) }),
           el('td', { texto: f.grado + f.seccion }),
@@ -425,16 +451,15 @@
 
       /* ----- plantilla incrustada: ejemplo en pantalla y Excel generado en el navegador ----- */
       var EJEMPLO = [
-        ['E0001', 'Ana María', 'Pérez Gómez', '8-123-456', 'Femenino', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
-        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '4-567-890', 'Masculino', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
-        ['E0003', 'María José', 'Castillo Ruiz', 'E-8-123456', 'Femenino', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
-        ['E0004', 'Pedro', 'Santos Vega', 'PE-12-345', 'Masculino', '7', 'B', '2027', '', '', '', '']
+        ['E0001', 'Pérez Gómez, Ana María', '8-123-456', 'Femenino', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
+        ['E0002', 'Rodríguez Díaz, Luis Carlos', '4-567-890', 'Masculino', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
+        ['E0003', 'Castillo Ruiz, María José', 'E-8-123456', 'Femenino', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
+        ['E0004', 'Santos Vega, Pedro', 'PE-12-345', 'Masculino', '7', 'B', '2027', '', '', '', '']
       ];
       var AYUDA_COLUMNAS = [
         ['Columna', '¿Obligatoria?', 'Qué escribir', 'Ejemplo'],
         ['codigo_estudiante', 'Sí', 'Código único del estudiante. No se repite. Es la llave para reimportar: no lo cambie después.', 'E0001'],
-        ['nombres', 'Sí', 'Nombres del estudiante.', 'Ana María'],
-        ['apellidos', 'Sí', 'Apellidos del estudiante.', 'Pérez Gómez'],
+        ['nombres', 'Sí', 'Nombre completo del estudiante en una sola celda. Se recomienda «Apellidos, Nombres» (con coma o punto y coma) para que el portal separe el apellido y ordene bien las listas. Sin coma, todo se guarda como nombre.', 'Pérez Gómez, Ana María'],
         ['cedula', 'Sí', 'Cédula del estudiante. Es su contraseña de entrada al portal; puede llevar guiones. No se repite. Mínimo 6 letras o números. Dé a la columna formato «Texto». Si el estudiante ya tiene acceso, puede dejarla vacía.', '8-123-456'],
         ['sexo', 'Sí', 'Escriba Femenino o Masculino (también vale F o M). Si el estudiante ya tiene el sexo registrado, puede dejarla vacía.', 'Femenino'],
         ['grado', 'Sí', 'Solo el número del grado (uno o dos dígitos).', '9'],
@@ -458,7 +483,7 @@
         if (!window.XLSX) { aviso.mostrar('No se cargó la biblioteca de Excel. Recargue la página e intente de nuevo.', 'error'); return; }
         var libro = XLSX.utils.book_new();
         var hojaImportar = XLSX.utils.aoa_to_sheet([COLUMNAS].concat(EJEMPLO));
-        hojaImportar['!cols'] = [18, 18, 20, 16, 12, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
+        hojaImportar['!cols'] = [18, 34, 16, 12, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
         // Columna cedula como texto, para que Excel no quite guiones ni ceros.
         var colCed = COLUMNAS.indexOf('cedula');
         for (var rr = 1; rr <= 300; rr++) {
