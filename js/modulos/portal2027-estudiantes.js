@@ -10,9 +10,12 @@
   var el = P.el;
   var db = P.db;
 
-  var COLUMNAS = ['codigo_estudiante', 'nombres', 'apellidos', 'grado', 'seccion', 'anio_lectivo',
+  var COLUMNAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'grado', 'seccion', 'anio_lectivo',
     'correo_estudiante', 'nombre_acudiente', 'telefono_acudiente', 'estado'];
-  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'apellidos', 'grado', 'seccion', 'anio_lectivo'];
+  // La cédula nunca viaja a la función de importación de la base: solo va a la función de accesos.
+  var COLUMNAS_BD = COLUMNAS.filter(function (c) { return c !== 'cedula'; });
+  var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'apellidos', 'cedula', 'grado', 'seccion', 'anio_lectivo'];
+  var MIN_CEDULA = 6;
   var BUCKET = 'portal2027-fotos';
   var MAX_FOTO = 2 * 1024 * 1024;
   var MAX_FILAS = 3000;
@@ -46,6 +49,10 @@
     };
     return n;
   }
+
+  // Igual que en la pantalla de entrada y en el servidor: solo letras y números, en mayúsculas.
+  function normCedula(c) { return String(c || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
+  function ocultarCedula(c) { var n = normCedula(c); return n ? '••••' + n.slice(-3) : ''; }
 
   function norm(t) { return String(t === null || t === undefined ? '' : t).trim(); }
 
@@ -160,6 +167,8 @@
     var zonaImport = el('div', { clase: 'zona-importar' });
     var zonaLista = el('div', { clase: 'zona-lista' });
     sec.appendChild(zonaImport);
+    var zonaAccesos = el('div');
+    sec.appendChild(zonaAccesos);
     sec.appendChild(el('h3', { texto: 'Lista de estudiantes' }));
     sec.appendChild(zonaLista);
 
@@ -169,12 +178,30 @@
     async function cargarBase() {
       var r = await Promise.all([
         consultar(db.from('portal2027_anios').select('id,anio,activo').order('anio', { ascending: false })),
-        todas(function () { return db.from('portal2027_estudiantes').select('id,codigo,nombres,apellidos,correo_estudiante,nombre_acudiente,telefono_acudiente').order('id'); }),
+        todas(function () { return db.from('portal2027_estudiantes').select('id,codigo,nombres,apellidos,correo_estudiante,nombre_acudiente,telefono_acudiente,usuario_id').order('id'); }),
         todas(function () { return db.from('portal2027_matriculas').select('estudiante_id,anio_id,estado,salon_id').order('id'); }),
         consultar(db.from('portal2027_salones').select('id,anio_id,nombre'))
       ]);
       anios = r[0];
       existentes = { estudiantes: r[1], matriculas: r[2], salones: r[3] };
+    }
+
+    // Envía códigos y cédulas a la función de servidor, de 200 en 200. No guarda la cédula en ninguna tabla.
+    async function crearAccesosEnLotes(filas, alAvanzar) {
+      var res = { creados: 0, actualizados: 0, errores: [] };
+      for (var d = 0; d < filas.length; d += 200) {
+        if (alAvanzar) { alAvanzar(Math.min(d + 200, filas.length), filas.length); }
+        var r = await db.functions.invoke('portal2027-crear-accesos', { body: { accesos: filas.slice(d, d + 200) } });
+        if (r.error) {
+          var det = '';
+          try { det = (await r.error.context.json()).error; } catch (x) { /* sin detalle */ }
+          throw new Error('Se importaron los estudiantes, pero fallaron los accesos: ' + (det || r.error.message));
+        }
+        r.data.resultados.forEach(function (x) {
+          if (x.estado === 'creado') { res.creados++; } else if (x.estado === 'actualizado') { res.actualizados++; } else { res.errores.push(x); }
+        });
+      }
+      return res;
     }
 
     /* ----- importación ----- */
@@ -190,7 +217,7 @@
       if (matriz.length === 0) { throw new Error('La hoja «Importar» está vacía.'); }
       var cab = matriz[0].map(function (c) { return norm(c).replace(/^\uFEFF/, '').toLowerCase().replace(/\s+/g, '_'); });
       var faltan = OBLIGATORIAS.filter(function (c) { return cab.indexOf(c) === -1; });
-      if (faltan.length) { throw new Error('Faltan columnas en la hoja: ' + faltan.join(', ') + '.'); }
+      if (faltan.length) { throw new Error('Faltan columnas en la hoja: ' + faltan.join(', ') + '. Si su Excel es antiguo, descargue la plantilla nueva (trae la columna cedula).'); }
       var filas = [];
       for (var i = 1; i < matriz.length; i++) {
         var o = { _fila: i + 1 };
@@ -215,6 +242,7 @@
       existentes.salones.forEach(function (s) { gruposPorAnio[s.anio_id + '|' + s.nombre] = s; });
 
       var vistos = {};
+      var cedulasArchivo = {};
       var correosArchivo = {};
       var gruposNuevos = {};
 
@@ -230,6 +258,15 @@
         var filaAnio = aniosPorNum[anio];
         if (isNaN(anio)) { f.errores.push('Año lectivo no válido'); }
         else if (!filaAnio) { f.errores.push('El año ' + anio + ' no existe; créelo en Años lectivos'); }
+        // Cédula: obligatoria si el estudiante aún no tiene acceso; opcional si ya lo tiene (si viene, cambia su contraseña).
+        var yaTieneCuenta = !!(porCodigo[cod] && porCodigo[cod].usuario_id);
+        var ced = normCedula(f.cedula);
+        if (!ced && !yaTieneCuenta) { f.errores.push('Falta la cédula'); }
+        else if (ced && ced.length < MIN_CEDULA) { f.errores.push('Cédula demasiado corta (mínimo ' + MIN_CEDULA + ' letras o números)'); }
+        else if (ced) {
+          if (cedulasArchivo[ced] && cedulasArchivo[ced] !== cod) { f.errores.push('La cédula está repetida en otro código del archivo'); }
+          cedulasArchivo[ced] = cod;
+        }
         var correo = f.correo_estudiante.toLowerCase();
         if (correo && !RE_CORREO.test(correo)) { f.errores.push('Correo no válido'); }
         if (correo) {
@@ -287,12 +324,13 @@
           el('td', { texto: String(f._fila) }),
           el('td', { texto: f.codigo_estudiante }),
           el('td', { texto: (f.nombres + ' ' + f.apellidos).trim() }),
+          el('td', { texto: ocultarCedula(f.cedula) }),
           el('td', { texto: f.grado + f.seccion }),
           el('td', { texto: f.anio_lectivo }),
           el('td', { texto: f.errores.length ? f.errores.join('; ') : f.accion, clase: f.errores.length ? 'celda-error' : '' })
         ]);
       });
-      contenedor.appendChild(textoTabla(['Fila', 'Código', 'Nombre', 'Grupo', 'Año', 'Resultado'], cuerpo, ''));
+      contenedor.appendChild(textoTabla(['Fila', 'Código', 'Nombre', 'Cédula', 'Grupo', 'Año', 'Resultado'], cuerpo, ''));
       if (filas.length > mostrar.length) {
         contenedor.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran las filas con error primero y un máximo de 60. Se importan todas.' }));
       }
@@ -339,19 +377,26 @@
         try {
           var envio = resultadoActual.filas.map(function (f) {
             var o = {};
-            COLUMNAS.forEach(function (c) { o[c] = f[c]; });
+            COLUMNAS_BD.forEach(function (c) { o[c] = f[c]; });
             return o;
           });
+          var conCedula = resultadoActual.filas.filter(function (f) { return normCedula(f.cedula); })
+            .map(function (f) { return { codigo: f.codigo_estudiante, cedula: f.cedula }; });
           var r = await db.rpc('portal2027_importar_estudiantes', { p_filas: envio });
           if (r.error) { throw r.error; }
           var d = r.data;
+          aviso.mostrar('Estudiantes importados. Creando accesos con cédula…', 'info');
+          var acc = await crearAccesosEnLotes(conCedula);
           vista.textContent = '';
           confirmar.hidden = true;
           entrada.value = '';
           resultadoActual = null;
           aviso.mostrar('Importación guardada. Estudiantes nuevos: ' + d.estudiantes_nuevos + ', actualizados: ' + d.estudiantes_actualizados
             + '. Matrículas nuevas: ' + d.matriculas_nuevas + ', actualizadas: ' + d.matriculas_actualizadas
-            + '. Grupos creados: ' + d.grupos_creados + '.', 'ok');
+            + '. Grupos creados: ' + d.grupos_creados + '. Accesos con cédula creados: ' + acc.creados + ', actualizados: ' + acc.actualizados
+            + (acc.errores.length ? ', con problema: ' + acc.errores.length + ' (' + acc.errores.slice(0, 5).map(function (x) { return x.codigo + ': ' + x.detalle; }).join('; ')
+              + (acc.errores.length > 5 ? '; …' : '') + '). Corríjalos y súbalos en «Accesos de estudiantes con cédula».' : '.'),
+            acc.errores.length ? 'error' : 'ok');
           await cargarBase();
           dibujarLista();
         } catch (e) {
@@ -364,16 +409,17 @@
 
       /* ----- plantilla incrustada: ejemplo en pantalla y Excel generado en el navegador ----- */
       var EJEMPLO = [
-        ['E0001', 'Ana María', 'Pérez Gómez', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
-        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
-        ['E0003', 'María José', 'Castillo Ruiz', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
-        ['E0004', 'Pedro', 'Santos Vega', '7', 'B', '2027', '', '', '', '']
+        ['E0001', 'Ana María', 'Pérez Gómez', '8-123-456', '9', 'C', '2027', 'ana.perez.prueba@example.com', 'Carmen Gómez', '6000-0001 / 6500-0002', 'activo'],
+        ['E0002', 'Luis Carlos', 'Rodríguez Díaz', '4-567-890', '9', 'C', '2027', 'luis.rodriguez.prueba@example.com', 'Jorge Rodríguez', '6000-0002; 6500-0003 (trabajo)', ''],
+        ['E0003', 'María José', 'Castillo Ruiz', 'E-8-123456', '10', 'A', '2027', '', 'Rosa Ruiz', '6000-0003', 'activo'],
+        ['E0004', 'Pedro', 'Santos Vega', 'PE-12-345', '7', 'B', '2027', '', '', '', '']
       ];
       var AYUDA_COLUMNAS = [
         ['Columna', '¿Obligatoria?', 'Qué escribir', 'Ejemplo'],
         ['codigo_estudiante', 'Sí', 'Código único del estudiante. No se repite. Es la llave para reimportar: no lo cambie después.', 'E0001'],
         ['nombres', 'Sí', 'Nombres del estudiante.', 'Ana María'],
         ['apellidos', 'Sí', 'Apellidos del estudiante.', 'Pérez Gómez'],
+        ['cedula', 'Sí', 'Cédula del estudiante. Es su contraseña de entrada al portal; puede llevar guiones. No se repite. Mínimo 6 letras o números. Dé a la columna formato «Texto». Si el estudiante ya tiene acceso, puede dejarla vacía.', '8-123-456'],
         ['grado', 'Sí', 'Solo el número del grado (uno o dos dígitos).', '9'],
         ['seccion', 'Sí', 'Solo la letra de la sección. Grado 9 + sección C = grupo 9C.', 'C'],
         ['anio_lectivo', 'Sí', 'Año con cuatro cifras. Debe existir en Años lectivos.', '2027'],
@@ -395,7 +441,15 @@
         if (!window.XLSX) { aviso.mostrar('No se cargó la biblioteca de Excel. Recargue la página e intente de nuevo.', 'error'); return; }
         var libro = XLSX.utils.book_new();
         var hojaImportar = XLSX.utils.aoa_to_sheet([COLUMNAS].concat(EJEMPLO));
-        hojaImportar['!cols'] = [18, 18, 20, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
+        hojaImportar['!cols'] = [18, 18, 20, 16, 8, 10, 13, 34, 22, 32, 10].map(function (w) { return { wch: w }; });
+        // Columna cedula como texto, para que Excel no quite guiones ni ceros.
+        var colCed = COLUMNAS.indexOf('cedula');
+        for (var rr = 1; rr <= 300; rr++) {
+          var dir = XLSX.utils.encode_cell({ r: rr, c: colCed });
+          if (!hojaImportar[dir]) { hojaImportar[dir] = { t: 's', v: '' }; }
+          hojaImportar[dir].t = 's'; hojaImportar[dir].z = '@';
+        }
+        hojaImportar['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 300, c: COLUMNAS.length - 1 } });
         XLSX.utils.book_append_sheet(libro, hojaImportar, 'Importar');
         var hojaAyuda = XLSX.utils.aoa_to_sheet([
           ['Cómo llenar la hoja «Importar»'],
@@ -418,9 +472,70 @@
         tablaSimple(AYUDA_COLUMNAS[0], AYUDA_COLUMNAS.slice(1))
       ]));
       zonaImport.appendChild(el('label', null, ['Archivo Excel (.xlsx) con la hoja «Importar»', entrada]));
-      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
+      zonaImport.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Columnas: ' + COLUMNAS.join(', ') + '. La cédula es la contraseña del estudiante. El correo y el estado son opcionales (sin estado se usa «activo»).' }));
       zonaImport.appendChild(vista);
       zonaImport.appendChild(confirmar);
+    }
+
+
+    /* ----- accesos con cédula (el estudiante entra con grado + nombre + cédula) ----- */
+    function dibujarAccesos() {
+      var zona = el('div', { clase: 'zona-importar' });
+      zona.appendChild(el('h3', { texto: 'Accesos de estudiantes con cédula (solo para corregir o cambiar)' }));
+      zona.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'La importación de arriba ya crea los accesos con la columna cedula. Use este bloque solo para corregir o cambiar cédulas: suba un Excel o CSV con dos columnas: codigo_estudiante y cedula (una fila por estudiante). '
+        + 'El estudiante entrará eligiendo su grado, escribiendo su nombre y usando su cédula como contraseña. '
+        + 'La cédula no se guarda como texto: solo queda cifrada como contraseña. Si vuelve a subir un código, se actualiza su contraseña. '
+        + 'En Excel, dé a la columna cedula formato «Texto» para que no se pierdan guiones ni ceros.' }));
+      var aviso2 = crearAviso();
+      var entrada = el('input', { type: 'file', accept: '.xlsx,.xls,.csv', 'aria-label': 'Archivo con códigos y cédulas' });
+      var resumen = el('div');
+      zona.appendChild(el('label', null, ['Archivo (.xlsx o .csv)', entrada]));
+      zona.appendChild(aviso2);
+      zona.appendChild(resumen);
+
+      function leer(buffer) {
+        if (!window.XLSX) { throw new Error('No se pudo cargar la biblioteca para leer Excel. Revise su internet y recargue.'); }
+        var libro = window.XLSX.read(buffer, { type: 'array', raw: true });
+        var hoja = libro.SheetNames.filter(function (n) { return n.trim().toLowerCase() === 'accesos'; })[0] || libro.SheetNames[0];
+        var matriz = window.XLSX.utils.sheet_to_json(libro.Sheets[hoja], { header: 1, raw: false, defval: '', blankrows: false });
+        if (matriz.length < 2) { throw new Error('El archivo no tiene filas con datos.'); }
+        var cab = matriz[0].map(function (c) { return norm(c).replace(/^\uFEFF/, '').toLowerCase().replace(/\s+/g, '_'); });
+        var iCod = cab.indexOf('codigo_estudiante'), iCed = cab.indexOf('cedula');
+        if (iCod === -1 || iCed === -1) { throw new Error('Faltan las columnas codigo_estudiante y cedula en la primera fila.'); }
+        var filas = [];
+        for (var i = 1; i < matriz.length; i++) {
+          var cod = norm(matriz[i][iCod]), ced = norm(matriz[i][iCed]);
+          if (cod || ced) { filas.push({ codigo: cod, cedula: ced }); }
+        }
+        return filas;
+      }
+
+      entrada.addEventListener('change', async function () {
+        resumen.textContent = '';
+        aviso2.mostrar('', 'info');
+        var archivo = entrada.files && entrada.files[0];
+        if (!archivo) { return; }
+        try {
+          var filas = leer(await archivo.arrayBuffer());
+          if (!window.confirm('¿Crear o actualizar el acceso de ' + filas.length + ' estudiantes?')) { entrada.value = ''; return; }
+          entrada.disabled = true;
+          var rr = await crearAccesosEnLotes(filas, function (n, t) { aviso2.mostrar('Procesando ' + n + ' de ' + t + '…', 'info'); });
+          var creados = rr.creados, actualizados = rr.actualizados, errores = rr.errores;
+          entrada.value = '';
+          aviso2.mostrar('Listo. Accesos creados: ' + creados + ', actualizados: ' + actualizados + ', con error: ' + errores.length + '.', errores.length ? 'error' : 'ok');
+          if (errores.length) {
+            resumen.appendChild(textoTabla(['Código', 'Problema'], errores.map(function (x) {
+              return el('tr', null, [el('td', { texto: x.codigo || '(vacío)' }), el('td', { texto: x.detalle || '' })]);
+            }), ''));
+          }
+          await cargarBase();
+          dibujarLista();
+        } catch (e) {
+          aviso2.mostrar(e.message || P.traducirError(e), 'error');
+        }
+        entrada.disabled = false;
+      });
+      return zona;
     }
 
     /* ----- lista, invitación y foto ----- */
@@ -511,6 +626,7 @@
 
     await cargarBase();
     dibujarImportacion();
+    zonaAccesos.appendChild(dibujarAccesos());
     await dibujarLista();
   }
 

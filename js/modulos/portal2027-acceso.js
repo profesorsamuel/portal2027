@@ -9,6 +9,7 @@
 
   function mostrar(nombre) {
     VISTAS.forEach(function (v) { $('vista-' + v).hidden = (v !== nombre); });
+    if (nombre === 'login') { cargarGrupos(); $('est-grupo').focus(); return; }
     var foco = document.querySelector('#vista-' + nombre + ' [data-foco]');
     if (foco) { foco.focus(); }
   }
@@ -27,6 +28,72 @@
 
   function urlInicio() {
     return window.location.href.split('#')[0].split('?')[0].replace(/index\.html$/, '');
+  }
+
+  var gruposCargados = false;
+
+  function elegirPestana(estudiante) {
+    $('form-estudiante').hidden = !estudiante;
+    $('form-login').hidden = estudiante;
+    $('pestana-estudiante').classList.toggle('activa', estudiante);
+    $('pestana-personal').classList.toggle('activa', !estudiante);
+    $('pestana-estudiante').setAttribute('aria-selected', String(estudiante));
+    $('pestana-personal').setAttribute('aria-selected', String(!estudiante));
+    mensaje('login', '', 'info');
+    var campo = estudiante ? $('est-grupo') : $('login-correo');
+    if (campo) { campo.focus(); }
+    if (estudiante) { cargarGrupos(); }
+  }
+
+  // La lista de grados la da una función pública; la pantalla de entrada no puede leer tablas.
+  async function cargarGrupos() {
+    if (gruposCargados || !P.db) { return; }
+    var sel = $('est-grupo');
+    try {
+      var r = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { accion: 'grupos' } });
+      if (r.error) { throw r.error; }
+      var grupos = (r.data && r.data.grupos) || [];
+      sel.textContent = '';
+      sel.appendChild(P.el('option', { value: '', texto: grupos.length ? 'Elija su grado…' : 'No hay grados disponibles' }));
+      grupos.forEach(function (g) { sel.appendChild(P.el('option', { value: g, texto: g })); });
+      gruposCargados = grupos.length > 0;
+    } catch (e) {
+      sel.textContent = '';
+      sel.appendChild(P.el('option', { value: '', texto: 'No se pudieron cargar los grados' }));
+      mensaje('login', 'No se pudo cargar la lista de grados. Revise su internet y recargue la página.', 'error');
+    }
+  }
+
+  // Misma regla que en el servidor: solo letras y números, en mayúsculas ("8-123-456" = "8123456").
+  function normalizarCedula(c) { return String(c || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
+
+  async function entrarEstudiante(form) {
+    var grupo = form.grupo.value;
+    var nombre = form.nombre.value.trim();
+    var cedula = normalizarCedula(form.cedula.value);
+    var generico = 'No encontramos un estudiante con esos datos. Revise su grado, su nombre y apellido, y su cédula.';
+    if (!grupo || !nombre || !cedula) { mensaje('login', 'Elija su grado y escriba su nombre y su cédula.', 'error'); return; }
+    if (nombre.split(/\s+/).length < 2) { mensaje('login', 'Escriba su nombre y su apellido.', 'error'); return; }
+
+    ocupado(form, true);
+    mensaje('login', '', 'info');
+    try {
+      var b = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { grupo: grupo, nombre: nombre } });
+      if (b.error) { throw b.error; }
+      var candidatos = (b.data && b.data.candidatos) || [];
+      var entro = false;
+      for (var i = 0; i < candidatos.length && !entro; i++) {
+        var r = await P.db.auth.signInWithPassword({ email: candidatos[i], password: cedula });
+        if (!r.error) { entro = true; }
+        else if (!/Invalid login credentials/i.test(r.error.message || '')) { throw r.error; }
+      }
+      if (!entro) { mensaje('login', generico, 'error'); ocupado(form, false); return; }
+      form.cedula.value = '';
+      await enrutar();
+    } catch (e) {
+      mensaje('login', P.traducirError(e), 'error');
+    }
+    ocupado(form, false);
   }
 
   async function enrutar() {
@@ -57,11 +124,15 @@
   async function salir() {
     try { await P.db.auth.signOut(); } catch (e) { /* ignorar */ }
     $('form-login').reset();
+    $('form-estudiante').reset();
     mostrar('login');
     mensaje('login', '', 'info');
   }
 
   function conectarFormularios() {
+    $('pestana-estudiante').addEventListener('click', function () { elegirPestana(true); });
+    $('pestana-personal').addEventListener('click', function () { elegirPestana(false); });
+    $('form-estudiante').addEventListener('submit', function (ev) { ev.preventDefault(); entrarEstudiante(ev.target); });
     $('ir-recuperar').addEventListener('click', function () { mostrar('recuperar'); });
     $('volver-login').addEventListener('click', function () { mostrar('login'); });
     $('salir-elegir').addEventListener('click', salir);
@@ -127,7 +198,7 @@
     if (!P.db) {
       mostrar('login');
       mensaje('login', P.errorCarga, 'error');
-      Array.prototype.forEach.call(document.querySelectorAll('#form-login button, #form-login input'), function (n) { n.disabled = true; });
+      Array.prototype.forEach.call(document.querySelectorAll('#vista-login button, #vista-login input, #vista-login select'), function (n) { n.disabled = true; });
       return;
     }
 
