@@ -18,31 +18,77 @@
     ])]);
   }
 
+  // Solo se muestran las dos notas semanales: Apreciación y Ejercicio escrito.
+  var VISIBLES = ['apreciacion', 'ejercicio_escrito'];
+  var NOTA_MINIMA = 3; // por debajo se resalta en rojo suave para que sea fácil de ver
+
+  function celdaNota(valor) {
+    if (valor === undefined || valor === null) { return el('span', { clase: 'nota-valor nota-vacia', texto: 'Sin nota' }); }
+    return el('span', { clase: 'nota-valor' + (valor < NOTA_MINIMA ? ' nota-baja' : ''), texto: M.formatear(valor) });
+  }
+
+  // Un grupo (Apreciación o Ejercicio escrito): tabla «qué es · tema · nota» y su promedio.
+  function grupoNotas(titulo, colQue, filas, promedioTexto) {
+    var cab = [el('h4', null, [titulo, promedioTexto ? el('span', { clase: 'promedio-grupo', texto: 'Promedio: ' + promedioTexto }) : null])];
+    if (filas.length === 0) {
+      cab.push(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay notas de ' + titulo.toLowerCase() + ' en esta materia.' }));
+      return el('div', { clase: 'grupo-notas' }, cab);
+    }
+    cab.push(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-notas' }, [
+      el('thead', null, [el('tr', null, [el('th', { scope: 'col', texto: colQue }), el('th', { scope: 'col', texto: 'Tema' }), el('th', { scope: 'col', clase: 'col-nota', texto: 'Nota' })])]),
+      el('tbody', null, filas)
+    ])]));
+    return el('div', { clase: 'grupo-notas' }, cab);
+  }
+
   function dibujarNotas(cont, datos) {
     cont.textContent = '';
     if (datos.materias.length === 0) { cont.appendChild(el('p', { clase: 'vacio-texto', texto: 'No hay materias asignadas a su grupo en este trimestre.' })); return; }
     datos.materias.forEach(function (m) {
-      var bloque = el('div', { clase: 'detalle-ficha' }, [el('h3', { texto: m.materia })]);
+      var bloque = el('div', { clase: 'materia-notas' }, [el('h3', { texto: m.materia })]);
       if (!m.publicada) {
         bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'El profesor aún no ha publicado las notas de esta materia en este trimestre.' }));
-      } else {
-        // Solo se muestran las dos notas semanales: Apreciación y Ejercicio escrito.
-        var VISIBLES = ['apreciacion', 'ejercicio_escrito'];
-        var evals = m.evaluaciones.filter(function (e) { return VISIBLES.indexOf(e.categoria) !== -1; });
-        if (evals.length === 0) {
-          bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay notas de apreciación ni de ejercicio escrito en esta materia.' }));
-        } else {
-          var notas = {};
-          evals.forEach(function (e) { if (e.valor !== null && e.valor !== undefined) { notas[e.id] = Number(e.valor); } });
-          var r = M.calcular(evals, notas);
-          bloque.appendChild(tabla(['Categoría', 'Tema', 'Nota'], evals.map(function (e) {
-            return el('tr', null, [el('td', { texto: M.ETIQUETAS[e.categoria] || e.categoria }), el('td', { texto: e.tema || '—' }),
-              el('td', { texto: notas[e.id] === undefined ? '—' : String(notas[e.id]) })]);
-          })));
-          var partes = VISIBLES.map(function (c) { return M.ETIQUETAS[c] + ': ' + (r.categorias[c].texto || '—'); });
-          bloque.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Promedios · ' + partes.join(' · ') }));
-        }
+        cont.appendChild(bloque);
+        return;
       }
+      var evals = m.evaluaciones.filter(function (e) { return VISIBLES.indexOf(e.categoria) !== -1; });
+      if (evals.length === 0) {
+        bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay notas de apreciación ni de ejercicio escrito en esta materia.' }));
+        cont.appendChild(bloque);
+        return;
+      }
+      var notas = {};
+      evals.forEach(function (e) { if (M.esNota(e.valor)) { notas[e.id] = Number(e.valor); } });
+      var r = M.calcular(evals, notas);
+
+      // Apreciación: de qué se trata cada nota (ejercicio virtual, laboratorio…) y su tema.
+      var filasApre = evals.filter(function (e) { return e.categoria === 'apreciacion'; }).map(function (e) {
+        return el('tr', null, [
+          el('td', null, [el('span', { clase: 'etiqueta-tipo', texto: e.tipo || M.ETIQUETAS.apreciacion })]),
+          el('td', { clase: 'nota-tema', texto: e.tema || '—' }),
+          el('td', { clase: 'col-nota' }, [celdaNota(notas[e.id])])
+        ]);
+      });
+      // Ejercicio escrito: «Ejercicio 1», «Ejercicio 2»… en el orden que puso el profesor, con su tema.
+      var n = 0;
+      var filasEsc = evals.filter(function (e) { return e.categoria === 'ejercicio_escrito'; }).map(function (e) {
+        n++;
+        return el('tr', null, [
+          el('td', { clase: 'nota-que', texto: 'Ejercicio ' + n }),
+          el('td', { clase: 'nota-tema', texto: e.tema || '—' }),
+          el('td', { clase: 'col-nota' }, [celdaNota(notas[e.id])])
+        ]);
+      });
+      bloque.appendChild(grupoNotas('Apreciación', 'Qué es', filasApre, r.categorias.apreciacion.texto));
+      bloque.appendChild(grupoNotas('Ejercicio escrito', 'Ejercicio', filasEsc, r.categorias.ejercicio_escrito.texto));
+
+      // Promedio final: solo aparece cuando ya hay al menos una nota.
+      var conNota = r.final !== null;
+      bloque.appendChild(el('div', { clase: 'promedio-final' + (conNota ? '' : ' sin-nota') }, [
+        el('span', { clase: 'pf-texto' }, ['Promedio final de ' + m.materia,
+          el('span', { clase: 'pf-ayuda', texto: conNota ? 'Promedio entre apreciación y ejercicio escrito' : 'Todavía no hay notas para calcularlo' })]),
+        el('span', { clase: 'pf-numero', texto: conNota ? r.textoFinal : 'Sin promedio' })
+      ]));
       cont.appendChild(bloque);
     });
   }

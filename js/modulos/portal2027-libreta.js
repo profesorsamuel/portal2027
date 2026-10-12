@@ -75,7 +75,7 @@
     var r = await Promise.all([
       todas(function () {
         return db.from('portal2027_evaluaciones')
-          .select('id,categoria,tema,orden,bloqueada,oculta,eliminada_en,version')
+          .select('id,categoria,tema,tipo,orden,bloqueada,oculta,eliminada_en,version')
           .eq('asignacion_id', asigId).eq('trimestre_id', trId).order('orden').order('id');
       }),
       todas(function () {
@@ -125,11 +125,40 @@
     }
   }
 
+  // De qué se trata cada nota de apreciación (el estudiante lo ve junto a su nota).
+  var TIPOS_APRECIACION = ['Ejercicio virtual', 'Laboratorio', 'Participación', 'Trabajo en clase', 'Tarea', 'Otro'];
+  // Los ejercicios escritos se numeran solos por orden (Ejercicio 1, Ejercicio 2…); el tema lo escribe el profesor.
+  function numeroEscrito(ev) {
+    var n = 0;
+    for (var i = 0; i < S.evals.length; i++) {
+      var e = S.evals[i];
+      if (e.eliminada_en || e.categoria !== 'ejercicio_escrito') { continue; }
+      n++;
+      if (e.id === ev.id) { return n; }
+    }
+    return n;
+  }
+
   function agregarColumna(cat) {
     if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
-    var tema = window.prompt('Tema de la nueva columna de ' + M.ETIQUETAS[cat].toLowerCase() + ' (puede dejarlo vacío):', '');
+    var tipo = '';
+    if (cat === 'apreciacion') {
+      var lista = TIPOS_APRECIACION.map(function (t, i) { return (i + 1) + ' = ' + t; }).join('\n');
+      var r = window.prompt('¿De qué se trata esta nota de apreciación? Escriba el número:\n' + lista, '1');
+      if (r === null) { return; }
+      var idx = parseInt(r, 10);
+      if (!(idx >= 1 && idx <= TIPOS_APRECIACION.length)) { aviso('Escriba un número de la lista (1 a ' + TIPOS_APRECIACION.length + ').', 'error'); return; }
+      tipo = TIPOS_APRECIACION[idx - 1];
+    }
+    var pista = cat === 'ejercicio_escrito' ? 'Tema del ejercicio escrito (por ejemplo: Tema 1):' : 'Tema o detalle de la nueva columna de ' + M.ETIQUETAS[cat].toLowerCase() + ' (puede dejarlo vacío):';
+    var tema = window.prompt(pista, '');
     if (tema === null) { return; }
-    llamar('portal2027_crear_evaluacion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_categoria: cat, p_tema: tema }, 'Columna agregada.');
+    llamar('portal2027_crear_evaluacion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_categoria: cat, p_tema: tema, p_tipo: tipo }, 'Columna agregada.');
+  }
+  function cambiarTipo(ev, select) {
+    if (select.value === (ev.tipo || '')) { return; }
+    llamar('portal2027_actualizar_evaluacion', { p_id: ev.id, p_version: ev.version, p_tema: null, p_oculta: null, p_bloqueada: null, p_tipo: select.value },
+      'Tipo guardado.');
   }
   function cambiarTema(ev, input) {
     if (input.value.trim() === (ev.tema || '')) { return; }
@@ -228,7 +257,19 @@
     var tema = el('input', { type: 'text', clase: 'tema-input', value: ev.tema || '', placeholder: 'Tema', maxlength: '120', disabled: ev.bloqueada || S.cerrado, 'aria-label': 'Tema de la columna' });
     tema.addEventListener('change', function () { cambiarTema(ev, tema); });
     function boton(texto, titulo, fn) { return el('button', { clase: 'mini', type: 'button', texto: texto, title: titulo, 'aria-label': titulo, disabled: S.cerrado, onclick: fn }); }
+    var rotulo = null;
+    if (ev.categoria === 'ejercicio_escrito') {
+      rotulo = el('div', { clase: 'col-rotulo', texto: 'Ejercicio ' + numeroEscrito(ev) });
+    } else if (ev.categoria === 'apreciacion') {
+      var opciones = [el('option', { value: '', texto: 'Tipo…' })].concat(TIPOS_APRECIACION.map(function (t) { return el('option', { value: t, texto: t }); }));
+      if (ev.tipo && TIPOS_APRECIACION.indexOf(ev.tipo) === -1) { opciones.push(el('option', { value: ev.tipo, texto: ev.tipo })); }
+      var sel = el('select', { clase: 'tipo-select', 'aria-label': 'Tipo de nota de apreciación', disabled: ev.bloqueada || S.cerrado }, opciones);
+      sel.value = ev.tipo || '';
+      sel.addEventListener('change', function () { cambiarTipo(ev, sel); });
+      rotulo = sel;
+    }
     return el('th', { scope: 'col', clase: 'col-eval' + (ev.oculta ? ' col-oculta' : '') }, [
+      rotulo,
       tema,
       el('div', { clase: 'col-acciones' }, [
         boton(ev.bloqueada ? '🔒' : '🔓', ev.bloqueada ? 'Desbloquear columna' : 'Bloquear columna', function () { alternarBloqueo(ev); }),
