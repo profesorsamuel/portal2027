@@ -131,3 +131,14 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .menu-subsecciones .pestana.activa { font-weight: 700; background: var(--blanco); }
 .menu-subsecciones .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 .navegacion-admin ~ .secciones .estado-panel { position: static; }
+
+.herramientas-profesores { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: 1rem 0; }
+.herramientas-profesores input[type="search"] { flex: 1 1 240px; max-width: 460px; }
+.listado-profesores td { vertical-align: top; }
+.listado-profesores td:first-child .boton { display: block; margin-top: .35rem; }
+.listado-profesores tr[hidden] { display: none; }
+.contacto-docente { overflow-wrap: anywhere; max-width: 220px; }
+.roles-docente { min-width: 150px; }
+.roles-docente summary { cursor: pointer; font-size: .9rem; }
+.rol-docente { display: flex; align-items: center; gap: .4rem; margin: .4rem 0; font-size: .9rem; }
+.rol-docente input[type="checkbox"] { width: auto; }
