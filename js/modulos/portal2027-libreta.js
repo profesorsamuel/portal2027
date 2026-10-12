@@ -90,7 +90,7 @@
     var r = await Promise.all([
       todas(function () {
         return db.from('portal2027_evaluaciones')
-          .select('id,categoria,tema,tipo,orden,bloqueada,oculta,eliminada_en,version')
+          .select('id,categoria,tema,tipo,orden,bloqueada,oculta,eliminada_en,version,semana,semana_inicio,semana_fin')
           .eq('asignacion_id', asigId).eq('trimestre_id', trId).order('orden').order('id');
       }),
       todas(function () {
@@ -100,7 +100,7 @@
       }),
       todas(function () {
         return db.from('portal2027_notas')
-          .select('evaluacion_id,matricula_id,valor,version,evaluacion:portal2027_evaluaciones!inner(asignacion_id,trimestre_id)')
+          .select('evaluacion_id,matricula_id,valor,version,nota_manual,evaluacion:portal2027_evaluaciones!inner(asignacion_id,trimestre_id)')
           .eq('evaluacion.asignacion_id', asigId).eq('evaluacion.trimestre_id', trId).order('id');
       }),
       consultar(db.from('portal2027_publicaciones').select('publicada').eq('asignacion_id', asigId).eq('trimestre_id', trId).maybeSingle()),
@@ -111,7 +111,7 @@
     S.evals = r[0];
     S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.notas = {};
-    r[2].forEach(function (n) { S.notas[clave(n.evaluacion_id, n.matricula_id)] = { valor: n.valor === null ? null : Number(n.valor), version: n.version }; });
+    r[2].forEach(function (n) { S.notas[clave(n.evaluacion_id, n.matricula_id)] = { valor: n.valor === null ? null : Number(n.valor), version: n.version, nota_manual: !!n.nota_manual }; });
     S.historial = null;
   }
 
@@ -155,6 +155,12 @@
   function agregarColumna(cat) {
     if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
     var tipo = '';
+    if (cat === 'apreciacion' && window.confirm('¿Crear apreciación SEMANAL? Aceptar = semanal; Cancelar = suelta.')) {
+      var siguiente = 1 + Math.max(0, ...S.evals.filter(function(e){return e.categoria==='apreciacion' && e.semana;}).map(function(e){return e.semana;}));
+      var inicio = window.prompt('Fecha inicial de la semana ' + siguiente + ' (AAAA-MM-DD):', ''); if (!inicio) return;
+      var fin = window.prompt('Fecha final de la semana (AAAA-MM-DD):', inicio); if (!fin) return;
+      llamar('portal2027_crear_apreciacion_semanal', {p_asignacion:S.asig.id,p_trimestre:S.trimestreId,p_inicio:inicio,p_fin:fin}, 'Apreciación semanal creada.'); return;
+    }
     if (cat === 'apreciacion') {
       var lista = TIPOS_APRECIACION.map(function (t, i) { return (i + 1) + ' = ' + t; }).join('\n');
       var r = window.prompt('¿De qué se trata esta nota de apreciación? Escriba el número:\n' + lista, '1');
@@ -217,12 +223,12 @@
     marca('guardando');
     aviso('Guardando…', 'info');
     try {
-      var r = await db.rpc('portal2027_guardar_nota', {
-        p_evaluacion: ev.id, p_matricula: mat.id, p_valor: valor, p_version: previa.version, p_motivo: motivo
+      var r = await db.rpc(ev.semana ? 'portal2027_guardar_nota_semanal_manual' : 'portal2027_guardar_nota', {
+        p_evaluacion: ev.id, p_matricula: mat.id, p_valor: valor, p_version: previa.version, p_motivo: motivo || (ev.semana ? 'Corrección manual de la semana' : null)
       });
       if (r.error) { throw r.error; }
       var d = r.data;
-      S.notas[k] = { valor: d.valor === null ? null : Number(d.valor), version: d.version };
+      S.notas[k] = { valor: d.valor === null ? null : Number(d.valor), version: d.version, nota_manual: !!ev.semana };
       S.historial = null;
       marca('ok');
       actualizarFila(mat.id);
@@ -260,6 +266,7 @@
       'aria-label': 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + (ev.tema || M.ETIQUETAS[ev.categoria])
     });
     var td = el('td', { clase: 'celda-nota' }, [input]);
+    if (ev.semana && n && n.nota_manual) { td.appendChild(el('span', { clase: 'nota-manual-marca', texto: '✎', title: 'Nota semanal corregida manualmente' })); }
     function marca(tipo) { td.className = 'celda-nota' + (tipo ? ' celda-' + tipo : ''); }
     input.addEventListener('change', function () { guardarCelda(ev, mat, input, marca); });
     input.addEventListener('keydown', function (k) {
@@ -280,6 +287,54 @@
     return td;
   }
 
+  async function abrirDesglose(ev) {
+    var ventana = document.createElement('dialog'); ventana.className = 'portal2027-desglose';
+    var titulo = document.createElement('h3'); titulo.textContent = 'Desglose · Apreciación ' + ev.semana;
+    var cerrar = document.createElement('button'); cerrar.textContent = 'Cerrar y actualizar libreta'; cerrar.type = 'button';
+    cerrar.onclick = function () { ventana.close(); ventana.remove(); recargar(); };
+    ventana.append(titulo, cerrar);
+    var info = document.createElement('p'); info.textContent = 'Cada registro tiene una nota de 0 a 5; vacío no cuenta. La nota semanal es su promedio.'; ventana.appendChild(info);
+    document.body.appendChild(ventana); ventana.showModal();
+    try {
+      var r = await db.from('portal2027_registros_semana').select('id,evaluacion_id,matricula_id,tipo,descripcion,valor,version').eq('evaluacion_id', ev.id);
+      if (r.error) { throw r.error; }
+      var registros = r.data || [];
+      var tipos = Array.from(new Set(registros.map(function(x){return x.tipo + '|' + x.descripcion;})));
+      var botonAgregar = document.createElement('button'); botonAgregar.textContent = '+ Agregar registro'; botonAgregar.disabled = S.cerrado || ev.bloqueada;
+      botonAgregar.onclick = async function () {
+        var tipo = prompt('Tipo de registro (ejemplo: Tarea, Laboratorio):', 'Tarea'); if (!tipo) return;
+        var descripcion = prompt('Descripción del registro:', '') || '';
+        if (tipo.length > 40 || descripcion.length > 120) { alert('Texto demasiado largo'); return; }
+        // Se crea una fila por estudiante, con valor nulo (sin nota).
+        for (var mat of S.mats) {
+          var g = await db.rpc('portal2027_guardar_registro_semana', {p_id:null,p_evaluacion:ev.id,p_matricula:mat.id,p_tipo:tipo,p_descripcion:descripcion,p_valor:null,p_version:0});
+          if(g.error) { alert(P.traducirError(g.error)); break; }
+        }
+        ventana.close(); ventana.remove(); abrirDesglose(ev);
+      };
+      ventana.appendChild(botonAgregar);
+      var tabla = document.createElement('table'); tabla.className='tabla-datos';
+      var head=document.createElement('tr'); ['Estudiante'].concat(tipos).forEach(function(t){var th=document.createElement('th');th.textContent=t.replace('|',' · ');head.appendChild(th);});
+      var thead=document.createElement('thead');thead.appendChild(head);tabla.appendChild(thead);
+      var body=document.createElement('tbody');
+      S.mats.forEach(function(mat){
+        var tr=document.createElement('tr'), nom=document.createElement('th');nom.textContent=nombreEst(mat.estudiante);tr.appendChild(nom);
+        tipos.forEach(function(tipo){
+          var td=document.createElement('td'); var reg=registros.find(function(x){return x.matricula_id===mat.id && x.tipo+'|'+x.descripcion===tipo;});
+          if(reg){
+            var inp=document.createElement('input');inp.type='number';inp.min='0';inp.max='5';inp.step='0.01';inp.className='nota-input';inp.value=reg.valor===null?'':reg.valor;inp.disabled=S.cerrado||ev.bloqueada;
+            inp.onchange=async function(){var v=inp.value.trim()===''?null:Number(inp.value);if(v!==null&&(!Number.isFinite(v)||v<0||v>5)){alert('Nota inválida');return;}
+              var q=await db.rpc('portal2027_guardar_registro_semana',{p_id:reg.id,p_evaluacion:ev.id,p_matricula:mat.id,p_tipo:reg.tipo,p_descripcion:reg.descripcion,p_valor:v,p_version:reg.version});
+              if(q.error){alert(P.traducirError(q.error));inp.value=reg.valor===null?'':reg.valor;}else{reg.version=q.data.version;reg.valor=v;}
+            };td.appendChild(inp);
+            var borrar=document.createElement('button');borrar.type='button';borrar.textContent='×';borrar.title='Eliminar este registro';borrar.disabled=S.cerrado||ev.bloqueada;
+            borrar.onclick=async function(){if(!confirm('¿Eliminar registro?'))return;var q=await db.rpc('portal2027_eliminar_registro_semana',{p_id:reg.id,p_version:reg.version});if(q.error)alert(P.traducirError(q.error));else{ventana.close();ventana.remove();abrirDesglose(ev);}};td.appendChild(borrar);
+          }tr.appendChild(td);
+        });body.appendChild(tr);
+      });tabla.appendChild(body);ventana.appendChild(tabla);
+    } catch(e){var p=document.createElement('p');p.textContent='Error al cargar desglose: '+textoError(e);ventana.appendChild(p);}
+  }
+
   function cabeceraColumna(ev) {
     var tema = el('input', { type: 'text', clase: 'tema-input', value: ev.tema || '', placeholder: 'Tema', maxlength: '120', disabled: ev.bloqueada || S.cerrado, 'aria-label': 'Tema de la columna' });
     tema.addEventListener('change', function () { cambiarTema(ev, tema); });
@@ -293,12 +348,13 @@
       var sel = el('select', { clase: 'tipo-select', 'aria-label': 'Tipo de nota de apreciación', disabled: ev.bloqueada || S.cerrado }, opciones);
       sel.value = ev.tipo || '';
       sel.addEventListener('change', function () { cambiarTipo(ev, sel); });
-      rotulo = sel;
+      rotulo = ev.semana ? el('div', { clase: 'col-rotulo', texto: 'Apreciación ' + ev.semana }) : sel;
     }
     return el('th', { scope: 'col', clase: 'col-eval' + (ev.oculta ? ' col-oculta' : '') }, [
       rotulo,
       tema,
       el('div', { clase: 'col-acciones' }, [
+        ev.semana ? boton('Desglose', 'Ver registros de la semana', function () { abrirDesglose(ev); }) : null,
         boton(ev.bloqueada ? '🔒' : '🔓', ev.bloqueada ? 'Desbloquear columna' : 'Bloquear columna', function () { alternarBloqueo(ev); }),
         boton(ev.oculta ? '👁' : '🙈', ev.oculta ? 'Mostrar columna' : 'Ocultar columna (sigue contando)', function () { alternarOculta(ev); }),
         boton('🗑', 'Enviar a la papelera', function () { aPapelera(ev, true); })
