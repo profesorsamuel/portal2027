@@ -142,3 +142,6 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .roles-docente summary { cursor: pointer; font-size: .9rem; }
 .rol-docente { display: flex; align-items: center; gap: .4rem; margin: .4rem 0; font-size: .9rem; }
 .rol-docente input[type="checkbox"] { width: auto; }
+
+.formulario-ficha { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: .8rem; margin-bottom: 1rem; }
+.formulario-ficha > p { grid-column: 1 / -1; }
