@@ -175,7 +175,35 @@
 
   /* ---------- Materias ---------- */
   function seccionMaterias() {
-    var filas = datos.materias.map(function (m) { return el('tr', null, [el('td', { texto: m.nombre })]); });
+    var filas = datos.materias.map(function (m) {
+      var eliminar = el('button', {
+        clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Eliminar',
+        onclick: async function () {
+          eliminar.disabled = true;
+          try {
+            // Una materia que ya está asignada a un profesor en algún grupo no se borra: primero se quita esa asignación.
+            var asig = await db.from('portal2027_asignaciones').select('id', { count: 'exact', head: true }).eq('materia_id', m.id);
+            if (asig.error) { throw asig.error; }
+            if (asig.count > 0) {
+              aviso('La materia «' + m.nombre + '» está asignada en ' + asig.count + ' grupo(s) con profesor, por eso no se puede eliminar. '
+                + 'Quite primero esas asignaciones en «Profesores por grupo» y vuelva a intentarlo.', 'error');
+              eliminar.disabled = false;
+              return;
+            }
+            if (!window.confirm('¿Eliminar la materia «' + m.nombre + '»? Esta acción no se puede deshacer.')) { eliminar.disabled = false; return; }
+          } catch (e) {
+            aviso(P.traducirError(e), 'error');
+            eliminar.disabled = false;
+            return;
+          }
+          ejecutar(async function () {
+            var r = await db.from('portal2027_materias').delete().eq('id', m.id);
+            if (r.error) { throw r.error; }
+          }, 'Materia eliminada.');
+        }
+      });
+      return el('tr', null, [el('td', { texto: m.nombre }), el('td', null, [el('div', { clase: 'cabecera-acciones' }, [eliminar])])]);
+    });
     var inNombre = el('input', { type: 'text', required: true, maxlength: '80' });
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
       campo('Nueva materia', inNombre),
@@ -190,7 +218,7 @@
         if (r.error) { throw r.error; }
       }, 'Materia agregada.');
     });
-    return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Materias' }), tabla(['Materia'], filas, 'Todavía no hay materias.'), form]);
+    return el('section', { clase: 'bloque' }, [el('h2', { texto: 'Materias' }), tabla(['Materia', ''], filas, 'Todavía no hay materias.'), form]);
   }
 
   /* ---------- Grupos ---------- */
@@ -259,7 +287,10 @@
   function etiquetaSalon(s) { return s ? s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : '') : ''; }
 
   function seccionAsignaciones() {
-    var profesores = datos.perfiles.filter(function (p) { return tieneRol(p.id, 'profesor'); });
+    // Se ofrecen todas las cuentas activas que no sean solo de estudiante; al asignar se les da el rol Profesor si no lo tienen.
+    var profesores = datos.perfiles.filter(function (p) {
+      return p.activo !== false && (tieneRol(p.id, 'profesor') || !tieneRol(p.id, 'estudiante'));
+    }).sort(function (a, b) { return P.nombreCompleto(a).localeCompare(P.nombreCompleto(b), 'es'); });
     var perfilDe = {};
     datos.perfiles.forEach(function (p) { perfilDe[p.id] = p; });
     var salonDe = {};
@@ -341,6 +372,10 @@
       if (!selSalon.value || !selProfesor.value) { aviso('Elija el grupo y el profesor.', 'error'); return; }
       if (!selMateria.value && !cbCons.checked) { aviso('Elija una materia, marque «Es consejero(a)», o ambas.', 'error'); return; }
       ejecutar(async function () {
+        if (!tieneRol(selProfesor.value, 'profesor')) {
+          var rp = await db.from('portal2027_roles_usuario').insert({ usuario_id: selProfesor.value, rol: 'profesor' });
+          if (rp.error) { throw rp.error; }
+        }
         if (selMateria.value) {
           var r = await db.from('portal2027_asignaciones').insert({ salon_id: selSalon.value, materia_id: selMateria.value, profesor_id: selProfesor.value });
           if (r.error) { throw r.error; }
@@ -355,7 +390,7 @@
       tabla(['Grupo', 'Profesor', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
     ];
     if (profesores.length === 0) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Para asignar, primero marque el rol Profesor a alguien en «Personas y roles» o importe la lista de profesores desde Excel.' }));
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Personas y roles» o importe la lista de profesores desde Excel.' }));
     }
     hijos.push(form);
     return el('section', { clase: 'bloque' }, hijos);
