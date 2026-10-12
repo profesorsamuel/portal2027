@@ -64,6 +64,34 @@
     }
   }
 
+  var solicitudLista = 0;
+  async function cargarEstudiantes() {
+    var turno = ++solicitudLista;
+    var grupo = $('est-grupo').value;
+    var sel = $('est-nombre');
+    sel.disabled = true;
+    sel.textContent = '';
+    $('est-cedula').value = '';
+    sel.appendChild(P.el('option', { value: '', texto: grupo ? 'Cargando estudiantes…' : 'Primero elija su grado…' }));
+    mensaje('login', '', 'info');
+    if (!grupo) { return; }
+    try {
+      var r = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { accion: 'estudiantes', grupo: grupo } });
+      if (turno !== solicitudLista) { return; }
+      if (r.error || (r.data && r.data.error)) { throw r.error || new Error(r.data.error); }
+      var estudiantes = (r.data && r.data.estudiantes) || [];
+      sel.textContent = '';
+      sel.appendChild(P.el('option', { value: '', texto: estudiantes.length ? 'Elija su nombre…' : 'No hay estudiantes con acceso en este salón' }));
+      estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: e.nombre })); });
+      sel.disabled = !estudiantes.length;
+    } catch (e) {
+      if (turno !== solicitudLista) { return; }
+      sel.textContent = '';
+      sel.appendChild(P.el('option', { value: '', texto: 'No se pudo cargar la lista' }));
+      mensaje('login', 'No se pudo cargar la lista de estudiantes. Revise la función portal2027-buscar-estudiante y vuelva a elegir el grado.', 'error');
+    }
+  }
+
   // Misma regla que en el servidor: solo letras y números, en mayúsculas ("8-123-456" = "8123456").
   function normalizarCedula(c) { return String(c || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
 
@@ -72,7 +100,7 @@
     var nombre = form.nombre.value.trim();
     var cedula = normalizarCedula(form.cedula.value);
     var generico = 'No encontramos un estudiante con esos datos. Revise su grado, su nombre y apellido, y su cédula.';
-    if (!grupo || !nombre || !cedula) { mensaje('login', 'Elija su grado y escriba su nombre y su cédula.', 'error'); return; }
+    if (!grupo || !nombre || !cedula) { mensaje('login', 'Elija su grado, seleccione su nombre y escriba su cédula.', 'error'); return; }
     if (nombre.split(/\s+/).length < 2) { mensaje('login', 'Escriba su nombre y su apellido.', 'error'); return; }
 
     ocupado(form, true);
@@ -125,11 +153,13 @@
     try { await P.db.auth.signOut(); } catch (e) { /* ignorar */ }
     $('form-login').reset();
     $('form-estudiante').reset();
+    cargarEstudiantes();
     mostrar('login');
     mensaje('login', '', 'info');
   }
 
   function conectarFormularios() {
+    $('est-grupo').addEventListener('change', cargarEstudiantes);
     $('pestana-estudiante').addEventListener('click', function () { elegirPestana(true); });
     $('pestana-personal').addEventListener('click', function () { elegirPestana(false); });
     $('form-estudiante').addEventListener('submit', function (ev) { ev.preventDefault(); entrarEstudiante(ev.target); });
