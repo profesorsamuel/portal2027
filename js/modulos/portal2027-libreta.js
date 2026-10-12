@@ -368,6 +368,29 @@
     document.body.appendChild(ventana);
     ventana.showModal();
 
+    // Guardados en orden (uno tras otro) y una sola recarga de la libreta cuando la cola queda vacía.
+    var cola = Promise.resolve(), pendientes = 0, celdasPromedio = {};
+    function encolar(tarea) {
+      pendientes++;
+      cola = cola.then(tarea).catch(function () {}).then(function () {
+        pendientes--;
+        if (pendientes === 0) { return recargar(); }
+      });
+      return cola;
+    }
+    function textoPromedio(matId) {
+      var n = S.notas[clave(ev.id, matId)];
+      return n && n.valor !== null && n.valor !== undefined ? String(n.valor) : '—';
+    }
+    // Mueve el foco a otra casilla de notas (fila = estudiante, col = registro). Devuelve false si no existe.
+    function moverCelda(inp, df, dc) {
+      var f = Number(inp.dataset.fila) + df, c = Number(inp.dataset.col) + dc;
+      var dest = contenido.querySelector('input[data-fila="' + f + '"][data-col="' + c + '"]');
+      if (!dest || dest.disabled) { return false; }
+      dest.focus();
+      return true;
+    }
+
     async function pintar() {
       contenido.textContent = ''; zonaAgregar.textContent = '';
       try {
@@ -423,13 +446,17 @@
           th.textContent = g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
           fila.appendChild(th);
         });
+        var thProm = document.createElement('th'); thProm.textContent = 'Promedio semanal'; thProm.className = 'col-prom-sem'; fila.appendChild(thProm);
         thead.appendChild(fila); tabla.appendChild(thead);
 
         var body = document.createElement('tbody');
-        S.mats.forEach(function (mat) {
+        celdasPromedio = {};
+        S.mats.forEach(function (mat, i) {
           var tr = document.createElement('tr'), nom = document.createElement('th');
           nom.textContent = nombreEst(mat.estudiante); nom.className = 'col-est'; tr.appendChild(nom);
-          grupos.forEach(function (g) { tr.appendChild(celdaRegistro(g, mat)); });
+          grupos.forEach(function (g, j) { tr.appendChild(celdaRegistro(g, mat, i, j)); });
+          var tdProm = document.createElement('td'); tdProm.className = 'col-prom-sem';
+          tdProm.textContent = textoPromedio(mat.id); celdasPromedio[mat.id] = tdProm; tr.appendChild(tdProm);
           body.appendChild(tr);
         });
         tabla.appendChild(body); contenido.appendChild(tabla);
@@ -440,11 +467,14 @@
     }
 
     // Celda de un estudiante en una columna de registros. Si el estudiante aún no tiene su registro, se crea al escribir la nota.
-    function celdaRegistro(g, mat) {
+    function celdaRegistro(g, mat, fila, col) {
       var td = document.createElement('td');
       var caja = document.createElement('div'); caja.className = 'desglose-celda'; td.appendChild(caja);
       var inp = document.createElement('input');
-      inp.type = 'number'; inp.min = '0'; inp.max = '5'; inp.step = '0.01'; inp.className = 'nota-input'; inp.disabled = bloqueado;
+      // Texto con teclado decimal (no «number»): así la rueda del mouse y las flechas nunca cambian la nota.
+      inp.type = 'text'; inp.setAttribute('inputmode', 'decimal'); inp.setAttribute('autocomplete', 'off'); inp.maxLength = 4;
+      inp.className = 'nota-input'; inp.disabled = bloqueado;
+      inp.dataset.fila = String(fila); inp.dataset.col = String(col);
       inp.setAttribute('aria-label', 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + g.tipo + (g.descripcion ? ' ' + g.descripcion : ''));
       var reg = g.porMat[mat.id] || null;
       inp.value = reg && reg.valor !== null ? reg.valor : '';
@@ -464,34 +494,70 @@
         return borrar;
       }
 
-      inp.onchange = async function () {
+      function valorActual() { return reg && reg.valor !== null ? reg.valor : null; }
+      // Último valor ya enviado al servidor: evita guardar dos veces (Enter + salida de la casilla).
+      var enviado = valorActual();
+
+      // Lee y valida lo escrito. Devuelve {ok, v}; si no es válido avisa y devuelve la casilla a su valor anterior.
+      function leer() {
         var texto = inp.value.trim();
         var v = texto === '' ? null : Number(texto.replace(',', '.'));
-        var anterior = reg && reg.valor !== null ? reg.valor : '';
         if (v !== null && (!Number.isFinite(v) || v < 0 || v > 5)) {
-          window.alert('La nota debe estar entre 0 y 5.'); inp.value = anterior; return;
+          window.alert('La nota debe estar entre 0 y 5.');
+          var ant = valorActual(); inp.value = ant === null ? '' : ant;
+          return { ok: false };
         }
-        if (!reg && v === null) { return; }
-        var q = await db.rpc('portal2027_guardar_registro_semana', {
-          p_id: reg ? reg.id : null, p_evaluacion: ev.id, p_matricula: mat.id, p_tipo: g.tipo, p_descripcion: g.descripcion,
-          p_valor: v, p_version: reg ? reg.version : 0, p_grupo: g.grupo
+        return { ok: true, v: v };
+      }
+
+      function guardar() {
+        var l = leer();
+        if (!l.ok) { return Promise.resolve(false); }
+        var v = l.v;
+        // Sin cambios (o casilla vacía de un estudiante sin registro): no hay nada que guardar.
+        if (v === enviado || (!reg && v === null)) { return Promise.resolve(true); }
+        enviado = v;
+        return encolar(async function () {
+          var anterior = valorActual();
+          td.classList.add('celda-guardando');
+          var q = await db.rpc('portal2027_guardar_registro_semana', {
+            p_id: reg ? reg.id : null, p_evaluacion: ev.id, p_matricula: mat.id, p_tipo: g.tipo, p_descripcion: g.descripcion,
+            p_valor: v, p_version: reg ? reg.version : 0, p_grupo: g.grupo
+          });
+          td.classList.remove('celda-guardando');
+          if (q.error) { window.alert(P.traducirError(q.error)); inp.value = anterior === null ? '' : anterior; enviado = anterior; return; }
+          if (reg) { reg.version = q.data.version; reg.valor = v; }
+          else {
+            reg = { id: q.data.id, version: q.data.version, valor: v };
+            g.porMat[mat.id] = reg;
+            caja.appendChild(botonBorrar());
+          }
+          // El servidor recalcula la apreciación semanal al guardar: se muestra enseguida, sin pulsar ningún botón.
+          var nuevaNota = await db.from('portal2027_notas').select('valor,version,nota_manual').eq('evaluacion_id', ev.id).eq('matricula_id', mat.id).maybeSingle();
+          if (!nuevaNota.error) {
+            var dato = nuevaNota.data;
+            S.notas[clave(ev.id, mat.id)] = dato ? { valor: dato.valor === null ? null : Number(dato.valor), version: dato.version, nota_manual: false } : { valor: null, version: 0, nota_manual: false };
+            if (celdasPromedio[mat.id]) { celdasPromedio[mat.id].textContent = textoPromedio(mat.id); }
+          }
         });
-        if (q.error) { window.alert(P.traducirError(q.error)); inp.value = anterior; return; }
-        // El servidor recalcula la semana al guardar; sincronizar la libreta principal.
-        var nuevaNota = await db.from('portal2027_notas').select('valor,version,nota_manual').eq('evaluacion_id',ev.id).eq('matricula_id',mat.id).maybeSingle();
-        if (!nuevaNota.error) {
-          var dato = nuevaNota.data;
-          S.notas[clave(ev.id,mat.id)] = dato ? { valor: dato.valor === null ? null : Number(dato.valor), version: dato.version, nota_manual: false } : { valor: null, version: 0, nota_manual: false };
-          // Actualización inmediata, sin pulsar Auto, Recargar ni cerrar el desglose.
-          await recargar();
+      }
+
+      // Al salir de la casilla por cualquier medio (clic, Tab) también se guarda.
+      inp.addEventListener('change', guardar);
+      inp.addEventListener('focus', function () { setTimeout(function () { if (document.activeElement === inp) { inp.select(); } }, 0); });
+      inp.addEventListener('keydown', function (k) {
+        if (k.key === 'Enter') {
+          k.preventDefault();
+          var l = leer();
+          if (!l.ok) { return; }
+          guardar();
+          if (!moverCelda(inp, k.shiftKey ? -1 : 1, 0)) { inp.blur(); }
         }
-        if (reg) { reg.version = q.data.version; reg.valor = v; }
-        else {
-          reg = { id: q.data.id, version: q.data.version, valor: v };
-          g.porMat[mat.id] = reg;
-          caja.appendChild(botonBorrar());
-        }
-      };
+        else if (k.key === 'ArrowDown') { k.preventDefault(); moverCelda(inp, 1, 0); }
+        else if (k.key === 'ArrowUp') { k.preventDefault(); moverCelda(inp, -1, 0); }
+        else if (k.key === 'ArrowRight' && inp.selectionEnd === inp.value.length) { k.preventDefault(); moverCelda(inp, 0, 1); }
+        else if (k.key === 'ArrowLeft' && inp.selectionStart === 0) { k.preventDefault(); moverCelda(inp, 0, -1); }
+      });
       return td;
     }
 
