@@ -19,12 +19,15 @@ y usa su número de cédula como contraseña. Docentes y familias siguen entrand
 1. Desplegar dos funciones:
 
 ```bash
-supabase functions deploy portal2027-crear-accesos
+supabase functions deploy portal2027-crear-accesos --no-verify-jwt
 supabase functions deploy portal2027-buscar-estudiante --no-verify-jwt
 ```
 
-Si despliega desde el panel web de Supabase: en `portal2027-buscar-estudiante` desactive **Verify JWT**
-(es pública porque se usa antes de iniciar sesión). En `portal2027-crear-accesos` déjelo activado.
+Si despliega desde el panel web de Supabase: en **las dos** funciones desactive **Verify JWT**.
+- `portal2027-buscar-estudiante` es pública (se usa antes de iniciar sesión).
+- `portal2027-crear-accesos` también debe ir sin Verify JWT: con él activado, el navegador es bloqueado por CORS porque la
+  consulta previa (OPTIONS) no lleva sesión. No pierde seguridad: la función misma comprueba en el servidor que quien llama
+  sea administrador activo (igual que `portal2027-invitar-estudiante`).
 
 ## Uso
 1. Descargue la plantilla nueva (Administración → Estudiantes → «Descargar plantilla de Excel»). Trae la columna `cedula`
