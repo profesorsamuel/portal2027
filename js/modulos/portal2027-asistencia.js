@@ -49,7 +49,17 @@
     return P.traducirError(e);
   }
   function clave(s, m) { return s + '|' + m; }
-  function nombreEst(e) { return ((e.apellidos || '') + ', ' + (e.nombres || '')).replace(/^, |, $/g, ''); }
+  // Apellido y nombre; si falta el apellido se toma la última palabra del nombre (corregir en Administración > Estudiantes).
+  function partesNombre(e) {
+    var ap = String(e.apellidos || '').trim(), no = String(e.nombres || '').trim();
+    if (!ap && no.indexOf(' ') !== -1) { var w = no.split(/\s+/); ap = w.pop(); no = w.join(' '); }
+    return { ap: ap, no: no };
+  }
+  function nombreEst(e) { var p = partesNombre(e); return (p.ap + ', ' + p.no).replace(/^, |, $/g, ''); }
+  function comparaEst(a, b) {
+    var x = partesNombre(a), y = partesNombre(b);
+    return x.ap.localeCompare(y.ap, 'es', { sensitivity: 'base' }) || x.no.localeCompare(y.no, 'es', { sensitivity: 'base' });
+  }
   function sesionPorId(id) { return S.sesiones.filter(function (s) { return s.id === id; })[0]; }
   function estadoPorCodigo(c) { return S.estados.filter(function (e) { return e.codigo === c; })[0]; }
   function activas() { return S.sesiones.filter(function (s) { return !s.eliminada_en; }); }
@@ -95,9 +105,7 @@
     ]);
     S.estados = r[0];
     S.sesiones = r[1];
-    S.mats = r[2].filter(function (m) { return m.estudiante; }).sort(function (a, b) {
-      return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es');
-    });
+    S.mats = r[2].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.asist = {};
     r[3].forEach(function (a) { S.asist[clave(a.sesion_id, a.matricula_id)] = { estado: a.estado, version: a.version }; });
   }
@@ -136,6 +144,26 @@
     if (si && !window.confirm('¿Enviar esta sesión a la papelera? Sus marcas se conservan y podrá restaurarla.')) { return; }
     llamar('portal2027_papelera_sesion', { p_id: s.id, p_version: s.version, p_a_papelera: si }, si ? 'Sesión enviada a la papelera.' : 'Sesión restaurada.');
   }
+  // Al abrir una fecha nueva se asume que todos llegaron: quedan en «Presente» y el profesor solo toca a quien faltó.
+  async function crearSesionConPresentes(args) {
+    aviso('Guardando…', 'info');
+    try {
+      var r = await db.rpc('portal2027_crear_sesion', args);
+      if (r.error) { throw r.error; }
+      var texto = 'Sesión agregada.', tipo = 'ok';
+      if (estadoPorCodigo('presente') && estadoPorCodigo('presente').activo) {
+        var m = await db.rpc('portal2027_marcar_pendientes', { p_sesion: r.data, p_estado: 'presente' });
+        if (m.error) { texto = 'Sesión agregada, pero NO se marcó «Presente» a todos. ' + textoError(m.error) + ' Use «Todos presentes» en la fecha.'; tipo = 'error'; }
+        else { texto = 'Sesión agregada: ' + m.data + ' estudiante(s) quedaron como Presente. Toque la casilla de quien faltó.'; }
+      }
+      await cargarAsistencia();
+      dibujar();
+      aviso(texto, tipo);
+    } catch (e) {
+      aviso('No se guardó. ' + textoError(e), 'error');
+    }
+  }
+
   function marcarPendientes(sesionId, codigo) {
     var s = sesionPorId(sesionId), e = estadoPorCodigo(codigo);
     if (!s || !e) { aviso('Elija la sesión y el estado.', 'error'); return; }
@@ -147,14 +175,12 @@
   }
 
   /* ---------- guardar una marca ---------- */
-  async function guardarCelda(ses, mat, select, marca) {
+  // Guarda el estado elegido. Devuelve { ok, estado }: el estado que quedó guardado (el anterior si falló).
+  async function guardarMarca(ses, mat, nuevo, marca) {
     var k = clave(ses.id, mat.id);
     var previa = S.asist[k] || { estado: null, version: 0 };
-    var nuevo = select.value === '' ? null : select.value;
-    if (nuevo === previa.estado) { return; }
-
+    if (nuevo === previa.estado) { return { ok: true, estado: previa.estado }; }
     marca('guardando');
-    aviso('Guardando…', 'info');
     try {
       var r = await db.rpc('portal2027_guardar_asistencia', { p_sesion: ses.id, p_matricula: mat.id, p_estado: nuevo, p_version: previa.version });
       if (r.error) { throw r.error; }
@@ -163,14 +189,14 @@
       actualizarFila(mat.id);
       actualizarResumen(ses.id);
       aviso('Asistencia guardada.', 'ok');
+      return { ok: true, estado: r.data.estado };
     } catch (e) {
-      select.value = previa.estado === null ? '' : previa.estado;
       marca('error');
       aviso('NO se guardó la asistencia de ' + nombreEst(mat.estudiante) + '. ' + textoError(e), 'error');
+      return { ok: false, estado: previa.estado };
     }
   }
 
-  /* ---------- dibujo ---------- */
   function estadosColumnas() {
     var usados = {};
     Object.keys(S.asist).forEach(function (k) { if (S.asist[k].estado) { usados[S.asist[k].estado] = true; } });
@@ -201,23 +227,42 @@
     span.textContent = marcadas + ' de ' + S.mats.length + ' marcados';
   }
 
+  // Casilla de toque: cada toque pasa al siguiente estado (P -> A -> T -> J -> P…). Se guarda al dejar de tocar.
   function celdaAsistencia(ses, mat) {
-    var reg = S.asist[clave(ses.id, mat.id)];
-    var actual = reg ? reg.estado : null;
-    var opciones = [el('option', { value: '', texto: '—' })];
-    S.estados.forEach(function (e) {
-      if (e.activo || e.codigo === actual) {
-        opciones.push(el('option', { value: e.codigo, texto: e.abreviatura, title: e.etiqueta, selected: e.codigo === actual }));
-      }
-    });
-    var select = el('select', {
-      clase: 'asis-select', disabled: ses.bloqueada,
-      'aria-label': 'Asistencia de ' + nombreEst(mat.estudiante) + ' el ' + fechaTexto(ses.fecha)
-    }, opciones);
-    select.value = actual === null ? '' : actual;
-    var td = el('td', { clase: 'celda-asis' }, [select]);
+    var k = clave(ses.id, mat.id);
+    var reg = S.asist[k];
+    var deseado = reg ? reg.estado : null;
+    var ciclo = S.estados.filter(function (e) { return e.activo; }).map(function (e) { return e.codigo; });
+    var boton = el('button', { type: 'button', clase: 'asis-toque', disabled: ses.bloqueada });
+    var td = el('td', { clase: 'celda-asis' }, [boton]);
+    var temporizador = null, ocupado = false;
     function marca(tipo) { td.className = 'celda-asis' + (tipo ? ' asis-' + tipo : ''); }
-    select.addEventListener('change', function () { guardarCelda(ses, mat, select, marca); });
+    function pintar() {
+      var e = deseado ? estadoPorCodigo(deseado) : null;
+      boton.textContent = e ? e.abreviatura : '—';
+      boton.className = 'asis-toque ' + (deseado ? 'est-' + deseado : 'est-vacio');
+      boton.title = e ? e.etiqueta : 'Sin marcar';
+      boton.setAttribute('aria-label', 'Asistencia de ' + nombreEst(mat.estudiante) + ' el ' + fechaTexto(ses.fecha) + ': ' + (e ? e.etiqueta : 'sin marcar') + '. Toque para cambiar.');
+    }
+    function siguiente(c) {
+      var i = ciclo.indexOf(c);
+      return ciclo.length === 0 ? c : ciclo[(i + 1) % ciclo.length];   // sin marcar (i = -1) pasa al primero
+    }
+    async function enviar() {
+      if (ocupado) { return; }
+      ocupado = true;
+      var r = await guardarMarca(ses, mat, deseado, marca);
+      ocupado = false;
+      if (!r.ok) { deseado = r.estado; pintar(); return; }      // falló: vuelve a lo que estaba guardado
+      if (deseado !== r.estado && temporizador === null) { enviar(); }   // hubo toques mientras guardaba: guarda el último
+    }
+    boton.addEventListener('click', function () {
+      deseado = siguiente(deseado);
+      pintar();
+      if (temporizador) { clearTimeout(temporizador); }
+      temporizador = setTimeout(function () { temporizador = null; enviar(); }, 450);
+    });
+    pintar();
     return td;
   }
 
@@ -232,6 +277,7 @@
       el('span', { clase: 'sesion-meta', texto: 'Bloque ' + ses.bloque }),
       desc, resumen,
       el('div', { clase: 'col-acciones' }, [
+        ses.bloqueada ? null : boton('✓', 'Todos presentes (a quienes no tienen marca)', function () { marcarPendientes(ses.id, 'presente'); }),
         boton(ses.bloqueada ? '🔒' : '🔓', ses.bloqueada ? 'Desbloquear sesión' : 'Bloquear sesión', function () { alternarBloqueo(ses); }),
         boton('🗑', 'Enviar a la papelera', function () { aPapelera(ses, true); })
       ])
@@ -351,7 +397,7 @@
       var bloque = Number(inBloque.value);
       if (!inFecha.value) { aviso('Elija la fecha de la sesión.', 'error'); return; }
       if (!(bloque >= 1 && bloque <= 12) || Math.floor(bloque) !== bloque) { aviso('El bloque debe ser un número de 1 a 12.', 'error'); return; }
-      llamar('portal2027_crear_sesion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_fecha: inFecha.value, p_bloque: bloque, p_descripcion: inDesc.value }, 'Sesión agregada.');
+      crearSesionConPresentes({ p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_fecha: inFecha.value, p_bloque: bloque, p_descripcion: inDesc.value });
     });
 
     // Marcar pendientes
@@ -377,6 +423,8 @@
     var leyenda = el('p', { clase: 'leyenda-asis' }, S.estados.filter(function (e) { return e.activo; }).map(function (e) {
       return el('span', null, [el('strong', { texto: e.abreviatura }), ' = ' + e.etiqueta]);
     }));
+
+    leyenda.appendChild(el('span', { clase: 'leyenda-toque', texto: 'Toque la casilla para cambiar: P → A → T → J → P. Las fechas nuevas empiezan con todos Presente.' }));
 
     var cuerpo = el('div', { clase: 'asistencia-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
