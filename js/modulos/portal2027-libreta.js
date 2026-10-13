@@ -284,10 +284,58 @@
   }
 
   /* ---------- dibujo ---------- */
+  // Preferencias visuales locales: nunca modifican notas ni columnas en Supabase.
+  var vistaOcultas = {};
+  function claveVista() { return 'portal2027-vista-columnas-' + (S.asig ? S.asig.id : '') + '-' + S.trimestreId; }
+  function leerVista() {
+    try { vistaOcultas = JSON.parse(localStorage.getItem(claveVista()) || '{}') || {}; } catch (_) { vistaOcultas = {}; }
+  }
+  function guardarVista() {
+    try { localStorage.setItem(claveVista(), JSON.stringify(vistaOcultas)); } catch (_) {}
+  }
+  function estaVisible(e) { return !vistaOcultas[e.id] && (!e.oculta || S.verOcultas); }
+  function ponerVista(e, visible) { vistaOcultas[e.id] = !visible; guardarVista(); dibujarTabla(); }
+  function vistaRapida(modo) {
+    S.evals.filter(function(e) { return !e.eliminada_en; }).forEach(function(e) { vistaOcultas[e.id] = modo === 'ninguna'; });
+    if (modo === 'todas') { S.verOcultas = true; }
+    guardarVista(); dibujarTabla();
+  }
+  function panelColumnas() {
+    var box = el('div', { clase: 'libreta-panel-columnas' });
+    var barra = el('div', { clase: 'libreta-panel-barra' }, [
+      el('strong', { texto: 'Personalizar columnas' }),
+      boton('Mostrar todas', 'Mostrar todas las notas', function() { vistaRapida('todas'); panelColumnasActualizar(); }),
+      boton('Solo promedios', 'Ocultar las notas individuales', function() { vistaRapida('ninguna'); panelColumnasActualizar(); }),
+      boton('Cerrar', 'Cerrar panel', function() { box.hidden = true; })
+    ]);
+    box.appendChild(barra);
+    var listado = el('div', { clase: 'libreta-panel-grupos' }); box.appendChild(listado);
+    function panelColumnasActualizar() {
+      listado.textContent = '';
+      M.CATEGORIAS.forEach(function(c) {
+        var evals = S.evals.filter(function(e) { return !e.eliminada_en && e.categoria === c; });
+        var grupo = el('div', { clase: 'libreta-panel-grupo' });
+        var titulo = el('div', { clase: 'libreta-panel-titulo' }, [el('strong', { texto: M.ETIQUETAS[c] }),
+          boton('Ver grupo', 'Mostrar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = false; }); S.verOcultas = true; guardarVista(); dibujarTabla(); panelColumnasActualizar(); }),
+          boton('Ocultar grupo', 'Ocultar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = true; }); guardarVista(); dibujarTabla(); panelColumnasActualizar(); })]);
+        grupo.appendChild(titulo);
+        if (!evals.length) { grupo.appendChild(el('small', { texto: 'Todavía no hay notas en esta categoría.' })); }
+        evals.forEach(function(e, i) {
+          var check = el('input', { type: 'checkbox', checked: estaVisible(e) });
+          check.addEventListener('change', function() { if (e.oculta && check.checked) { S.verOcultas = true; } ponerVista(e, check.checked); });
+          grupo.appendChild(el('label', { clase: 'libreta-col-opcion' }, [check, el('span', { texto: (e.titulo || e.nombre || e.descripcion || M.ETIQUETAS[c] + ' ' + (i + 1)) + (e.oculta ? ' · oculta previamente' : '') })]));
+        });
+        listado.appendChild(grupo);
+      });
+    }
+    panelColumnasActualizar();
+    return { elemento: box, actualizar: panelColumnasActualizar };
+  }
+
   function visibles() {
     return S.evals.filter(function (e) {
       if (e.eliminada_en) { return false; }
-      if (e.oculta && !S.verOcultas) { return false; }
+      if (!estaVisible(e)) { return false; }
       if (S.filtroCat && e.categoria !== S.filtroCat) { return false; }
       return true;
     });
@@ -963,6 +1011,7 @@
     buscar.addEventListener('input', function () { S.buscar = buscar.value; dibujarTabla(); });
 
     var ocultas = S.evals.filter(function (e) { return e.oculta && !e.eliminada_en; }).length;
+    leerVista();
     var cbOc = el('input', { type: 'checkbox', checked: S.verOcultas });
     cbOc.addEventListener('change', function () { S.verOcultas = cbOc.checked; dibujarTabla(); });
 
@@ -986,16 +1035,22 @@
     btnHist.addEventListener('click', mostrarHistorial);
     btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
 
+    var panelVista = panelColumnas();
+    panelVista.elemento.hidden = true;
+    var btnVista = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: '▦ Organizar columnas', onclick: function() { panelVista.elemento.hidden = !panelVista.elemento.hidden; if (!panelVista.elemento.hidden) { panelVista.actualizar(); } } });
+    var btnTodas = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: '👁 Ver todas', onclick: function() { vistaRapida('todas'); } });
+    var btnProm = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'Solo promedios', onclick: function() { vistaRapida('ninguna'); } });
     var cuerpo = el('div', { clase: 'libreta-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
         el('div', { clase: 'formulario-fila' }, [
           el('label', null, ['Trimestre', selTrim]), el('label', null, ['Categoría', selCat]), el('label', null, ['Estudiante', buscar]),
-          el('label', { clase: 'etiqueta-check' }, [cbOc, ' Mostrar ocultas (' + ocultas + ')']),
+          btnVista, btnTodas, btnProm,
           btnImp, btnHist, btnPap, btnRec, btnPub
         ]),
         el('p', { clase: S.cerrado ? 'mensaje ok' : 'bloque-ayuda', texto: S.cerrado ? 'Trimestre CERRADO: la libreta está en solo lectura (columnas, notas y asistencia bloqueadas por la base).' : 'Trimestre abierto.' }),
         el('p', { clase: 'bloque-ayuda', texto: S.publicada ? 'Estado: notas PUBLICADAS a los estudiantes en este trimestre.' : 'Estado: notas no publicadas (los estudiantes no las ven).' }),
         el('p', { clase: 'bloque-ayuda', texto: 'Escriba la nota y pulse Enter (baja a la casilla de abajo) o use las flechas del teclado para moverse. Puede pegar una columna de Excel. Vacío no es cero. Promedio por categoría con las notas existentes; Final = promedio de las categorías con nota. Las columnas ocultas siguen contando.' }),
+        panelVista.elemento,
         zonaTabla
       ]),
       zonaExtra,
