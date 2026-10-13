@@ -1,0 +1,16 @@
+# Copias de respaldo con datos reales: NUNCA subir a GitHub
+respaldos/
+*.dump
+*.lista.txt
+SHA256.txt
+resumen.json
+
+# Claves y variables de entorno
+.env
+.env.*
+*.key
+
+# Sistema
+.DS_Store
+Thumbs.db
+node_modules/
