@@ -10,7 +10,7 @@
   var db = P.db;
   var contenido = document.getElementById('contenido');
 
-  var S = { info: null, rolPanel: null, asig: null, trimestres: [], trimestreId: null, plan: [], sesiones: [], cerrado: false, editando: null, lote: '', previa: null, hermanas: [], planHermanas: {}, aplicarA: {} };
+  var S = { info: null, rolPanel: null, asig: null, trimestres: [], trimestreId: null, plan: [], sesiones: [], cerrado: false, editando: null, lote: '', previa: null, hermanas: [], planHermanas: {}, aplicarA: {}, pdfs: {}, pdfDisponible: true };
   var barra = null;
 
   /* ---------- utilidades ---------- */
@@ -75,6 +75,64 @@
   function diaFecha(f) { var p = f.split('-').map(Number); return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date(p[0],p[1]-1,p[2]).getDay()] + ' ' + fechaTexto(f); }
   function sesionesDe(c) { return S.sesiones.filter(function (s) { return s.fecha >= c.fecha_inicio && s.fecha <= c.fecha_fin; }).length; }
 
+  /* ---------- PDF de planificación por clase ---------- */
+  async function cargarPDFs() {
+    S.pdfs = {}; S.pdfDisponible = true;
+    try {
+      var ids = S.plan.map(function(c) { return c.id; });
+      if (!ids.length) return;
+      var docs = await consultar(db.from('portal2027_plan_pdf').select('clase_id,nombre_archivo,ruta,actualizado_en').in('clase_id', ids));
+      docs.forEach(function(d) { S.pdfs[d.clase_id] = d; });
+    } catch(e) { S.pdfDisponible = false; }
+  }
+  async function abrirPDF(c) {
+    var d = S.pdfs[c.id]; if (!d) return;
+    try {
+      var r = await db.storage.from('portal2027-planificaciones').createSignedUrl(d.ruta, 120);
+      if (r.error) throw r.error;
+      window.open(r.data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch(e) { aviso('No se pudo abrir el PDF: ' + textoError(e), 'error'); }
+  }
+  function subirPDF(c) {
+    var input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,application/pdf';
+    input.addEventListener('change', async function() {
+      var archivo = input.files && input.files[0]; if (!archivo) return;
+      if (!/\.pdf$/i.test(archivo.name) || archivo.type && archivo.type !== 'application/pdf') { aviso('Seleccione un archivo PDF válido.', 'error'); return; }
+      if (archivo.size > 15 * 1024 * 1024) { aviso('El PDF no debe superar 15 MB.', 'error'); return; }
+      var anterior = S.pdfs[c.id];
+      if (anterior && !window.confirm('¿Reemplazar el PDF de la Clase ' + c.numero + '?')) return;
+      var ruta = c.id + '/' + crypto.randomUUID() + '.pdf';
+      aviso('Subiendo PDF de la Clase ' + c.numero + '…', 'info');
+      try {
+        var up = await db.storage.from('portal2027-planificaciones').upload(ruta, archivo, { contentType:'application/pdf', upsert:false });
+        if (up.error) throw up.error;
+        var saved = await db.from('portal2027_plan_pdf').upsert({ clase_id:c.id, ruta:ruta, nombre_archivo:archivo.name, actualizado_en:new Date().toISOString() }, {onConflict:'clase_id'});
+        if (saved.error) { await db.storage.from('portal2027-planificaciones').remove([ruta]); throw saved.error; }
+        if (anterior) await db.storage.from('portal2027-planificaciones').remove([anterior.ruta]);
+        await recargar('PDF guardado para Clase ' + c.numero + '.');
+      } catch(e) { aviso('Error al subir PDF. Revise que instaló la migración 0039. ' + textoError(e), 'error'); }
+    });
+    input.click();
+  }
+  async function borrarPDF(c) {
+    var d = S.pdfs[c.id]; if (!d || !window.confirm('¿Eliminar el PDF adjunto a la Clase ' + c.numero + '?')) return;
+    try {
+      var r = await db.from('portal2027_plan_pdf').delete().eq('clase_id',c.id);
+      if (r.error) throw r.error;
+      await db.storage.from('portal2027-planificaciones').remove([d.ruta]);
+      await recargar('PDF eliminado.');
+    } catch(e) { aviso('No se pudo eliminar el PDF: ' + textoError(e), 'error'); }
+  }
+  function celdaPDF(c) {
+    var d = S.pdfs[c.id];
+    if (!S.pdfDisponible) return el('td', {texto:'Instalar SQL 0039'});
+    var botones = [];
+    if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',texto:'Ver PDF',onclick:function(){abrirPDF(c);}}));
+    botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',disabled:S.cerrado,texto:d?'Reemplazar':'Subir PDF',onclick:function(){subirPDF(c);}}));
+    if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico boton-peligro',type:'button',disabled:S.cerrado,texto:'Eliminar PDF',onclick:function(){borrarPDF(c);}}));
+    return el('td',null,[el('div',{clase:'plan-pdf-celda'},[el('span',{texto:d?'📄 Guardado':'Sin PDF'}),...botones])]);
+  }
+
   /* ---------- carga ---------- */
   async function cargar() {
     var a = S.asig.id, t = S.trimestreId;
@@ -85,6 +143,7 @@
       consultar(db.from('portal2027_cierres').select('cerrado').eq('asignacion_id', a).eq('trimestre_id', t).maybeSingle())
     ]);
     S.plan = r[0]; S.sesiones = r[1]; S.cerrado = !!(r[2] && r[2].cerrado);
+    await cargarPDFs();
     S.planHermanas = {};
     S.hermanas.forEach(function (h) { S.planHermanas[h.id] = []; });
     if (S.hermanas.length) {
@@ -362,6 +421,7 @@
         el('td', { clase: 'plan-tema', texto: c.tema }),
         el('td', { texto: fechaConDia(c.fecha_inicio) }), el('td', { texto: fechaConDia(c.fecha_fin) }),
         el('td', null, [el('strong', { clase: 'plan-sesiones-numero', texto: String(sesionesDe(c)) }), el('span', { clase: 'plan-sesiones-detalle', texto: sesionesDe(c) === 1 ? ' sesión registrada' : ' sesiones registradas' })]),
+        celdaPDF(c),
         el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlAsistencia(c), texto: 'Asistencia' }),
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlApreciacion(c), texto: 'Apreciación' }),
@@ -371,7 +431,7 @@
       ]);
     });
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
-      el('thead', null, [el('tr', null, ['Estado', 'Clase', 'Tema', 'Desde (día y fecha)', 'Hasta (día y fecha)', 'Asistencias registradas', 'Acciones'].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
+      el('thead', null, [el('tr', null, ['Estado', 'Clase', 'Tema', 'Desde (día y fecha)', 'Hasta (día y fecha)', 'Asistencias registradas', 'Planificación PDF', 'Acciones'].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
       el('tbody', null, filas)
     ])]));
     sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'El estado se marca solo según la fecha de hoy. Cada sesión es un registro de asistencia en una fecha de esta clase. Use «Asistencia» para registrar una nueva; el conteo se actualizará al recargar. No representa el número de alumnos ni las horas programadas.' }));
