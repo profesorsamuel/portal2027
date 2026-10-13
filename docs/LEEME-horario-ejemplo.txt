@@ -1,0 +1,70 @@
+COMO USAR EL ARCHIVO horario-ejemplo-otro-anio.json
+===================================================
+
+Este archivo es un EJEMPLO. Tiene un horario de lunes a viernes con clases,
+consejería y recreo. Copie el archivo, cámbiele los datos y súbalo al portal.
+
+CADA LÍNEA { ... } ES UNA FRANJA DEL HORARIO
+--------------------------------------------
+  "dia"      : número del día. 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes
+  "inicio"   : hora de inicio en formato de 24 horas, con dos dígitos. Ej.: "07:30", "13:05"
+  "fin"      : hora de fin, mismo formato. Debe ser mayor que "inicio".
+  "tipo"     : uno de estos cuatro, en minúsculas y sin tilde:
+                 "clase"       -> una clase (pide grupo y materia)
+                 "consejeria"  -> hora de consejería
+                 "recreo"      -> recreo
+                 "otro"        -> cualquier otra cosa (reunión, almuerzo, etc.)
+  "grupo"    : solo para clases. Ej.: "9A", "8B"
+  "materia"  : solo para clases. Ej.: "Ciencias Naturales" o "Informática"
+  "etiqueta" : texto corto que se ve en el horario (máximo 60 letras).
+               En las clases se deja vacío: "".
+
+EJEMPLO DE UNA CLASE:
+  {
+    "dia": 1,
+    "inicio": "12:55",
+    "fin": "13:30",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  }
+
+EJEMPLO DE UN RECREO:
+  {
+    "dia": 1,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  }
+
+REGLAS IMPORTANTES
+------------------
+1. Todas las franjas van dentro de [ ] y cada una termina con coma, menos la última.
+2. Use comillas rectas " (no comillas curvas “ ”). Si edita en Word, se dañan:
+   use el Bloc de notas o el editor de GitHub.
+3. Las franjas de un mismo día no se pueden superponer.
+4. Máximo 80 franjas.
+5. Las materias que reconoce la carga automática son SOLO "Ciencias Naturales"
+   e "Informática". Si da otra materia, el portal la tomará como Ciencias Naturales
+   por error. Para otras materias, cree esas clases con el botón "Agregar clase"
+   del portal, o pídale a Claude que ajuste el programa.
+6. Cada grupo y materia que use debe estar creado en Administración como
+   "Profesores por grupo" para el AÑO que va a cargar (por ejemplo 2028). Si no,
+   el portal avisa "faltan asignaciones" y no guarda nada.
+
+PASOS PARA SUBIRLO AL PORTAL
+----------------------------
+1. Copie este archivo y póngale otro nombre, por ejemplo horario-2028.json.
+2. Ábralo con el Bloc de notas, cambie los días, horas, grupos y materias.
+3. En Administración cree el año nuevo, los grupos y las asignaciones del profesor.
+4. Entre al portal -> Profesor -> Horario.
+5. Arriba elija el AÑO correcto en el selector.
+6. Pulse "Más opciones" -> "Importar y configurar".
+7. Arrastre el archivo .json a la zona de carga (o púlsela y elíjalo).
+8. Revise las franjas que aparecen. Si el portal avisa de asignaciones faltantes, NO guarde.
+9. Pulse "Validar y reemplazar horario".
+
+OJO: importar REEMPLAZA todo el horario guardado de ese profesor para ese año.
+Después puede ajustar cada franja con "Editar" o "Eliminar", sin tocar el archivo.
