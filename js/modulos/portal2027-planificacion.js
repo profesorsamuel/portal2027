@@ -27,7 +27,7 @@
   function textoError(e) {
     var m = (e && e.message) || '';
     if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
-    if (/^(No tiene permiso|El trimestre|Escriba|Fechas|Las fechas|Ya existe|La clase|El número)/.test(m)) { return m.replace(/\s*\(row-level security\)/, ''); }
+    if (/^(No tiene permiso|El trimestre|Escriba|Fechas|Las fechas|Ya existe|La clase|El número|Grupo )/.test(m)) { return m.replace(/\s*\(row-level security\)/, ''); }
     if (/portal2027_plan_clases|portal2027_guardar_plan_clase|schema cache/i.test(m)) { return 'Falta instalar la migración 0029 en Supabase. (' + m + ')'; }
     return P.traducirError(e);
   }
@@ -84,7 +84,7 @@
   }
 
   /* ---------- grupos del mismo nivel (misma materia, mismo grado, mismo profesor) ---------- */
-  function destinosExtra() { return S.hermanas.filter(function (h) { return S.aplicarA[h.id] !== false; }); }
+  function destinosExtra() { return S.hermanas; }
   function nombreGrupo(h) { return h.salon.nombre; }
   function planDeHermana(h, numero) { return (S.planHermanas[h.id] || []).filter(function (p) { return p.numero === numero; })[0] || null; }
   function argsGuardar(asigId, id, numero, tema, ini, fin, ver) {
@@ -95,76 +95,57 @@
     if (r.error) { throw r.error; }
     return r.data;
   }
-  function resumenGrupos(ok, fallos, base) {
-    var t = base + (ok.length ? ' También en: ' + ok.join(', ') + '.' : '');
-    if (fallos.length) { t += ' No se pudo en: ' + fallos.join(' · '); }
+  function textoGrupos(d) {
+    var t = '';
+    if (d && d.grupos_aplicados) { t += ' También se aplicó en ' + d.grupos_aplicados + ' grupo(s) del mismo nivel.'; }
+    if (d && d.grupos_omitidos && d.grupos_omitidos.length) { t += ' No se aplicó en ' + d.grupos_omitidos.join(', ') + ' (trimestre cerrado o sin permiso).'; }
     return t;
   }
 
   /* ---------- acciones ---------- */
-  // Crea (ed = null) o edita una clase en este grupo y la repite en los grupos marcados.
+  // Crea (ed = null) o edita una clase. El servidor la repite en los grupos del mismo nivel.
   async function guardarClase(ed, n, tema, ini, fin) {
     aviso('Guardando…', 'info');
-    var numero, extra = '', ok = [], fallos = [];
+    var d;
     try {
-      var d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, ed ? ed.id : null, ed ? null : n, tema, ini, fin, ed ? ed.version : 0));
-      numero = d.numero;
-      if (d.apreciacion_actualizada === false) { extra = ' Aviso: la apreciación de esa semana está bloqueada en la libreta y no se cambiaron sus fechas.'; }
+      d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, ed ? ed.id : null, ed ? null : n, tema, ini, fin, ed ? ed.version : 0));
     } catch (e) { aviso('No se guardó. ' + textoError(e), 'error'); return false; }
-    var otros = destinosExtra();
-    for (var i = 0; i < otros.length; i++) {
-      var h = otros[i];
-      try {
-        var ex = ed ? planDeHermana(h, numero) : null;
-        await rpc('portal2027_guardar_plan_clase', argsGuardar(h.id, ex ? ex.id : null, ex ? null : numero, tema, ini, fin, ex ? ex.version : 0));
-        ok.push(nombreGrupo(h));
-      } catch (e) { fallos.push(nombreGrupo(h) + ': ' + textoError(e)); }
-    }
+    var extra = d.apreciacion_actualizada === false ? ' Aviso: la apreciación de esa semana está bloqueada en la libreta y no se cambiaron sus fechas.' : '';
     S.editando = null;
     await cargar(); dibujar();
-    aviso(resumenGrupos(ok, fallos, (ed ? 'Clase ' + numero + ' actualizada.' : 'Clase ' + numero + ' agregada con su apreciación semanal.') + extra), fallos.length ? 'error' : 'ok');
+    aviso((ed ? 'Clase ' + d.numero + ' actualizada.' : 'Clase ' + d.numero + ' agregada con su apreciación semanal.') + extra + textoGrupos(d), 'ok');
     return true;
   }
 
   async function quitar(c) {
-    var otros = destinosExtra().map(function (h) { return { h: h, p: planDeHermana(h, c.numero) }; }).filter(function (x) { return x.p; });
+    var otros = S.hermanas.map(function (h) { return { h: h, p: planDeHermana(h, c.numero) }; }).filter(function (x) { return x.p; });
     var aviso2 = otros.length ? '\nTambién se quitará en: ' + otros.map(function (x) { return nombreGrupo(x.h); }).join(', ') + '.' : '';
     if (!window.confirm('¿Quitar la Clase ' + c.numero + ' («' + c.tema + '») de la planificación?\nSu apreciación semanal irá a la papelera de la libreta: dejará de contar y podrá restaurarla si se equivocó.' + aviso2)) { return; }
     aviso('Guardando…', 'info');
-    var enPapelera = false, ok = [], fallos = [];
-    try {
-      var d = await rpc('portal2027_eliminar_plan_clase', { p_id: c.id, p_version: c.version });
-      enPapelera = !!(d && d.apreciacion_en_papelera);
-    } catch (e) { aviso('No se quitó. ' + textoError(e), 'error'); return; }
-    for (var i = 0; i < otros.length; i++) {
-      try { await rpc('portal2027_eliminar_plan_clase', { p_id: otros[i].p.id, p_version: otros[i].p.version }); ok.push(nombreGrupo(otros[i].h)); }
-      catch (e) { fallos.push(nombreGrupo(otros[i].h) + ': ' + textoError(e)); }
-    }
+    var d;
+    try { d = await rpc('portal2027_eliminar_plan_clase', { p_id: c.id, p_version: c.version }); }
+    catch (e) { aviso('No se quitó. ' + textoError(e), 'error'); return; }
     await cargar(); dibujar();
-    aviso(resumenGrupos(ok, fallos, 'Clase ' + c.numero + ' quitada. ' + (enPapelera ? 'Su apreciación semanal está en la papelera de la libreta (se puede restaurar).' : 'Su apreciación estaba bloqueada y se quedó en la libreta.')), fallos.length ? 'error' : 'ok');
+    aviso('Clase ' + c.numero + ' quitada. ' + (d && d.apreciacion_en_papelera ? 'Su apreciación semanal está en la papelera de la libreta (se puede restaurar).' : 'Su apreciación estaba bloqueada y se quedó en la libreta.') + textoGrupos(d), 'ok');
   }
 
-  // Copia todas las clases de este grupo a los grupos marcados: crea las que faltan y corrige las que difieren.
+  // Vuelve a aplicar las clases de este grupo a los grupos del mismo nivel (crea las que faltan y corrige las distintas).
   async function copiarAGrupos() {
-    var otros = destinosExtra();
-    if (!otros.length) { aviso('Marque al menos un grupo.', 'error'); return; }
+    if (!S.hermanas.length) { return; }
     if (!S.plan.length) { aviso('Este grupo todavía no tiene clases que copiar.', 'error'); return; }
-    if (!window.confirm('Se copiarán las ' + S.plan.length + ' clases de ' + nombreGrupo({ salon: S.asig.salon }) + ' a: ' + otros.map(nombreGrupo).join(', ') + '.\nLas que ya existan con el mismo número se corregirán con estos datos. ¿Continuar?')) { return; }
+    if (!window.confirm('Se copiarán las ' + S.plan.length + ' clases de ' + nombreGrupo({ salon: S.asig.salon }) + ' a: ' + S.hermanas.map(nombreGrupo).join(', ') + '.\nLas que ya existan con el mismo número se corregirán con estos datos. ¿Continuar?')) { return; }
     aviso('Copiando…', 'info');
-    var hechas = 0, iguales = 0, fallos = [];
-    for (var i = 0; i < otros.length; i++) {
-      var h = otros[i];
-      for (var k = 0; k < S.plan.length; k++) {
-        var c = S.plan[k], ex = planDeHermana(h, c.numero);
-        if (ex && ex.tema === c.tema && ex.fecha_inicio === c.fecha_inicio && ex.fecha_fin === c.fecha_fin) { iguales++; continue; }
-        try {
-          await rpc('portal2027_guardar_plan_clase', argsGuardar(h.id, ex ? ex.id : null, ex ? null : c.numero, c.tema, c.fecha_inicio, c.fecha_fin, ex ? ex.version : 0));
-          hechas++;
-        } catch (e) { fallos.push(nombreGrupo(h) + ' · Clase ' + c.numero + ': ' + textoError(e)); }
-      }
+    var hechas = 0, fallos = [];
+    for (var k = 0; k < S.plan.length; k++) {
+      var c = S.plan[k];
+      try {
+        var d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, c.id, null, c.tema, c.fecha_inicio, c.fecha_fin, c.version));
+        hechas += d.grupos_aplicados || 0;
+        c.version = d.version;
+      } catch (e) { fallos.push('Clase ' + c.numero + ': ' + textoError(e)); }
     }
     await cargar(); dibujar();
-    var base = 'Listo: ' + hechas + ' clase(s) creadas o corregidas' + (iguales ? ' y ' + iguales + ' ya estaban iguales' : '') + '.';
+    var base = 'Listo: ' + hechas + ' clase(s) creadas o corregidas en los otros grupos.';
     aviso(fallos.length ? base + ' No se pudo: ' + fallos.join(' · ') : base, fallos.length ? 'error' : 'ok');
   }
 
@@ -188,22 +169,18 @@
     });
   }
   async function crearLote(filas) {
-    var ok = 0, fallos = [], otros = destinosExtra();
+    var ok = 0, fallos = [], aplicadas = 0;
     aviso('Creando clases…', 'info');
     for (var i = 0; i < filas.length; i++) {
-      var f = filas[i], numero;
+      var f = filas[i];
       try {
         var d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, null, f.numero, f.tema, f.inicio, f.fin, 0));
-        numero = d.numero; ok++;
-      } catch (e) { fallos.push((f.numero ? 'Clase ' + f.numero : fechaTexto(f.inicio)) + ': ' + textoError(e)); continue; }
-      for (var k = 0; k < otros.length; k++) {
-        try { await rpc('portal2027_guardar_plan_clase', argsGuardar(otros[k].id, null, numero, f.tema, f.inicio, f.fin, 0)); }
-        catch (e) { fallos.push(nombreGrupo(otros[k]) + ' · Clase ' + numero + ': ' + textoError(e)); }
-      }
+        ok++; aplicadas += d.grupos_aplicados || 0;
+      } catch (e) { fallos.push((f.numero ? 'Clase ' + f.numero : fechaTexto(f.inicio)) + ': ' + textoError(e)); }
     }
     S.lote = fallos.length ? S.lote : ''; S.previa = null;
     await cargar(); dibujar();
-    var grupos = otros.length ? ' (y en ' + otros.map(nombreGrupo).join(', ') + ')' : '';
+    var grupos = S.hermanas.length ? ' (y en los grupos del mismo nivel)' : '';
     if (fallos.length) { aviso('Se crearon ' + ok + ' clase(s)' + grupos + '. No se pudo crear: ' + fallos.join(' · '), 'error'); }
     else { aviso('Se crearon ' + ok + ' clase(s)' + grupos + ' con su apreciación semanal.', 'ok'); }
   }
@@ -211,17 +188,12 @@
   /* ---------- pantalla ---------- */
   function dibujarGrupos() {
     if (!S.hermanas.length) { return null; }
-    var cajas = S.hermanas.map(function (h) {
-      var c = el('input', { type: 'checkbox', checked: S.aplicarA[h.id] !== false, disabled: S.cerrado, 'aria-label': 'Aplicar también a ' + nombreGrupo(h) });
-      c.addEventListener('change', function () { S.aplicarA[h.id] = c.checked; });
-      return el('label', { clase: 'plan-grupo' }, [c, ' ' + nombreGrupo(h)]);
-    });
     return el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Grupos del mismo nivel' }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Usted también da ' + S.asig.materia.nombre + ' en estos grupos de ' + S.asig.salon.grado + '.º. Lo que marque aquí recibe los mismos cambios: agregar, editar, quitar y pegar varias clases.' }),
-      el('div', { clase: 'formulario-fila' }, cajas.concat([
-        el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', disabled: S.cerrado || S.plan.length === 0, texto: 'Copiar esta planificación a los grupos marcados', onclick: copiarAGrupos })
-      ]))
+      el('p', { clase: 'bloque-ayuda', texto: 'Usted también da ' + S.asig.materia.nombre + ' en ' + S.hermanas.map(nombreGrupo).join(', ') + '. Todo lo que haga aquí (agregar, editar, quitar y pegar varias clases) se aplica también en esos grupos.' }),
+      el('div', { clase: 'formulario-fila' }, [
+        el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', disabled: S.cerrado || S.plan.length === 0, texto: 'Sincronizar las clases ya creadas con ' + S.hermanas.map(nombreGrupo).join(', '), onclick: copiarAGrupos })
+      ])
     ]);
   }
 
