@@ -30,3 +30,7 @@ Hechas aquí con datos simulados (sin base real): el reporte de una copia da apr
 - [ ] Trimestre 2 sigue libre con el 1 cerrado.
 - [ ] Consejero: ve notas solo de materias publicadas; un consejero de otro grupo recibe «No tiene permiso».
 - [ ] Estudiante: imprime solo su reporte (no la ficha ni las clases).
+
+
+## Continuacion prevista
+Ver `portal2027-reportes-cierre-parteC-aprobados-reprobados.md` para el prompt completo del cuadro de aprobados y reprobados. Aun no implementado.
