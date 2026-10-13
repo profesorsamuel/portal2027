@@ -112,7 +112,7 @@
   }
 
   /* ---------- comportamiento diario (Bien / Mal por cada sesión de clase) ---------- */
-  var zonaComp = null, filasComp = {}, resumenesComp = {};
+  var filasComp = {}, resumenesComp = {};
   async function cargarComportamiento() {
     S.comp = {}; S.compError = '';
     try {
@@ -168,7 +168,7 @@
   }
   function moverComp(boton, df, dc) {
     var f = Number(boton.dataset.fila) + df, c = Number(boton.dataset.col) + dc;
-    var dest = zonaComp.querySelector('button[data-fila="' + f + '"][data-col="' + c + '"]');
+    var dest = zonaTabla.querySelector('button[data-fila="' + f + '"][data-col="' + c + '"]');
     if (!dest || dest.disabled) { return false; }
     dest.focus();
     return true;
@@ -180,7 +180,7 @@
     var deseado = previa.estado, temporizador = null, ocupado = false;
     var boton = el('button', { type: 'button', clase: 'asis-toque', disabled: ses.bloqueada });
     boton.dataset.fila = String(fila); boton.dataset.col = String(col);
-    var td = el('td', { clase: 'celda-asis' }, [boton]);
+    var td = el('div', { clase: 'celda-asis' }, [boton]);
     function marca(tipo) { td.className = 'celda-asis' + (tipo ? ' asis-' + tipo : ''); }
     function pintar() {
       var texto = deseado === 'bien' ? 'Bien' : (deseado === 'mal' ? 'Mal' : null);
@@ -217,41 +217,6 @@
     pintar();
     return td;
   }
-  function dibujarComportamiento() {
-    if (!zonaComp) { return; }
-    zonaComp.textContent = '';
-    filasComp = {}; resumenesComp = {};
-    if (S.compError) { zonaComp.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: S.compError })); return; }
-    var ses = activas();
-    var q = S.buscar.trim().toLowerCase();
-    var mats = S.mats.filter(function (m) { return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1; });
-    var cab = [el('th', { scope: 'col', clase: 'col-nombre', texto: 'Estudiante' })];
-    ses.forEach(function (x) {
-      var resumen = el('span', { clase: 'sesion-meta' }); resumenesComp[x.id] = resumen;
-      cab.push(el('th', { scope: 'col', clase: 'col-sesion' }, [
-        el('div', { clase: 'sesion-fecha', texto: diaSemana(x.fecha) + ' ' + fechaTexto(x.fecha) }),
-        el('span', { clase: 'sesion-meta', texto: 'Bloque ' + x.bloque }), resumen
-      ]));
-    });
-    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones con comportamiento Bien', texto: 'Bien' }));
-    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones con comportamiento Mal', texto: 'Mal' }));
-    cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones sin evaluar', texto: 'Sin' }));
-    var cuerpo = mats.map(function (m, i) {
-      var celdas = [el('th', { scope: 'row', clase: 'col-nombre' }, [nombreEst(m.estudiante)])];
-      ses.forEach(function (x, j) { celdas.push(celdaComp(x, m, i, j)); });
-      var f = { bien: el('td', { clase: 'col-conteo' }), mal: el('td', { clase: 'col-conteo' }), sin: el('td', { clase: 'col-conteo' }) };
-      celdas.push(f.bien, f.mal, f.sin);
-      filasComp[m.id] = f;
-      return el('tr', null, celdas);
-    });
-    zonaComp.appendChild(el('div', { clase: 'libreta-scroll' }, [el('table', { clase: 'tabla-libreta' }, [
-      el('thead', null, [el('tr', null, cab)]), el('tbody', null, cuerpo)
-    ])]));
-    S.mats.forEach(function (m) { actualizarFilaComp(m.id); });
-    ses.forEach(function (x) { actualizarResumenComp(x.id); });
-    if (ses.length === 0) { zonaComp.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no hay sesiones en este trimestre.' })); }
-  }
-
   async function recargar(mensaje) {
     aviso('Cargando asistencia…', 'info');
     try {
@@ -376,7 +341,7 @@
     var deseado = reg ? reg.estado : null;
     var ciclo = S.estados.filter(function (e) { return e.activo; }).map(function (e) { return e.codigo; });
     var boton = el('button', { type: 'button', clase: 'asis-toque', disabled: ses.bloqueada });
-    var td = el('td', { clase: 'celda-asis' }, [boton]);
+    var td = el('div', { clase: 'celda-asis' }, [boton]);
     var temporizador = null, ocupado = false;
     function marca(tipo) { td.className = 'celda-asis' + (tipo ? ' asis-' + tipo : ''); }
     function pintar() {
@@ -414,10 +379,14 @@
     function boton(texto, titulo, fn) { return el('button', { clase: 'mini', type: 'button', texto: texto, title: titulo, 'aria-label': titulo, onclick: fn }); }
     var resumen = el('span', { clase: 'sesion-meta' });
     resumenes[ses.id] = resumen;
+    var resumenC = el('span', { clase: 'sesion-meta' });
+    resumenesComp[ses.id] = resumenC;
     return el('th', { scope: 'col', clase: 'col-sesion' }, [
       el('div', { clase: 'sesion-fecha', texto: diaSemana(ses.fecha) + ' ' + fechaTexto(ses.fecha) }),
       el('span', { clase: 'sesion-meta', texto: 'Bloque ' + ses.bloque }),
       desc, resumen,
+      S.compError ? null : resumenC,
+      S.compError ? null : el('div', { clase: 'sub-doble' }, [el('span', { texto: 'Asistencia' }), el('span', { texto: 'Conducta' })]),
       el('div', { clase: 'col-acciones' }, [
         ses.bloqueada ? null : boton('✓', 'Todos presentes (a quienes no tienen marca)', function () { marcarPendientes(ses.id, 'presente'); }),
         boton(ses.bloqueada ? '🔒' : '🔓', ses.bloqueada ? 'Desbloquear sesión' : 'Bloquear sesión', function () { alternarBloqueo(ses); }),
@@ -430,6 +399,7 @@
     zonaTabla.textContent = '';
     filasEst = {};
     resumenes = {};
+    filasComp = {}; resumenesComp = {};
     var ses = activas();
     var cols = estadosColumnas();
 
@@ -437,19 +407,33 @@
     ses.forEach(function (s) { cab.push(cabeceraSesion(s)); });
     cols.forEach(function (e) { cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: e.etiqueta, texto: e.abreviatura })); });
     cab.push(el('th', { scope: 'col', clase: 'col-conteo', title: 'Sesiones sin marcar', texto: 'Sin' }));
+    if (!S.compError) {
+      cab.push(el('th', { scope: 'col', clase: 'col-conteo col-comp', title: 'Sesiones con comportamiento Bien', texto: 'Bien' }));
+      cab.push(el('th', { scope: 'col', clase: 'col-conteo col-comp', title: 'Sesiones con comportamiento Mal', texto: 'Mal' }));
+      cab.push(el('th', { scope: 'col', clase: 'col-conteo col-comp', title: 'Sesiones sin evaluar el comportamiento', texto: 'Sin ev.' }));
+    }
 
     var q = S.buscar.trim().toLowerCase();
     var mats = S.mats.filter(function (m) {
       return !q || (m.estudiante.codigo + ' ' + nombreEst(m.estudiante)).toLowerCase().indexOf(q) !== -1;
     });
 
-    var cuerpo = mats.map(function (m) {
+    var cuerpo = mats.map(function (m, i) {
       var celdas = [el('th', { scope: 'row', clase: 'col-nombre' }, [nombreEst(m.estudiante), m.estado && m.estado !== 'activo' ? el('small', { texto: ' (' + m.estado + ')' }) : null])];
-      ses.forEach(function (s) { celdas.push(celdaAsistencia(s, m)); });
+      ses.forEach(function (s, j) {
+        var partes = [celdaAsistencia(s, m)];
+        if (!S.compError) { partes.push(celdaComp(s, m, i, j)); }
+        celdas.push(el('td', { clase: 'celda-doble' }, partes));
+      });
       var f = { celdas: {}, sin: null };
       cols.forEach(function (e) { var td = el('td', { clase: 'col-conteo' }); f.celdas[e.codigo] = td; celdas.push(td); });
       f.sin = el('td', { clase: 'col-conteo' });
       celdas.push(f.sin);
+      if (!S.compError) {
+        var fc = { bien: el('td', { clase: 'col-conteo col-comp' }), mal: el('td', { clase: 'col-conteo col-comp' }), sin: el('td', { clase: 'col-conteo col-comp' }) };
+        celdas.push(fc.bien, fc.mal, fc.sin);
+        filasComp[m.id] = fc;
+      }
       filasEst[m.id] = f;
       return el('tr', null, celdas);
     });
@@ -458,15 +442,15 @@
       el('thead', null, [el('tr', null, cab)]),
       el('tbody', null, cuerpo)
     ])]));
-    S.mats.forEach(function (m) { actualizarFila(m.id); });
-    ses.forEach(function (s) { actualizarResumen(s.id); });
+    S.mats.forEach(function (m) { actualizarFila(m.id); actualizarFilaComp(m.id); });
+    ses.forEach(function (s) { actualizarResumen(s.id); actualizarResumenComp(s.id); });
+    if (S.compError) { zonaTabla.appendChild(el('p', { clase: 'mensaje error', role: 'alert', texto: S.compError })); }
     if (S.mats.length === 0) {
       zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Este grupo todavía no tiene estudiantes matriculados en el año.' }));
     }
     if (ses.length === 0) {
       zonaTabla.appendChild(el('p', { clase: 'vacio-texto', texto: 'Aún no hay sesiones en este trimestre. Agregue la primera con el formulario de arriba.' }));
     }
-    dibujarComportamiento();
   }
 
   function dibujarPapelera() {
@@ -559,7 +543,6 @@
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Asistencia recargada.'); } });
 
     zonaTabla = el('div');
-    zonaComp = el('div');
     var zonaExtra = el('div');
     btnHist.addEventListener('click', function () { zonaExtra.textContent = ''; var c = el('div'); zonaExtra.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Historial de asistencia' }), c])); dibujarHistorial(c); });
     btnPap.addEventListener('click', function () { zonaExtra.textContent = ''; zonaExtra.appendChild(dibujarPapelera()); });
@@ -568,7 +551,7 @@
       return el('span', null, [el('strong', { texto: e.abreviatura }), ' = ' + e.etiqueta]);
     }));
 
-    leyenda.appendChild(el('span', { clase: 'leyenda-toque', texto: 'Toque la casilla para cambiar: P → A → T → J → P. Las fechas nuevas empiezan con todos Presente.' }));
+    leyenda.appendChild(el('span', { clase: 'leyenda-toque', texto: 'Casilla izquierda = asistencia (toque: P → A → T → J → P). Casilla derecha = comportamiento (toque: — → Bien → Mal → —; teclado: B, M, Supr, Enter baja, flechas). Las fechas nuevas empiezan con todos Presente.' }));
 
     var cuerpo = el('div', { clase: 'asistencia-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
@@ -577,16 +560,11 @@
         formNueva
       ]),
       el('section', { clase: 'bloque' }, [
-        el('h2', { texto: 'Asistencia' }),
+        el('h2', { texto: 'Asistencia y comportamiento' }),
         el('div', { clase: 'formulario-fila' }, [el('label', null, ['Sesión', selSes]), el('label', null, ['Estado', selEst]), btnMarcar]),
         el('p', { clase: 'bloque-ayuda', texto: 'Elija el estado en cada casilla; se guarda al instante. Una casilla vacía significa «sin marcar» (no cuenta como ausencia). Las columnas de la derecha solo cuentan sesiones por estado: aún no hay porcentajes ni pesos.' }),
         leyenda,
         zonaTabla
-      ]),
-      el('section', { clase: 'bloque' }, [
-        el('h2', { texto: 'Comportamiento' }),
-        el('p', { clase: 'bloque-ayuda', texto: 'Se evalúa en cada día de clase: Bien o Mal. Toque la casilla (— → Bien → Mal → —) o use el teclado: B = Bien, M = Mal, Supr = vaciar, Enter = siguiente estudiante, flechas = moverse. Se guarda al instante; vacío significa «sin evaluar».' }),
-        zonaComp
       ]),
       zonaExtra
     ]);
