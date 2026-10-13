@@ -744,6 +744,41 @@
         else if (k.key === 'ArrowRight' && inp.selectionEnd === inp.value.length) { k.preventDefault(); moverCelda(inp, 0, 1); }
         else if (k.key === 'ArrowLeft' && inp.selectionStart === 0) { k.preventDefault(); moverCelda(inp, 0, -1); }
       });
+
+      // Pegar notas copiadas de Excel: una columna (o varias) hacia abajo desde esta casilla; cada nota se guarda como si se hubiera escrito a mano.
+      inp.addEventListener('paste', function (k) {
+        var txt = ((k.clipboardData && k.clipboardData.getData('text')) || '').replace(/[\r\n]+$/, '');
+        if (!/[\r\n\t]/.test(txt)) { return; } // una sola nota: se pega normal
+        k.preventDefault();
+        if (bloqueado) { return; }
+        var f0 = Number(inp.dataset.fila), c0 = Number(inp.dataset.col);
+        var destinos = [], invalidas = [], sinCasilla = 0;
+        txt.split(/\r?\n/).forEach(function (linea, a) {
+          linea.split('\t').forEach(function (t, b) {
+            t = t.trim();
+            if (t === '') { return; } // celda vacía: no se toca
+            var v = Number(t.replace(',', '.'));
+            var est = S.mats[f0 + a];
+            if (!Number.isFinite(v) || v < 0 || v > 5) { invalidas.push('«' + t + '»' + (est ? ' (' + nombreEst(est.estudiante) + ')' : '')); return; }
+            var dest = contenido.querySelector('input[data-fila="' + (f0 + a) + '"][data-col="' + (c0 + b) + '"]');
+            if (!dest || dest.disabled) { sinCasilla++; return; }
+            destinos.push({ dest: dest, v: Math.round(v * 100) / 100, est: est });
+          });
+        });
+        if (invalidas.length > 0) {
+          window.alert('No se pegó nada. Estos valores no son notas de 0 a 5:\n\n' + invalidas.slice(0, 8).join('\n') + (invalidas.length > 8 ? '\n…' : ''));
+          return;
+        }
+        if (destinos.length === 0) { window.alert('No hay notas para pegar en esta posición.'); return; }
+        var primero = destinos[0].est, ultimo = destinos[destinos.length - 1].est;
+        var msg = 'Se pegarán ' + destinos.length + ' nota(s)' + (primero && ultimo ? ', de ' + nombreEst(primero.estudiante) + ' a ' + nombreEst(ultimo.estudiante) : '') + '.';
+        if (sinCasilla > 0) { msg += '\n\n' + sinCasilla + ' valor(es) sobraban (no hay más estudiantes o columnas) y se omitirán.'; }
+        if (!window.confirm(msg + '\n\n¿Continuar?')) { return; }
+        destinos.forEach(function (d) {
+          d.dest.value = String(d.v);
+          d.dest.dispatchEvent(new Event('change')); // usa el mismo guardado de una nota escrita a mano
+        });
+      });
       return td;
     }
 
