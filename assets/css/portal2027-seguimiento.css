@@ -1,0 +1,17 @@
+/* portal2027-seguimiento.css — riesgo, notas trimestrales y cuadro de fracaso */
+.seg-pestanas { display: flex; gap: .4rem; flex-wrap: wrap; margin: .75rem 0; }
+.seg-pestanas button { border: 1px solid var(--linea); background: var(--blanco, #fff); padding: .45rem .9rem; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; }
+.seg-pestanas button[aria-selected="true"] { background: var(--tinta, #14323b); color: #fff; border-color: var(--tinta, #14323b); }
+.seg-kpis { display: flex; gap: .6rem; flex-wrap: wrap; margin: .75rem 0; }
+.seg-kpi { flex: 1; min-width: 9rem; border: 1px solid var(--linea); border-radius: var(--radio, 8px); padding: .5rem .8rem; background: var(--blanco, #fff); }
+.seg-kpi b { display: block; font-size: 1.5rem; }
+.seg-kpi span { font-size: .85rem; color: var(--texto-suave); }
+.seg-tabla td.c, .seg-tabla th.c { text-align: center; }
+.seg-tabla td.rojo { background: #fde8e8; color: #9b1c1c; font-weight: 700; }
+.seg-tabla td.final { font-weight: 700; }
+.seg-etq { display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+.seg-etq.ok { background: #e8f5ec; color: #1d5a35; } .seg-etq.alto { background: #fde8e8; color: #9b1c1c; }
+.seg-etq.medio { background: #fdf0d5; color: #8a5a00; } .seg-etq.critico { background: #7f1d1d; color: #fff; }
+.seg-firma { margin-top: 2rem; text-align: center; }
+.seg-oculto { display: none; }
+@media print { .seg-pestanas, .seg-kpis.no-imprimir { display: none !important; } .seg-tabla td.rojo { background: #fde8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
