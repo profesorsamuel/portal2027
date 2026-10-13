@@ -13,7 +13,7 @@
   var S = {
     info: null, asig: null, trimestres: [], trimestreId: null,
     estados: [], sesiones: [], mats: [], asist: {},   // asist: sesionId|matId -> {estado, version}
-    buscar: '', plan: [], claseSel: null
+    buscar: '', plan: [], claseSel: null, horarioDias: [], horarioAviso: '', calendarioSemana: null
   };
   var barra = null;
   var zonaTabla = null;
@@ -117,6 +117,7 @@
     r[3].forEach(function (a) { S.asist[clave(a.sesion_id, a.matricula_id)] = { estado: a.estado, version: a.version }; });
     await cargarComportamiento();
     await cargarPlan();
+    await cargarDiasHorario();
   }
 
   /* ---------- planificación: la clase activa se abre sola (migración 0029) ---------- */
@@ -130,6 +131,52 @@
       var hoyC = claseDeHoy();
       S.claseSel = hoyC ? hoyC.id : 'todo';
     }
+  }
+
+  async function cargarDiasHorario() {
+    S.horarioDias = []; S.horarioAviso = '';
+    try {
+      var filas = await consultar(db.from('portal2027_horario').select('dia,hora_inicio,asignacion_id')
+        .eq('anio_id', S.asig.salon.anio_id).eq('asignacion_id', S.asig.id).eq('tipo', 'clase').order('dia').order('hora_inicio'));
+      S.horarioDias = filas;
+      if (!filas.length) S.horarioAviso = 'No hay días asignados a esta materia y grupo en el horario. Revise Horario.';
+    } catch (e) { S.horarioAviso = 'No se pudo consultar el horario; la asistencia sigue disponible.'; }
+  }
+  function sumarDias(fecha, dias) {
+    var p = fecha.split('-').map(Number), d = new Date(p[0], p[1]-1, p[2]+dias);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function lunesDe(fecha) { var p=fecha.split('-').map(Number), d=new Date(p[0],p[1]-1,p[2]); return sumarDias(fecha,-((d.getDay()+6)%7)); }
+  function crearCalendarioAsistencia(inputFecha, clase) {
+    var caja = el('section', { clase:'asis-calendario' });
+    var titulo = el('strong', { texto:'Calendario de asistencia · días de la materia' });
+    var subtitulo = el('p', { clase:'asis-cal-ayuda', texto:S.horarioAviso || 'Seleccione un día de clase para completar la fecha de la nueva sesión. No se guarda hasta pulsar Agregar sesión.' });
+    var semana = S.calendarioSemana || lunesDe(hoy());
+    var dias = el('div', { clase:'asis-cal-dias' });
+    var rango = el('span');
+    var anterior = el('button',{type:'button',clase:'boton boton-secundario boton-chico',texto:'← Anterior',onclick:function(){semana=sumarDias(semana,-7);S.calendarioSemana=semana;pintar();}});
+    var siguiente = el('button',{type:'button',clase:'boton boton-secundario boton-chico',texto:'Siguiente →',onclick:function(){semana=sumarDias(semana,7);S.calendarioSemana=semana;pintar();}});
+    var botonHoy = el('button',{type:'button',clase:'boton boton-secundario boton-chico',texto:'Hoy',onclick:function(){semana=lunesDe(hoy());S.calendarioSemana=semana;pintar();}});
+    function pintar() {
+      dias.textContent=''; rango.textContent=fechaTexto(semana)+' al '+fechaTexto(sumarDias(semana,4));
+      ['Lunes','Martes','Miércoles','Jueves','Viernes'].forEach(function(nombre,i){
+        var fecha=sumarDias(semana,i), bloques=S.horarioDias.filter(function(h){return Number(h.dia)===i+1;});
+        var sesiones=S.sesiones.filter(function(s){return !s.eliminada_en && s.fecha===fecha;});
+        var enClase=!clase || (fecha>=clase.fecha_inicio && fecha<=clase.fecha_fin);
+        var estado=!bloques.length?'libre':sesiones.length?'registrada':fecha===hoy()?'hoy':fecha<hoy()?'atrasada':'pendiente';
+        var btn=el('button',{type:'button',clase:'asis-cal-dia asis-cal-'+estado,disabled:!bloques.length||!enClase,
+          title:!enClase?'Fuera de las fechas de la clase':nombre+' '+fechaTexto(fecha),
+          onclick:function(){inputFecha.value=fecha;inputFecha.dispatchEvent(new Event('change'));dias.querySelectorAll('.asis-cal-elegida').forEach(function(x){x.classList.remove('asis-cal-elegida');});btn.classList.add('asis-cal-elegida');}});
+        btn.appendChild(el('span',{texto:nombre}));btn.appendChild(el('strong',{texto:fechaTexto(fecha).slice(0,5)}));
+        btn.appendChild(el('small',{texto:!bloques.length?'Sin clase':sesiones.length?sesiones.length+' registrada(s)':fecha===hoy()?'Hoy · pendiente':fecha<hoy()?'Sin registrar':bloques.length+' bloque(s)'}));
+        if(inputFecha.value===fecha)btn.classList.add('asis-cal-elegida');
+        dias.appendChild(btn);
+      });
+    }
+    caja.appendChild(el('div',{clase:'asis-cal-cabecera'},[titulo,anterior,botonHoy,siguiente,rango]));
+    caja.appendChild(subtitulo);caja.appendChild(dias);
+    caja.appendChild(el('p',{clase:'asis-cal-ayuda',texto:'Verde: registrada · Azul: hoy · Rojo: fecha anterior sin registrar · Gris: sin materia. Los registros se verifican por fecha.'}));
+    pintar(); return caja;
   }
 
   /* ---------- comportamiento diario (Bien / Mal por cada sesión de clase) ---------- */
@@ -623,6 +670,7 @@
         el('h2', { texto: 'Nueva sesión' }),
         el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', selTrim]), el('label', null, ['Clase', selClase]), el('label', null, ['Estudiante', buscar]), btnHist, btnPap, btnRec]),
         banner,
+        crearCalendarioAsistencia(inFecha, cSel),
         formNueva
       ]),
       el('section', { clase: 'bloque' }, [
