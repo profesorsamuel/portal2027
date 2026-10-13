@@ -865,6 +865,30 @@
     pintar();
   }
 
+  // Casillas compactas sobre la tabla: incluso las ocultas permanecen accesibles.
+  function barraGanchosColumnas() {
+    var barra = el('div', { clase: 'libreta-ganchos-barra' });
+    barra.appendChild(el('span', { clase: 'libreta-ganchos-titulo', texto: 'Columnas ✓:' }));
+    (S.filtroCat ? [S.filtroCat] : M.CATEGORIAS).forEach(function(c) {
+      var evals = S.evals.filter(function(e) { return !e.eliminada_en && e.categoria === c; });
+      if (!evals.length) { return; }
+      var grupo = el('div', { clase: 'libreta-ganchos-grupo' });
+      grupo.appendChild(el('strong', { texto: M.ETIQUETAS[c] + ':' }));
+      evals.forEach(function(e, i) {
+        var visible = estaVisible(e);
+        var nombre = c === 'apreciacion' ? 'A' + (e.semana || i + 1) : c === 'ejercicio_escrito' ? 'E' + (i + 1) : 'Ex' + (i + 1);
+        var check = el('input', { type: 'checkbox', checked: visible, 'aria-label': 'Mostrar columna ' + nombre });
+        check.addEventListener('change', function() {
+          if (check.checked && e.oculta) { S.verOcultas = true; }
+          ponerVista(e, check.checked);
+        });
+        grupo.appendChild(el('label', { clase: 'libreta-gancho' + (visible ? ' activo' : ''), title: (e.tema || nombre) + (visible ? ' · Visible' : ' · Oculta') }, [check, el('span', { texto: nombre })]));
+      });
+      barra.appendChild(grupo);
+    });
+    return barra;
+  }
+
   function cabeceraColumna(ev) {
     var tema = el('input', { type: 'text', clase: 'tema-input', value: ev.tema || '', placeholder: 'Tema', maxlength: '120', disabled: ev.bloqueada || S.cerrado, 'aria-label': 'Tema de la columna' });
     tema.addEventListener('change', function () { cambiarTema(ev, tema); });
@@ -931,6 +955,7 @@
       el('thead', null, [el('tr', null, fila1), el('tr', null, fila2)]),
       el('tbody', null, cuerpo)
     ]);
+    zonaTabla.appendChild(barraGanchosColumnas());
     zonaTabla.appendChild(el('div', { clase: 'libreta-scroll' }, [tabla]));
     S.mats.forEach(function (m) { actualizarFila(m.id); });
     if (S.mats.length === 0) {
