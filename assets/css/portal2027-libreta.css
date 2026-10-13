@@ -162,3 +162,12 @@
 .libreta-estudiantes-rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:5px 12px;max-height:370px;overflow:auto}
 .libreta-col-opcion:has(input:checked){background:#f0f9ff}
 .libreta-col-opcion input{flex-shrink:0}
+
+/* Ganchos individuales de visibilidad, encima de la libreta */
+.libreta-ganchos-barra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:9px 11px;margin:8px 0;background:#f4f8fb;border:1px solid #d9e4ec;border-radius:9px;font-size:12px}
+.libreta-ganchos-titulo{font-weight:700;white-space:nowrap}
+.libreta-ganchos-grupo{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.libreta-ganchos-grupo strong{margin-right:3px}
+.libreta-gancho{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;white-space:nowrap}
+.libreta-gancho.activo{background:#e9f6ef;border-color:#9fd2b0}
+.libreta-gancho input{margin:0;width:14px;height:14px;accent-color:#16834a;cursor:pointer}
