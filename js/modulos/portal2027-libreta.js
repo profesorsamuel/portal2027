@@ -407,6 +407,13 @@
     v.showModal();
   }
 
+  // Gancho de la semana activa: hoy cae entre el inicio y el fin de la semana (fechas que fija la Planificación).
+  function semanaActiva(ev) {
+    if (!ev.semana_inicio || !ev.semana_fin) { return false; }
+    var d = new Date(), h = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return h >= ev.semana_inicio && h <= ev.semana_fin;
+  }
+
   async function abrirDesglose(ev) {
     var ventana = document.createElement('dialog');
     ventana.className = 'portal2027-desglose';
@@ -681,7 +688,7 @@
       var sel = el('select', { clase: 'tipo-select', 'aria-label': 'Tipo de nota de apreciación', disabled: ev.bloqueada || S.cerrado }, opciones);
       sel.value = ev.tipo || '';
       sel.addEventListener('change', function () { cambiarTipo(ev, sel); });
-      rotulo = ev.semana ? el('div', { clase: 'col-rotulo', texto: 'Apreciación ' + ev.semana }) : sel;
+      rotulo = ev.semana ? el('div', { clase: 'col-rotulo', texto: 'Apreciación ' + ev.semana + (semanaActiva(ev) ? ' ✓' : ''), title: semanaActiva(ev) ? 'Semana activa: hoy cae dentro de sus fechas' : null }) : sel;
     }
     return el('th', { scope: 'col', clase: 'col-eval' + (ev.oculta ? ' col-oculta' : '') }, [
       rotulo,
@@ -1191,6 +1198,7 @@
           el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + S.asig.salon.anio.anio })
         ]),
         el('div', { clase: 'cabecera-acciones' }, [
+          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId), texto: 'Planificación' }),
           el('a', { clase: 'boton boton-secundario', href: P.rutaPanel(rolPanel), texto: 'Volver al panel' }),
           el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar sesión', onclick: P.cerrarSesion })
         ])
@@ -1198,6 +1206,13 @@
       contenido.appendChild(estado);
       await cargarLibreta();
       dibujar();
+      // Desde la Planificación: abre directamente el desglose de la semana pedida.
+      var semPedida = Number(params.get('semana'));
+      if (semPedida) {
+        var evSem = S.evals.filter(function (e) { return e.categoria === 'apreciacion' && e.semana === semPedida && !e.eliminada_en; })[0];
+        if (evSem) { abrirDesglose(evSem); }
+        else { aviso('La apreciación de la Clase ' + semPedida + ' no está en esta libreta.', 'error'); }
+      }
     } catch (e) {
       errorPantalla('No se pudo abrir la libreta. ' + textoError(e));
     }

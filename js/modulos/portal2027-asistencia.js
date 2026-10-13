@@ -13,7 +13,7 @@
   var S = {
     info: null, asig: null, trimestres: [], trimestreId: null,
     estados: [], sesiones: [], mats: [], asist: {},   // asist: sesionId|matId -> {estado, version}
-    buscar: ''
+    buscar: '', plan: [], claseSel: null
   };
   var barra = null;
   var zonaTabla = null;
@@ -62,7 +62,14 @@
   }
   function sesionPorId(id) { return S.sesiones.filter(function (s) { return s.id === id; })[0]; }
   function estadoPorCodigo(c) { return S.estados.filter(function (e) { return e.codigo === c; })[0]; }
-  function activas() { return S.sesiones.filter(function (s) { return !s.eliminada_en; }); }
+  // Con una clase de la planificación elegida solo cuentan las sesiones cuya fecha cae dentro de sus fechas.
+  function claseDePlan(id) { return S.plan.filter(function (c) { return c.id === id; })[0] || null; }
+  function claseSeleccionada() { return claseDePlan(S.claseSel); }
+  function claseDeHoy() { var h = hoy(); return S.plan.filter(function (c) { return h >= c.fecha_inicio && h <= c.fecha_fin; })[0] || null; }
+  function activas() {
+    var c = claseSeleccionada();
+    return S.sesiones.filter(function (s) { return !s.eliminada_en && (!c || (s.fecha >= c.fecha_inicio && s.fecha <= c.fecha_fin)); });
+  }
   function fechaTexto(f) {          // 'AAAA-MM-DD' sin pasar por zonas horarias
     var p = String(f).split('-');
     return p[2] + '/' + p[1] + '/' + p[0];
@@ -109,6 +116,20 @@
     S.asist = {};
     r[3].forEach(function (a) { S.asist[clave(a.sesion_id, a.matricula_id)] = { estado: a.estado, version: a.version }; });
     await cargarComportamiento();
+    await cargarPlan();
+  }
+
+  /* ---------- planificación: la clase activa se abre sola (migración 0029) ---------- */
+  async function cargarPlan() {
+    S.plan = [];
+    try {
+      S.plan = await consultar(db.from('portal2027_plan_clases').select('id,numero,tema,fecha_inicio,fecha_fin')
+        .eq('asignacion_id', S.asig.id).eq('trimestre_id', S.trimestreId).is('eliminada_en', null).order('fecha_inicio').order('numero'));
+    } catch (e) { S.plan = []; }   // sin la migración 0029 la asistencia funciona completa, sin filtro por clase
+    if (S.claseSel !== 'todo' && !claseDePlan(S.claseSel)) {
+      var hoyC = claseDeHoy();
+      S.claseSel = hoyC ? hoyC.id : 'todo';
+    }
   }
 
   /* ---------- comportamiento diario (Bien / Mal por cada sesión de clase) ---------- */
@@ -510,15 +531,41 @@
     var selTrim = el('select', { 'aria-label': 'Trimestre' }, S.trimestres.map(function (t) {
       return el('option', { value: t.id, texto: 'Trimestre ' + t.numero, selected: t.id === S.trimestreId });
     }));
-    selTrim.addEventListener('change', function () { S.trimestreId = selTrim.value; recargar(); });
+    selTrim.addEventListener('change', function () { S.trimestreId = selTrim.value; S.claseSel = null; recargar(); });
 
     var buscar = el('input', { type: 'search', placeholder: 'Buscar estudiante', value: S.buscar, 'aria-label': 'Buscar estudiante' });
     buscar.addEventListener('input', function () { S.buscar = buscar.value; dibujarTabla(); });
 
+    // Clase de la planificación (filtra las sesiones por sus fechas)
+    var cSel = claseSeleccionada();
+    var hoyTxt = hoy();
+    var selClase = el('select', { 'aria-label': 'Clase' }, [el('option', { value: 'todo', texto: 'Todo el trimestre', selected: !cSel })].concat(S.plan.map(function (c) {
+      var act = hoyTxt >= c.fecha_inicio && hoyTxt <= c.fecha_fin;
+      return el('option', { value: c.id, selected: !!cSel && cSel.id === c.id,
+        texto: (act ? '✓ ' : '') + 'Clase ' + c.numero + ' · ' + c.tema + ' (' + fechaTexto(c.fecha_inicio).slice(0, 5) + ' al ' + fechaTexto(c.fecha_fin).slice(0, 5) + ')' });
+    })));
+    selClase.addEventListener('change', function () { S.claseSel = selClase.value; dibujar(); });
+    var banner = null;
+    if (cSel) {
+      var esActiva = hoyTxt >= cSel.fecha_inicio && hoyTxt <= cSel.fecha_fin;
+      var totalSes = S.sesiones.filter(function (s) { return !s.eliminada_en; }).length;
+      banner = el('p', { clase: 'mensaje ok' }, [
+        (esActiva ? '✓ ' : '') + 'Clase ' + cSel.numero + ' · ' + cSel.tema + ' · del ' + fechaTexto(cSel.fecha_inicio) + ' al ' + fechaTexto(cSel.fecha_fin) +
+          '. Se muestran ' + activas().length + ' de ' + totalSes + ' sesiones y los conteos son solo de esta clase. ',
+        el('a', { href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId) + '&semana=' + cSel.numero, texto: 'Apreciación de esta semana' }),
+        ' · ',
+        el('a', { href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId), texto: 'Planificación' })
+      ]);
+    } else if (S.plan.length) {
+      banner = el('p', { clase: 'mensaje info', texto: 'Se muestran todas las sesiones del trimestre. Elija una clase para ver solo su semana.' });
+    }
+
     // Nueva sesión
-    var inFecha = el('input', { type: 'date', value: hoy(), required: true });
+    var fechaIni = hoyTxt;
+    if (cSel && !(hoyTxt >= cSel.fecha_inicio && hoyTxt <= cSel.fecha_fin)) { fechaIni = cSel.fecha_inicio; }
+    var inFecha = el('input', { type: 'date', value: fechaIni, min: cSel && cSel.fecha_inicio, max: cSel && cSel.fecha_fin, required: true });
     var inBloque = el('input', { type: 'number', min: '1', max: '12', value: '1', 'aria-label': 'Bloque' });
-    var inDesc = el('input', { type: 'text', maxlength: '120', placeholder: 'Descripción (opcional)' });
+    var inDesc = el('input', { type: 'text', maxlength: '120', placeholder: 'Descripción (opcional)', value: cSel ? cSel.tema : '' });
     var formNueva = el('form', { clase: 'formulario-fila', novalidate: true }, [
       el('label', null, ['Fecha', inFecha]), el('label', null, ['Bloque', inBloque]), el('label', null, ['Descripción', inDesc]),
       el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Agregar sesión' })
@@ -527,6 +574,9 @@
       ev.preventDefault();
       var bloque = Number(inBloque.value);
       if (!inFecha.value) { aviso('Elija la fecha de la sesión.', 'error'); return; }
+      if (cSel && (inFecha.value < cSel.fecha_inicio || inFecha.value > cSel.fecha_fin)) {
+        aviso('La fecha debe estar dentro de la Clase ' + cSel.numero + ' (' + fechaTexto(cSel.fecha_inicio) + ' al ' + fechaTexto(cSel.fecha_fin) + '). Para otras fechas elija «Todo el trimestre».', 'error'); return;
+      }
       if (!(bloque >= 1 && bloque <= 12) || Math.floor(bloque) !== bloque) { aviso('El bloque debe ser un número de 1 a 12.', 'error'); return; }
       crearSesionConPresentes({ p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_fecha: inFecha.value, p_bloque: bloque, p_descripcion: inDesc.value });
     });
@@ -571,7 +621,8 @@
     var cuerpo = el('div', { clase: 'asistencia-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
         el('h2', { texto: 'Nueva sesión' }),
-        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', selTrim]), el('label', null, ['Estudiante', buscar]), btnHist, btnPap, btnRec]),
+        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', selTrim]), el('label', null, ['Clase', selClase]), el('label', null, ['Estudiante', buscar]), btnHist, btnPap, btnRec]),
+        banner,
         formNueva
       ]),
       el('section', { clase: 'bloque' }, [
@@ -605,6 +656,7 @@
 
     var params = new URLSearchParams(window.location.search);
     var asigId = params.get('asignacion');
+    S.claseSel = params.get('clase');
     contenido.textContent = '';
     barra = el('p', { clase: 'mensaje estado-panel', role: 'status', 'aria-live': 'polite', hidden: true });
 
@@ -623,6 +675,7 @@
           el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + S.asig.salon.anio.anio })
         ]),
         el('div', { clase: 'cabecera-acciones' }, [
+          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId), texto: 'Planificación' }),
           el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a la libreta' }),
           el('a', { clase: 'boton boton-secundario', href: P.rutaPanel(rolPanel), texto: 'Volver al panel' }),
           el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar sesión', onclick: P.cerrarSesion })

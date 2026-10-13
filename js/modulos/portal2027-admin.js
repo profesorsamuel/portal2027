@@ -584,7 +584,7 @@
         };
         return el('div', { clase: 'cabecera-acciones' }, [
           el('strong', { texto: a.materia ? a.materia.nombre : '' }),
-          enlace('portal2027-libreta.html', 'Libreta'), enlace('portal2027-asistencia.html', 'Asistencia'),
+          enlace('portal2027-libreta.html', 'Libreta'), enlace('portal2027-planificacion.html', 'Planificación'), enlace('portal2027-asistencia.html', 'Asistencia'),
           enlace('portal2027-clases.html', 'Clases y tareas'), enlace('portal2027-ejercicios.html', 'Ejercicios virtuales'), quitar
         ]);
       });
