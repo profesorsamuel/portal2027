@@ -179,3 +179,15 @@
 .libreta-col-resize:hover, .libreta-redimensionando .libreta-col-resize { background: rgba(37,99,235,.18); }
 .libreta-redimensionando, .libreta-redimensionando * { cursor: col-resize !important; user-select: none !important; }
 .tabla-libreta .col-eval .tema-input { max-width: 100%; box-sizing: border-box; }
+
+/* Ancho real con colgroup: la fila completa responde al arrastre */
+.tabla-libreta {table-layout:fixed;width:max-content;min-width:0}
+.tabla-libreta th.col-eval{min-width:0!important;max-width:none!important;width:auto!important;overflow:visible}
+.tabla-libreta .col-nombre{min-width:0}
+.tabla-libreta .col-eval .tema-input{width:100%;min-width:0}
+.tabla-libreta .col-eval .col-acciones{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}
+.libreta-col-resize{right:-6px;width:12px;background:transparent;border-right:2px solid transparent}
+.libreta-col-resize:hover{border-right-color:#2563eb;background:rgba(37,99,235,.2)}
+.libreta-ajuste-barra{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 10px;margin:5px 0 9px;border:1px solid #d9e4ec;border-radius:8px;background:#fff;font-size:12px}
+.libreta-ajuste-barra select{padding:5px;border:1px solid #b7c9d9;border-radius:5px}
+.libreta-ajuste-barra small{color:#536b7b}
