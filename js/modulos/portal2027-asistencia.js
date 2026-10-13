@@ -579,6 +579,15 @@
       return el('option', { value: t.id, texto: 'Trimestre ' + t.numero, selected: t.id === S.trimestreId });
     }));
     selTrim.addEventListener('change', function () { S.trimestreId = selTrim.value; S.claseSel = null; recargar(); });
+    var trimestreActual = S.trimestres.find(function (t) { return t.id === S.trimestreId; });
+    var textoPeriodo = trimestreActual && trimestreActual.fecha_inicio && trimestreActual.fecha_fin
+      ? 'Trimestre ' + trimestreActual.numero + ' · Comienza: ' + fechaTexto(trimestreActual.fecha_inicio) + ' · Termina: ' + fechaTexto(trimestreActual.fecha_fin)
+      : 'Este trimestre todavía no tiene fechas de inicio y finalización configuradas.';
+    var avisoPeriodo = el('div', { clase: 'asistencia-periodo-trimestre', role: 'status' }, [
+      el('strong', { texto: '📅 Fechas del trimestre' }),
+      el('span', { texto: textoPeriodo })
+    ]);
+
 
     var buscar = el('input', { type: 'search', placeholder: 'Buscar estudiante', value: S.buscar, 'aria-label': 'Buscar estudiante' });
     buscar.addEventListener('input', function () { S.buscar = buscar.value; dibujarTabla(); });
@@ -669,6 +678,7 @@
       el('section', { clase: 'bloque' }, [
         el('h2', { texto: 'Nueva sesión' }),
         el('div', { clase: 'formulario-fila' }, [el('label', null, ['Trimestre', selTrim]), el('label', null, ['Clase', selClase]), el('label', null, ['Estudiante', buscar]), btnHist, btnPap, btnRec]),
+        avisoPeriodo,
         banner,
         crearCalendarioAsistencia(inFecha, cSel),
         formNueva
@@ -711,7 +721,7 @@
     try {
       S.asig = asigId ? await cargarAsignacion(asigId) : null;
       if (!S.asig) { errorPantalla('No se encontró esta asistencia o no tiene acceso a ella.'); return; }
-      S.trimestres = await consultar(db.from('portal2027_trimestres').select('id,numero').eq('anio_id', S.asig.salon.anio_id).order('numero'));
+      S.trimestres = await consultar(db.from('portal2027_trimestres').select('id,numero,fecha_inicio,fecha_fin').eq('anio_id', S.asig.salon.anio_id).order('numero'));
       var pedido = params.get('trimestre');
       S.trimestreId = (pedido && S.trimestres.some(function (t) { return t.id === pedido; })) ? pedido : (S.trimestres[0] ? S.trimestres[0].id : null);
       if (!S.trimestreId) { errorPantalla('Este año no tiene trimestres.'); return; }
