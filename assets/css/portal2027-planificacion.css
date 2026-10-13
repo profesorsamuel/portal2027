@@ -32,3 +32,7 @@ tr.fila-activa td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
 
 /* Calendario visible y progreso de cobertura */
 .plan-calendario{border:2px solid #7aa7d7!important;background:#fff!important}.plan-calendario h2{color:#174879}.plan-cal-progreso{height:12px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:8px 0 16px}.plan-cal-progreso-barra{height:100%;background:#27835b;transition:width .2s}.plan-cal-fechas{line-height:1.6}.plan-cal-grid{grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
+
+/* PDF por clase */
+.plan-pdf-celda {display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:130px;}
+.plan-pdf-celda>span {width:100%;font-weight:600;font-size:.85rem;}
