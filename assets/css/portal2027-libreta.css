@@ -86,3 +86,48 @@
 /* Sin flechitas de subir/bajar en ninguna casilla de nota */
 .nota-input::-webkit-outer-spin-button,.nota-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .nota-input{-moz-appearance:textfield;appearance:textfield}
+
+/* Ventana «Descuentos de conducta» */
+.portal2027-descuentos{width:min(94vw,560px);max-height:92vh;max-height:92dvh;margin:auto;padding:0;border:0;border-radius:14px;background:#fff;color:var(--tinta,#14323b);overflow:hidden;box-shadow:0 24px 60px rgba(10,25,30,.35)}
+.portal2027-descuentos[open]{display:flex;flex-direction:column}
+.portal2027-descuentos::backdrop{background:rgba(15,32,38,.6)}
+.portal2027-descuentos button{font:inherit;cursor:pointer}
+.desc-cabecera{padding:1.15rem 1.5rem 1rem;background:var(--tinta,#14323b);color:#fff;border-bottom:4px solid var(--acento,#e8a317);flex:0 0 auto}
+.desc-cabecera h3{margin:0;font-family:var(--fuente-titulo,Georgia,serif);font-size:1.35rem;font-weight:700;color:#fff}
+.desc-cabecera p{margin:.3rem 0 0;font-size:.9rem;line-height:1.4;color:#cfe0de}
+.desc-cuerpo{flex:1 1 auto;overflow:auto;padding:1.1rem 1.5rem 1rem;background:#fff;-webkit-overflow-scrolling:touch}
+.desc-grupo{margin-bottom:1.1rem}
+.desc-grupo h4{margin:0 0 .35rem;padding-bottom:.35rem;border-bottom:1px solid var(--linea,#d5dedc);font-size:.95rem;font-weight:700;color:var(--tinta,#14323b)}
+.desc-fila{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid #eef2f1;cursor:pointer}
+.desc-fila:last-child{border-bottom:0}
+.desc-texto{display:flex;flex-direction:column;min-width:0}
+.desc-texto strong{font-size:.98rem;font-weight:600;color:var(--texto,#1d2b2f)}
+.desc-texto small{font-size:.8rem;line-height:1.35;color:var(--texto-suave,#556a6e)}
+.desc-caja{flex:0 0 auto;display:inline-flex;align-items:center;gap:.4rem}
+.desc-caja input{width:4.6rem;padding:.5rem .6rem;font:inherit;font-size:1.05rem;font-weight:600;text-align:center;color:var(--tinta,#14323b);background:#f7faf9;border:1px solid #aebdba;border-radius:8px}
+.desc-caja input:hover{border-color:#7e9995}
+.desc-caja input:focus{outline:3px solid var(--acento,#e8a317);outline-offset:1px;background:#fff;border-color:var(--acento-oscuro,#8a5a00)}
+.desc-unidad{font-size:.8rem;color:var(--texto-suave,#556a6e);min-width:1.6rem}
+.desc-previa{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;margin-top:.25rem;padding:.75rem 1rem;background:#fdf6e3;border:1px solid #ecd9a6;border-left:4px solid var(--acento,#e8a317);border-radius:8px;font-size:.92rem}
+.desc-previa-titulo{font-weight:700;color:var(--acento-oscuro,#8a5a00)}
+.desc-previa-texto b{font-size:1.05rem;color:var(--tinta,#14323b)}
+.desc-nota{margin:.8rem 0 0;font-size:.82rem;line-height:1.4;color:var(--texto-suave,#556a6e)}
+.desc-pie{flex:0 0 auto;padding:.85rem 1.5rem 1.1rem;background:#f4f7f6;border-top:1px solid var(--linea,#d5dedc)}
+.desc-msg{min-height:1.2em;margin:0 0 .6rem;font-size:.88rem;color:var(--texto-suave,#556a6e)}
+.desc-msg.error{color:#b3261e;font-weight:600}
+.desc-msg.ok{color:var(--ok,#2f7d4f);font-weight:600}
+.desc-botones{display:flex;align-items:center;justify-content:flex-end;gap:.6rem;flex-wrap:wrap}
+.desc-btn{min-height:2.5rem;padding:.55rem 1.2rem;border-radius:8px;font-weight:700;border:1px solid transparent}
+.desc-btn-prin{background:var(--tinta,#14323b);color:#fff}
+.desc-btn-prin:hover:not(:disabled){background:var(--tinta-suave,#1f4752)}
+.desc-btn-prin:disabled{opacity:.55;cursor:not-allowed}
+.desc-btn-sec{background:#fff;color:var(--tinta,#14323b);border-color:#aebdba}
+.desc-btn-sec:hover{background:#eef4f3}
+.desc-btn-texto{background:transparent;color:var(--texto-suave,#556a6e);font-weight:600;margin-right:auto;padding-left:0;text-decoration:underline;text-underline-offset:3px}
+.desc-btn-texto:hover{color:var(--tinta,#14323b)}
+.desc-btn:focus-visible{outline:3px solid var(--acento,#e8a317);outline-offset:2px}
+@media (max-width:480px){
+  .desc-cabecera,.desc-cuerpo,.desc-pie{padding-left:1rem;padding-right:1rem}
+  .desc-fila{gap:.6rem}
+  .desc-btn-texto{margin-right:0;width:100%;text-align:left}
+}
