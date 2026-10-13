@@ -436,6 +436,28 @@
         };
         zonaAgregar.appendChild(botonAgregar);
 
+        // Conducta de la semana: suma asistencia y comportamiento entre las fechas de la semana y la agrega como registro «Conducta».
+        var botonConducta = document.createElement('button');
+        botonConducta.type = 'button'; botonConducta.className = 'desglose-agregar-btn'; botonConducta.textContent = 'Traer asistencia y comportamiento';
+        botonConducta.disabled = bloqueado || !ev.semana_inicio || !ev.semana_fin;
+        botonConducta.title = (ev.semana_inicio && ev.semana_fin)
+          ? 'Calcula la conducta de ' + ev.semana_inicio + ' a ' + ev.semana_fin + ' y la agrega como registro «Conducta». Puede repetirlo cuando cambie la asistencia.'
+          : 'Esta semana no tiene fechas de inicio y fin.';
+        botonConducta.onclick = async function () {
+          botonConducta.disabled = true;
+          try {
+            var q = await db.rpc('portal2027_aplicar_conducta_semana', { p_evaluacion: ev.id });
+            if (q.error) { throw q.error; }
+            var d = q.data || {};
+            window.alert('Conducta actualizada. Nuevos: ' + (d.creados || 0) + ' · Cambiados: ' + (d.actualizados || 0) + ' · Sin cambio: ' + (d.sin_cambio || 0) + '.');
+            await recargar();
+          } catch (e) {
+            window.alert(P.traducirError(e));
+          }
+          pintar();
+        };
+        zonaAgregar.appendChild(botonConducta);
+
         if (grupos.length === 0) {
           var vacio = document.createElement('p');
           vacio.className = 'desglose-vacio';
@@ -479,7 +501,8 @@
       var inp = document.createElement('input');
       // Texto con teclado decimal (no «number»): así la rueda del mouse y las flechas nunca cambian la nota.
       inp.type = 'text'; inp.setAttribute('inputmode', 'decimal'); inp.setAttribute('autocomplete', 'off'); inp.maxLength = 4;
-      inp.className = 'nota-input'; inp.disabled = bloqueado;
+      inp.className = 'nota-input'; inp.disabled = bloqueado || g.tipo === 'Conducta';
+      if (g.tipo === 'Conducta') { inp.title = 'Automática: use «Traer asistencia y comportamiento»'; }
       inp.dataset.fila = String(fila); inp.dataset.col = String(col);
       inp.setAttribute('aria-label', 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + g.tipo + (g.descripcion ? ' ' + g.descripcion : ''));
       var reg = g.porMat[mat.id] || null;
