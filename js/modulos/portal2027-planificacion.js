@@ -304,6 +304,36 @@
     ]);
   }
 
+  function dibujarCalendario() {
+    var t = trimestre();
+    var sec = el('section', { clase: 'bloque plan-calendario' }, [el('h2', { texto: 'Calendario de semanas del trimestre' })]);
+    if (!t || !t.fecha_inicio || !t.fecha_fin) return sec;
+    sec.appendChild(el('p', { clase: 'plan-cal-fechas', texto: 'INICIO: ' + fechaConDia(t.fecha_inicio) + '  |  FINALIZA: ' + fechaConDia(t.fecha_fin) }));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Los colores muestran qué semanas están ocupadas por cada clase. Las semanas grises están disponibles. No se pueden agregar clases después del cierre del trimestre.' }));
+    var cuadricula = el('div', { clase: 'plan-cal-grid' });
+    var cursor = t.fecha_inicio, dia = diaSemana(cursor);
+    if (dia !== 1) cursor = moverDias(cursor, -(dia === 0 ? 6 : dia - 1));
+    var n = 0, ocupadas = 0, libres = 0;
+    while (cursor <= t.fecha_fin && n < 55) {
+      n++;
+      var fin = moverDias(cursor, 4);
+      var c = S.plan.filter(function (x) { return x.fecha_inicio <= fin && x.fecha_fin >= cursor; })[0];
+      var completa = cursor >= t.fecha_inicio && fin <= t.fecha_fin;
+      var tipo = !completa ? 'fuera' : (c ? 'ocupada' : 'libre');
+      if (completa) { if (c) ocupadas++; else libres++; }
+      var tarjeta = el('div', { clase: 'plan-cal-semana plan-cal-' + tipo + (c ? ' plan-cal-color-' + (c.numero % 5) : '') }, [
+        el('strong', { texto: 'Semana ' + n }),
+        el('span', { texto: fechaTexto(cursor) + ' — ' + fechaTexto(fin) }),
+        el('span', { texto: !completa ? 'Fuera del período' : (c ? 'Clase ' + c.numero + ': ' + c.tema : 'Disponible') })
+      ]);
+      cuadricula.appendChild(tarjeta);
+      cursor = moverDias(cursor, 7);
+    }
+    sec.appendChild(el('p', { clase: 'plan-cal-resumen', texto: ocupadas + ' semanas cubiertas · ' + libres + ' semanas disponibles' }));
+    sec.appendChild(cuadricula);
+    return sec;
+  }
+
   function dibujarTabla() {
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Clases del trimestre' })]);
     if (S.plan.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'No hay clases planificadas.' })); return sec; }
@@ -346,7 +376,7 @@
         el('label', null, ['Trimestre', selTrim]),
         el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Planificación recargada.'); } })
       ]), S.cerrado ? el('p', { clase: 'mensaje info', texto: 'Este trimestre está cerrado: la planificación no se puede cambiar.' }) : null]),
-      dibujarActiva(), dibujarGrupos(), dibujarFormulario(), dibujarLote(), dibujarTabla()
+      dibujarCalendario(), dibujarActiva(), dibujarGrupos(), dibujarFormulario(), dibujarLote(), dibujarTabla()
     ]);
     contenido.appendChild(cuerpo);
   }
