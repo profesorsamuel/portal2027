@@ -16,7 +16,13 @@
   };
 
   P.rutaPanel = function (rol) { return new URL('pages/' + P.ROLES[rol].archivo, new URL(P.raiz, window.location.href)).href; };
-  P.rutaInicio = function () { return new URL('index.html', new URL(P.raiz, window.location.href)).href; };
+  // La página de inicio es siempre index.html en la carpeta principal del proyecto (la que está antes de «/pages/»).
+  P.rutaInicio = function () {
+    var u = window.location.href.split('#')[0].split('?')[0];
+    var i = u.indexOf('/pages/');
+    if (i !== -1) { return u.slice(0, i + 1) + 'index.html'; }
+    return new URL('index.html', new URL(P.raiz, window.location.href)).href;
+  };
 
   P.nombreCompleto = function (perfil) {
     if (!perfil) { return ''; }
