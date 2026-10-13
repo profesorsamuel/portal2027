@@ -72,6 +72,7 @@
   }
   function urlAsistencia(c) { return P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId) + '&clase=' + encodeURIComponent(c.id); }
   function urlApreciacion(c) { return P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId) + '&semana=' + c.numero; }
+  function diaFecha(f) { var p = f.split('-').map(Number); return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date(p[0],p[1]-1,p[2]).getDay()] + ' ' + fechaTexto(f); }
   function sesionesDe(c) { return S.sesiones.filter(function (s) { return s.fecha >= c.fecha_inicio && s.fecha <= c.fecha_fin; }).length; }
 
   /* ---------- carga ---------- */
@@ -302,6 +303,8 @@
   function dibujarTabla() {
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Clases del trimestre' })]);
     if (S.plan.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'No hay clases planificadas.' })); return sec; }
+    var totalSesiones = S.plan.reduce(function (n,c) { return n + sesionesDe(c); }, 0);
+    sec.appendChild(el('p', { clase: 'plan-resumen-sesiones', texto: S.plan.length + ' clases planificadas · ' + totalSesiones + ' sesiones de asistencia registradas. Las sesiones se cuentan por fecha, no por cantidad de estudiantes.' }));
     var filas = S.plan.map(function (c) {
       var est = estadoClase(c);
       var gancho = el('span', { clase: 'gancho gancho-' + est, texto: est === 'activa' ? 'Activa' : (est === 'proxima' ? 'Pendiente' : 'Terminada') });
@@ -310,7 +313,7 @@
         el('td', { texto: 'Clase ' + c.numero }),
         el('td', { clase: 'plan-tema', texto: c.tema }),
         el('td', { texto: fechaConDia(c.fecha_inicio) }), el('td', { texto: fechaConDia(c.fecha_fin) }),
-        el('td', { texto: String(sesionesDe(c)) }),
+        el('td', null, [el('strong', { clase: 'plan-sesiones-numero', texto: String(sesionesDe(c)) }), el('span', { clase: 'plan-sesiones-detalle', texto: sesionesDe(c) === 1 ? ' sesión registrada' : ' sesiones registradas' })]),
         el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlAsistencia(c), texto: 'Asistencia' }),
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlApreciacion(c), texto: 'Apreciación' }),
@@ -320,10 +323,10 @@
       ]);
     });
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
-      el('thead', null, [el('tr', null, ['Estado', 'Clase', 'Tema', 'Desde', 'Hasta', 'Sesiones', ''].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
+      el('thead', null, [el('tr', null, ['Estado', 'Clase', 'Tema', 'Desde (día y fecha)', 'Hasta (día y fecha)', 'Asistencias registradas', 'Acciones'].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
       el('tbody', null, filas)
     ])]));
-    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'El estado se marca solo según la fecha de hoy. «Sesiones» cuenta las sesiones de asistencia dentro de las fechas de la clase.' }));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'El estado se marca solo según la fecha de hoy. Cada sesión es un registro de asistencia en una fecha de esta clase. Use «Asistencia» para registrar una nueva; el conteo se actualizará al recargar. No representa el número de alumnos ni las horas programadas.' }));
     return sec;
   }
 
