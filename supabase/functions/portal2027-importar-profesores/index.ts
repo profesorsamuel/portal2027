@@ -66,13 +66,22 @@ Deno.serve(async (req) => {
     const fallo = (detalle: string, correo = '') => resultados.push({ nombre: etiqueta, correo, estado: 'error', detalle });
 
     if (!nombres) { fallo('Falta el nombre'); continue; }
-    const correo = (String(f?.correo || '').trim().toLowerCase()) || correoDerivado(nombres, apellidos);
+    const correoPropio = String(f?.correo || '').trim().toLowerCase();
+    const correo = correoPropio || correoDerivado(nombres, apellidos);
     if (!RE_CORREO.test(correo)) { fallo('Correo no válido', correo); continue; }
     const claveIngreso = String(f?.clave || '').trim() || telefono.replace(/\D/g, '');
 
-    // ¿Ya tiene cuenta?
+    // ¿Ya tiene cuenta? Primero por correo; si la fila no trae correo propio, también por NOMBRE
+    // (así «Samuel Ortega» no crea una segunda cuenta @docentes si ya existe con su Gmail).
     const { data: previo } = await servicio.from('portal2027_perfiles').select('id').ilike('correo', correo).maybeSingle();
     let uid = previo?.id as string | undefined;
+    if (!correoPropio) {
+      const { data: mismos } = await servicio.from('portal2027_perfiles').select('id,nombres,apellidos,correo').eq('activo', true);
+      const objetivo = clave(`${nombres} ${apellidos}`);
+      const porNombre = (mismos || []).filter((p: any) => clave(`${p.nombres} ${p.apellidos}`) === objetivo);
+      if (porNombre.length > 1) { fallo('Hay varios perfiles activos con este nombre; escriba el correo de la fila para elegir uno', correo); continue; }
+      if (porNombre.length === 1) uid = porNombre[0].id;
+    }
     let estado: 'creado' | 'actualizado' = 'actualizado';
 
     if (!uid) {
