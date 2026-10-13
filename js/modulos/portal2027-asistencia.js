@@ -263,6 +263,10 @@
         if (m.error) { texto = 'Sesión agregada, pero NO se marcó «Presente» a todos. ' + textoError(m.error) + ' Use «Todos presentes» en la fecha.'; tipo = 'error'; }
         else { texto = 'Sesión agregada: ' + m.data + ' estudiante(s) quedaron como Presente. Toque la casilla de quien faltó.'; }
       }
+      // Comportamiento: todos empiezan en «Bien»; el profesor solo cambia a «Mal» a quien se porte mal.
+      var b = await db.rpc('portal2027_marcar_bien_pendientes', { p_sesion: r.data });
+      if (b.error) { texto += ' OJO: no se pudo poner «Bien» a todos. ' + textoError(b.error); tipo = 'error'; }
+      else { texto += ' Comportamiento: ' + b.data + ' en «Bien».'; }
       await cargarAsistencia();
       dibujar();
       aviso(texto, tipo);
@@ -538,6 +542,17 @@
     var btnMarcar = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Marcar sin registro', disabled: abiertas.length === 0 || S.estados.length === 0,
       onclick: function () { marcarPendientes(selSes.value, selEst.value); } });
 
+    var btnBien = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Bien a los sin evaluar', disabled: abiertas.length === 0,
+      title: 'Pone «Bien» en el comportamiento de quienes aún no tienen Bien ni Mal en la sesión elegida',
+      onclick: function () {
+        var s = sesionPorId(selSes.value);
+        if (!s) { aviso('Elija la sesión.', 'error'); return; }
+        if (!window.confirm('Se pondrá «Bien» a quienes no tienen comportamiento en la sesión del ' + fechaTexto(s.fecha) + '. Los que ya tienen Bien o Mal no cambian. ¿Continuar?')) { return; }
+        llamar('portal2027_marcar_bien_pendientes', { p_sesion: selSes.value }, function (n) {
+          return n + (n === 1 ? ' estudiante quedó en «Bien».' : ' estudiantes quedaron en «Bien».');
+        });
+      } });
+
     var btnHist = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Historial' });
     var btnPap = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Papelera' });
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Asistencia recargada.'); } });
@@ -551,7 +566,7 @@
       return el('span', null, [el('strong', { texto: e.abreviatura }), ' = ' + e.etiqueta]);
     }));
 
-    leyenda.appendChild(el('span', { clase: 'leyenda-toque', texto: 'Casilla izquierda = asistencia (toque: P → A → T → J → P). Casilla derecha = comportamiento (toque: — → Bien → Mal → —; teclado: B, M, Supr, Enter baja, flechas). Las fechas nuevas empiezan con todos Presente.' }));
+    leyenda.appendChild(el('span', { clase: 'leyenda-toque', texto: 'Casilla izquierda = asistencia (toque: P → A → T → J → P). Casilla derecha = comportamiento (toque: — → Bien → Mal → —; teclado: B, M, Supr, Enter baja, flechas). Las fechas nuevas empiezan con todos Presente y todos en Bien: solo toque a quien se porte mal.' }));
 
     var cuerpo = el('div', { clase: 'asistencia-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
@@ -561,7 +576,7 @@
       ]),
       el('section', { clase: 'bloque' }, [
         el('h2', { texto: 'Asistencia y comportamiento' }),
-        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Sesión', selSes]), el('label', null, ['Estado', selEst]), btnMarcar]),
+        el('div', { clase: 'formulario-fila' }, [el('label', null, ['Sesión', selSes]), el('label', null, ['Estado', selEst]), btnMarcar, btnBien]),
         el('p', { clase: 'bloque-ayuda', texto: 'Elija el estado en cada casilla; se guarda al instante. Una casilla vacía significa «sin marcar» (no cuenta como ausencia). Las columnas de la derecha solo cuentan sesiones por estado: aún no hay porcentajes ni pesos.' }),
         leyenda,
         zonaTabla
