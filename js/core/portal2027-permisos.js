@@ -15,8 +15,8 @@
     estudiante: { etiqueta: 'Estudiante', archivo: 'portal2027-estudiante.html' }
   };
 
-  P.rutaPanel = function (rol) { return P.raiz + 'pages/' + P.ROLES[rol].archivo; };
-  P.rutaInicio = function () { return P.raiz + 'index.html'; };
+  P.rutaPanel = function (rol) { return new URL('pages/' + P.ROLES[rol].archivo, new URL(P.raiz, window.location.href)).href; };
+  P.rutaInicio = function () { return new URL('index.html', new URL(P.raiz, window.location.href)).href; };
 
   P.nombreCompleto = function (perfil) {
     if (!perfil) { return ''; }
