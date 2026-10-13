@@ -7,6 +7,24 @@ const plantillaMap={
  'REEMPLAZAR_UUID_8A_INF':['8A','inform'],
  'REEMPLAZAR_UUID_8B_INF':['8B','inform']
 };
+const zonaArchivo=$('zona-archivo'),inputArchivo=$('archivo-horario'),estadoArchivo=$('archivo-estado');
+async function cargarArchivoHorario(archivo){
+ if(!archivo)return;
+ if(!/\.json$/i.test(archivo.name)){estadoArchivo.textContent='Solo se admiten archivos JSON (.json).';msg('Seleccione un archivo .json; las imágenes JPG y los Excel no se interpretan aquí.',true);return}
+ if(archivo.size>1024*1024){msg('El archivo supera 1 MB.',true);return}
+ try{const contenido=await archivo.text();const datos=JSON.parse(contenido);if(!Array.isArray(datos))throw Error('El archivo debe contener una lista JSON de franjas');if(datos.length>80)throw Error('Máximo 80 franjas');
+ $('importacion').value=JSON.stringify(datos,null,2);$('detalle-importar').open=true;
+ const pendientes=datos.filter(f=>f.tipo==='clase'&&(!f.asignacion_id||String(f.asignacion_id).startsWith('PENDIENTE_')));
+ estadoArchivo.textContent=`${archivo.name}: ${datos.length} franjas cargadas para revisar.`;
+ if(pendientes.length)msg(`Archivo leído: ${datos.length} franjas, pero ${pendientes.length} clases tienen asignaciones pendientes. No guarde hasta resolverlas.`,true);
+ else msg(`Archivo leído: ${datos.length} franjas. Revise antes de guardar.`);
+ }catch(e){estadoArchivo.textContent='No se pudo leer el archivo.';msg('Archivo JSON inválido: '+e.message,true)}
+}
+inputArchivo.addEventListener('change',()=>cargarArchivoHorario(inputArchivo.files?.[0]));
+zonaArchivo.addEventListener('dragover',e=>{e.preventDefault();zonaArchivo.style.background='#dbeafe'});
+zonaArchivo.addEventListener('dragleave',()=>zonaArchivo.style.background='#f8fafc');
+zonaArchivo.addEventListener('drop',e=>{e.preventDefault();zonaArchivo.style.background='#f8fafc';cargarArchivoHorario(e.dataTransfer.files?.[0])});
+zonaArchivo.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===zonaArchivo){e.preventDefault();inputArchivo.click()}});
 $('cargar-plantilla').onclick=async()=>{try{
  const resp=await fetch('../data/horarios/horario-samuel-2027.json',{cache:'no-store'});
  if(!resp.ok)throw Error('No se encontró la plantilla en data/horarios/');
