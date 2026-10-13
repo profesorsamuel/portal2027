@@ -897,40 +897,65 @@
   }
   function iniciarRedimension(tabla, columnas) {
     var anchos = leerAnchos();
+    var predeterminado = Math.max(82, Math.min(350, Number(anchos.__uniforme) || 125));
+    var colgroup = document.createElement('colgroup');
+    var colNombre = document.createElement('col');
+    colNombre.style.width = '185px'; colgroup.appendChild(colNombre);
+    var definiciones = [];
+    var categorias = S.filtroCat ? [S.filtroCat] : M.CATEGORIAS;
+    categorias.forEach(function(cat) {
+      columnas.filter(function(ev) { return ev.categoria === cat; }).forEach(function(ev) {
+        var id = String(ev.id);
+        var col = document.createElement('col');
+        var ancho = Math.max(82, Math.min(420, Number(anchos[id]) || predeterminado));
+        col.style.width = ancho + 'px';
+        colgroup.appendChild(col);
+        definiciones.push({ id: id, col: col, ancho: ancho });
+      });
+      var promedio = document.createElement('col'); promedio.style.width = '80px'; colgroup.appendChild(promedio);
+    });
+    var finalCol = document.createElement('col'); finalCol.style.width = '80px'; colgroup.appendChild(finalCol);
+    tabla.insertBefore(colgroup, tabla.firstChild);
+    function aplicar(def, ancho) {
+      def.ancho = Math.max(82, Math.min(420, Math.round(ancho)));
+      def.col.style.width = def.ancho + 'px';
+    }
     var encabezados = Array.from(tabla.querySelectorAll('thead tr:nth-child(2) th.col-eval'));
     encabezados.forEach(function(th, i) {
-      var ev = columnas[i];
-      if (!ev) { return; }
-      var id = String(ev.id);
-      var ancho = Math.max(105, Math.min(420, Number(anchos[id]) || 145));
-      th.style.width = ancho + 'px'; th.style.minWidth = ancho + 'px'; th.style.maxWidth = ancho + 'px';
+      var def = definiciones[i]; if (!def) { return; }
       var agarrador = document.createElement('span');
-      agarrador.className = 'libreta-col-resize'; agarrador.title = 'Arrastre para ajustar el ancho';
-      agarrador.setAttribute('role','separator'); agarrador.setAttribute('aria-label','Ajustar ancho de columna');
+      agarrador.className = 'libreta-col-resize';
+      agarrador.title = 'Arrastre a izquierda o derecha para ajustar esta columna';
+      agarrador.setAttribute('role', 'separator');
+      agarrador.setAttribute('aria-label', 'Cambiar ancho de esta columna');
       th.appendChild(agarrador);
       agarrador.addEventListener('pointerdown', function(e) {
         if (e.button !== 0) { return; }
         e.preventDefault(); e.stopPropagation();
-        var inicio = e.clientX, inicial = th.getBoundingClientRect().width;
+        var inicio = e.clientX, inicial = def.ancho;
         document.body.classList.add('libreta-redimensionando');
-        function mover(evt) {
-          var nuevo = Math.max(105, Math.min(420, Math.round(inicial + evt.clientX - inicio)));
-          th.style.width = nuevo + 'px'; th.style.minWidth = nuevo + 'px'; th.style.maxWidth = nuevo + 'px';
-        }
+        if (agarrador.setPointerCapture) { try { agarrador.setPointerCapture(e.pointerId); } catch (_) {} }
+        function mover(evt) { aplicar(def, inicial + evt.clientX - inicio); }
         function terminar(evt) {
-          mover(evt);
-          document.removeEventListener('pointermove', mover);
-          document.removeEventListener('pointerup', terminar);
-          document.removeEventListener('pointercancel', terminar);
+          if (evt.type === 'pointerup') { mover(evt); }
+          agarrador.removeEventListener('pointermove', mover);
+          agarrador.removeEventListener('pointerup', terminar);
+          agarrador.removeEventListener('pointercancel', terminar);
           document.body.classList.remove('libreta-redimensionando');
-          anchos[id] = parseInt(th.style.width, 10);
+          anchos[def.id] = def.ancho;
           try { localStorage.setItem(claveAnchos(), JSON.stringify(anchos)); } catch (_) {}
         }
-        document.addEventListener('pointermove', mover);
-        document.addEventListener('pointerup', terminar);
-        document.addEventListener('pointercancel', terminar);
+        agarrador.addEventListener('pointermove', mover);
+        agarrador.addEventListener('pointerup', terminar);
+        agarrador.addEventListener('pointercancel', terminar);
       });
     });
+    return function igualar(ancho) {
+      var valor = Math.max(82, Math.min(350, Number(ancho) || predeterminado));
+      definiciones.forEach(function(def) { aplicar(def, valor); delete anchos[def.id]; });
+      anchos.__uniforme = valor;
+      try { localStorage.setItem(claveAnchos(), JSON.stringify(anchos)); } catch (_) {}
+    };
   }
 
   function dibujarTabla() {
@@ -972,8 +997,22 @@
       el('thead', null, [el('tr', null, fila1), el('tr', null, fila2)]),
       el('tbody', null, cuerpo)
     ]);
-    iniciarRedimension(tabla, cols);
+    var igualarColumnas = iniciarRedimension(tabla, cols);
+    var barraAncho = el('div', { clase: 'libreta-ajuste-barra' });
+    barraAncho.appendChild(el('span', { texto: '↔ Ancho de columnas:' }));
+    var selectorAncho = el('select', { 'aria-label': 'Ancho para igualar columnas' }, [
+      el('option', { value: '90', texto: 'Compacto (90 px)' }),
+      el('option', { value: '110', texto: 'Pequeño (110 px)' }),
+      el('option', { value: '125', texto: 'Normal (125 px)' }),
+      el('option', { value: '150', texto: 'Amplio (150 px)' }),
+      el('option', { value: '190', texto: 'Grande (190 px)' })
+    ]);
+    selectorAncho.value = String(leerAnchos().__uniforme || 125);
+    barraAncho.appendChild(selectorAncho);
+    barraAncho.appendChild(el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Igualar columnas', onclick: function() { igualarColumnas(selectorAncho.value); } }));
+    barraAncho.appendChild(el('small', { texto: 'O arrastre ↔ el borde derecho del encabezado de cada columna, como en Excel.' }));
     zonaTabla.appendChild(barraGanchosColumnas());
+    zonaTabla.appendChild(barraAncho);
     zonaTabla.appendChild(el('div', { clase: 'libreta-scroll' }, [tabla]));
     S.mats.forEach(function (m) { actualizarFila(m.id); });
     if (S.mats.length === 0) {
