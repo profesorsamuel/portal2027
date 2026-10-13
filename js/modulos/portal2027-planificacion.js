@@ -48,7 +48,7 @@
   function validarSemana(ed, ini, fin) {
     var t = trimestre();
     if (!t || ini < t.fecha_inicio || fin > t.fecha_fin) return 'Las fechas deben estar dentro del trimestre.';
-    if (diaSemana(ini) !== 1 || diaSemana(fin) !== 5 || fin !== viernesDe(ini)) return 'Cada clase debe comenzar un lunes y terminar el viernes de esa misma semana.';
+    if (diaSemana(ini) !== 1 || diaSemana(fin) !== 5 || (fin !== viernesDe(ini) && fin !== moverDias(ini, 11))) return 'La clase debe durar 1 o 2 semanas completas: desde lunes hasta viernes.';
     var otras = S.plan.filter(function(c){return !ed || c.id !== ed.id;}).sort(function(a,b){return a.fecha_inicio.localeCompare(b.fecha_inicio);});
     if (otras.some(function(c){return ini <= c.fecha_fin && fin >= c.fecha_inicio;})) return 'La semana se cruza con otra clase existente.';
     var todas = otras.concat([{fecha_inicio:ini,fecha_fin:fin}]).sort(function(a,b){return a.fecha_inicio.localeCompare(b.fecha_inicio);});
@@ -242,12 +242,16 @@
     var inTema = el('input', { type: 'text', clase: 'plan-tema-input', maxlength: '120', placeholder: 'Ej.: La célula', value: ed ? ed.tema : '', disabled: S.cerrado, required: true });
     var inIni = el('input', { type: 'date', min: lim.min, max: lim.max, value: ed ? ed.fecha_inicio : sugerirDesde(), disabled: S.cerrado, required: true });
     var inFin = el('input', { type: 'date', min: lim.min, max: lim.max, value: ed ? ed.fecha_fin : viernesDe(sugerirDesde()), disabled: S.cerrado, required: true });
-    inIni.addEventListener('change', function () { if (inIni.value && diaSemana(inIni.value) === 1) inFin.value = viernesDe(inIni.value); });
+    var duracion = el('select', { disabled: S.cerrado, 'aria-label': 'Duración de la clase' }, [el('option', { value: '1', texto: '1 semana' }), el('option', { value: '2', texto: '2 semanas' })]);
+    duracion.value = ed && ed.fecha_fin === moverDias(ed.fecha_inicio, 11) ? '2' : '1';
+    function actualizarFin() { if (inIni.value && diaSemana(inIni.value) === 1) inFin.value = moverDias(inIni.value, duracion.value === '2' ? 11 : 4); }
+    inIni.addEventListener('change', actualizarFin);
+    duracion.addEventListener('change', actualizarFin);
     var botones = [el('button', { clase: 'boton boton-secundario', type: 'submit', disabled: S.cerrado, texto: ed ? 'Guardar cambios' : 'Agregar clase' })];
     if (ed) { botones.push(el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cancelar', onclick: function () { S.editando = null; dibujar(); } })); }
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
       el('label', null, ['Clase Nº', inNum]), el('label', null, ['Tema', inTema]),
-      el('label', null, ['Desde (lunes)', inIni]), el('label', null, ['Hasta (viernes)', inFin])
+      el('label', null, ['Duración', duracion]), el('label', null, ['Desde (lunes)', inIni]), el('label', null, ['Hasta (viernes)', inFin])
     ].concat(botones));
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -262,7 +266,7 @@
     });
     var hijos = [el('h2', { texto: ed ? 'Editar Clase ' + ed.numero : 'Agregar clase' }), form];
     if (t && (t.fecha_inicio || t.fecha_fin)) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Semanas completas de lunes a viernes, consecutivas y sin traslapes. Trimestre: ' + (t.fecha_inicio ? fechaTexto(t.fecha_inicio) : '…') + ' al ' + (t.fecha_fin ? fechaTexto(t.fecha_fin) : '…') + '.' }));
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Clases de 1 o 2 semanas completas (lunes a viernes), consecutivas y sin traslapes. Trimestre: ' + (t.fecha_inicio ? fechaTexto(t.fecha_inicio) : '…') + ' al ' + (t.fecha_fin ? fechaTexto(t.fecha_fin) : '…') + '.' }));
     }
     return el('section', { clase: 'bloque' }, hijos);
   }
