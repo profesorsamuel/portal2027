@@ -152,3 +152,13 @@
 .libreta-col-opcion:hover{background:#eff6ff}
 .libreta-col-opcion input{accent-color:#2563eb;width:16px;height:16px}
 .libreta-panel-columnas[hidden]{display:none}
+
+/* Selector visual de columnas y estudiantes */
+.libreta-vista-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.libreta-vista-tabs button{font-weight:700;background:#eaf3ff;border-color:#8bb9ef}
+.libreta-panel-estudiantes{padding:12px;background:#fff;border:1px solid #dbe4ed;border-radius:12px}
+.libreta-panel-estudiantes[hidden],.libreta-panel-grupos[hidden]{display:none}
+.libreta-panel-estudiantes>input[type=search]{width:100%;max-width:420px;padding:10px;border:1px solid #b7c9d9;border-radius:9px;margin-bottom:12px}
+.libreta-estudiantes-rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:5px 12px;max-height:370px;overflow:auto}
+.libreta-col-opcion:has(input:checked){background:#f0f9ff}
+.libreta-col-opcion input{flex-shrink:0}
