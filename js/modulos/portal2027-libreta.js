@@ -300,13 +300,16 @@
     if (modo === 'todas') { S.verOcultas = true; }
     guardarVista(); dibujarTabla();
   }
+  function botonVista(texto, titulo, fn) {
+    return el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: texto, title: titulo, onclick: fn });
+  }
   function panelColumnas() {
     var box = el('div', { clase: 'libreta-panel-columnas' });
     var barra = el('div', { clase: 'libreta-panel-barra' }, [
       el('strong', { texto: 'Personalizar columnas' }),
-      boton('Mostrar todas', 'Mostrar todas las notas', function() { vistaRapida('todas'); panelColumnasActualizar(); }),
-      boton('Solo promedios', 'Ocultar las notas individuales', function() { vistaRapida('ninguna'); panelColumnasActualizar(); }),
-      boton('Cerrar', 'Cerrar panel', function() { box.hidden = true; })
+      botonVista('Mostrar todas', 'Mostrar todas las notas', function() { vistaRapida('todas'); panelColumnasActualizar(); }),
+      botonVista('Solo promedios', 'Ocultar las notas individuales', function() { vistaRapida('ninguna'); panelColumnasActualizar(); }),
+      botonVista('Cerrar', 'Cerrar panel', function() { box.hidden = true; })
     ]);
     box.appendChild(barra);
     var listado = el('div', { clase: 'libreta-panel-grupos' }); box.appendChild(listado);
@@ -316,8 +319,8 @@
         var evals = S.evals.filter(function(e) { return !e.eliminada_en && e.categoria === c; });
         var grupo = el('div', { clase: 'libreta-panel-grupo' });
         var titulo = el('div', { clase: 'libreta-panel-titulo' }, [el('strong', { texto: M.ETIQUETAS[c] }),
-          boton('Ver grupo', 'Mostrar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = false; }); S.verOcultas = true; guardarVista(); dibujarTabla(); panelColumnasActualizar(); }),
-          boton('Ocultar grupo', 'Ocultar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = true; }); guardarVista(); dibujarTabla(); panelColumnasActualizar(); })]);
+          botonVista('Ver grupo', 'Mostrar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = false; }); S.verOcultas = true; guardarVista(); dibujarTabla(); panelColumnasActualizar(); }),
+          botonVista('Ocultar grupo', 'Ocultar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = true; }); guardarVista(); dibujarTabla(); panelColumnasActualizar(); })]);
         grupo.appendChild(titulo);
         if (!evals.length) { grupo.appendChild(el('small', { texto: 'Todavía no hay notas en esta categoría.' })); }
         evals.forEach(function(e, i) {
