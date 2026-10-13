@@ -359,48 +359,102 @@
       if (c.data) { Object.keys(POR_DEFECTO).forEach(function (k) { actual[k] = Number(c.data[k]); }); }
     } catch (e) { window.alert('No se pudieron cargar los descuentos. ' + textoError(e)); return; }
 
-    var v = document.createElement('dialog');
-    v.className = 'portal2027-desglose';
-    var h = document.createElement('h3'); h.textContent = 'Descuentos de conducta';
-    var ayuda = document.createElement('p'); ayuda.className = 'desglose-info';
-    ayuda.textContent = 'Puntaje de la semana = base − (Mal × descuento) − (ausencias × descuento) − (tardanzas × descuento) + (Bien × bono). Nunca baja del mínimo ni pasa de la base. Ausencia justificada y «sin marcar» no descuentan. Después de guardar, use «Traer asistencia y comportamiento» en cada semana para aplicarlo.';
-    var cuerpo = document.createElement('div'); cuerpo.style.display = 'grid'; cuerpo.style.gap = '8px'; cuerpo.style.margin = '12px 0';
-    var cajas = {};
-    CAMPOS.forEach(function (par) {
-      var fila = document.createElement('label'); fila.style.display = 'flex'; fila.style.justifyContent = 'space-between'; fila.style.gap = '12px'; fila.style.alignItems = 'center';
-      var t = document.createElement('span'); t.textContent = par[1];
-      var inp = document.createElement('input');
-      inp.type = 'text'; inp.setAttribute('inputmode', 'decimal'); inp.setAttribute('autocomplete', 'off'); inp.maxLength = 5; inp.style.width = '80px';
-      inp.value = String(actual[par[0]]);
-      cajas[par[0]] = inp; fila.append(t, inp); cuerpo.appendChild(fila);
-    });
-    var msg = document.createElement('p'); msg.className = 'desglose-info'; msg.setAttribute('role', 'alert');
-    var botones = document.createElement('div'); botones.style.display = 'flex'; botones.style.gap = '8px'; botones.style.flexWrap = 'wrap';
-    var guardar = document.createElement('button'); guardar.type = 'button'; guardar.textContent = 'Guardar';
-    var restablecer = document.createElement('button'); restablecer.type = 'button'; restablecer.textContent = 'Restablecer valores';
-    var cancelar = document.createElement('button'); cancelar.type = 'button'; cancelar.textContent = 'Cancelar';
-    botones.append(guardar, restablecer, cancelar);
-    v.append(h, ayuda, cuerpo, msg, botones);
+    // Cada campo: [clave, título, explicación corta, grupo]
+    var GRUPOS = [
+      { titulo: 'Lo que baja la nota', campos: [
+        ['descuento_mal', 'Cada «Mal»', 'Puntos que se restan por cada registro de conducta «Mal»'],
+        ['descuento_ausencia', 'Cada ausencia', 'La ausencia justificada no descuenta'],
+        ['descuento_tardanza', 'Cada tardanza', 'Puntos que se restan por llegar tarde']
+      ] },
+      { titulo: 'Límites y bono', campos: [
+        ['base', 'Puntaje base', 'Nota de partida de la semana (máximo 5)'],
+        ['minimo', 'Puntaje mínimo', 'La nota semanal nunca baja de este valor'],
+        ['bono_bien', 'Cada «Bien»', 'Puntos que suben por cada «Bien» (0 = no sube)']
+      ] }
+    ];
+    function el(tag, clase, texto) { var e = document.createElement(tag); if (clase) { e.className = clase; } if (texto) { e.textContent = texto; } return e; }
 
-    restablecer.onclick = function () { Object.keys(POR_DEFECTO).forEach(function (k) { cajas[k].value = String(POR_DEFECTO[k]); }); msg.textContent = 'Valores por defecto puestos. Pulse Guardar para aplicarlos.'; };
+    var v = el('dialog', 'portal2027-descuentos');
+    v.setAttribute('aria-labelledby', 'desc-titulo');
+
+    var cab = el('header', 'desc-cabecera');
+    var h = el('h3', '', 'Descuentos de conducta'); h.id = 'desc-titulo';
+    var sub = el('p', '', 'Defina cuántos puntos suma o resta cada registro en la nota semanal de conducta.');
+    cab.append(h, sub);
+
+    var cuerpo = el('div', 'desc-cuerpo');
+    var cajas = {};
+    GRUPOS.forEach(function (g) {
+      var sec = el('section', 'desc-grupo');
+      sec.appendChild(el('h4', '', g.titulo));
+      g.campos.forEach(function (par) {
+        var fila = el('label', 'desc-fila');
+        var txt = el('span', 'desc-texto');
+        txt.append(el('strong', '', par[1]), el('small', '', par[2]));
+        var caja = el('span', 'desc-caja');
+        var inp = document.createElement('input');
+        inp.type = 'text'; inp.setAttribute('inputmode', 'decimal'); inp.setAttribute('autocomplete', 'off'); inp.maxLength = 5;
+        inp.value = String(actual[par[0]]);
+        caja.append(inp, el('span', 'desc-unidad', 'pts'));
+        cajas[par[0]] = inp; fila.append(txt, caja); sec.appendChild(fila);
+      });
+      cuerpo.appendChild(sec);
+    });
+
+    // Vista previa: calcula un caso de ejemplo con los valores escritos.
+    var previa = el('div', 'desc-previa');
+    previa.setAttribute('aria-live', 'polite');
+    function leer(k) { var x = Number(String(cajas[k].value).replace(',', '.')); return (cajas[k].value.trim() === '' || !isFinite(x) || x < 0) ? null : x; }
+    function actualizarPrevia() {
+      var d = {}, ok = true;
+      Object.keys(POR_DEFECTO).forEach(function (k) { d[k] = leer(k); if (d[k] === null) { ok = false; } });
+      previa.textContent = '';
+      var t = el('span', 'desc-previa-titulo', 'Ejemplo');
+      var f = el('span', 'desc-previa-texto');
+      if (!ok) { f.textContent = 'Escriba números válidos para ver el ejemplo.'; previa.append(t, f); return; }
+      var r = Math.min(d.base, Math.max(d.minimo, d.base - 2 * d.descuento_mal - d.descuento_ausencia - d.descuento_tardanza + d.bono_bien));
+      r = Math.round(r * 100) / 100;
+      f.textContent = '2 «Mal», 1 ausencia, 1 tardanza y 1 «Bien» dan ';
+      f.appendChild(el('b', '', String(r) + ' de ' + d.base));
+      previa.append(t, f);
+    }
+    Object.keys(cajas).forEach(function (k) { cajas[k].addEventListener('input', actualizarPrevia); });
+    actualizarPrevia();
+    cuerpo.appendChild(previa);
+    cuerpo.appendChild(el('p', 'desc-nota', 'Después de guardar, pulse «Traer asistencia y comportamiento» en cada semana para aplicar los cambios.'));
+
+    var pie = el('footer', 'desc-pie');
+    var msg = el('p', 'desc-msg'); msg.setAttribute('role', 'alert');
+    var botones = el('div', 'desc-botones');
+    var restablecer = el('button', 'desc-btn desc-btn-texto', 'Restablecer valores'); restablecer.type = 'button';
+    var cancelar = el('button', 'desc-btn desc-btn-sec', 'Cancelar'); cancelar.type = 'button';
+    var guardar = el('button', 'desc-btn desc-btn-prin', 'Guardar cambios'); guardar.type = 'button';
+    botones.append(restablecer, cancelar, guardar);
+    pie.append(msg, botones);
+    v.append(cab, cuerpo, pie);
+
+    function aviso(texto, tipo) { msg.textContent = texto; msg.className = 'desc-msg' + (tipo ? ' ' + tipo : ''); }
+    restablecer.onclick = function () { Object.keys(POR_DEFECTO).forEach(function (k) { cajas[k].value = String(POR_DEFECTO[k]); }); actualizarPrevia(); aviso('Valores por defecto puestos. Pulse «Guardar cambios» para aplicarlos.', ''); };
     cancelar.onclick = function () { v.close(); };
     guardar.onclick = async function () {
-      var n = {};
-      for (var i = 0; i < CAMPOS.length; i++) {
-        var k = CAMPOS[i][0], x = Number(String(cajas[k].value).replace(',', '.'));
-        if (cajas[k].value.trim() === '' || !isFinite(x) || x < 0) { msg.textContent = 'Revise «' + CAMPOS[i][1] + '»: escriba un número desde 0.'; cajas[k].focus(); return; }
+      var n = {}, nombres = {};
+      GRUPOS.forEach(function (g) { g.campos.forEach(function (c) { nombres[c[0]] = c[1]; }); });
+      var claves = Object.keys(POR_DEFECTO);
+      for (var i = 0; i < claves.length; i++) {
+        var k = claves[i], x = Number(String(cajas[k].value).replace(',', '.'));
+        if (cajas[k].value.trim() === '' || !isFinite(x) || x < 0) { aviso('Revise «' + nombres[k] + '»: escriba un número desde 0.', 'error'); cajas[k].focus(); return; }
         n[k] = x;
       }
-      if (n.base <= 0 || n.base > 5) { msg.textContent = 'El puntaje base debe ser mayor que 0 y no pasar de 5.'; cajas.base.focus(); return; }
-      if (n.minimo > n.base) { msg.textContent = 'El mínimo no puede ser mayor que la base.'; cajas.minimo.focus(); return; }
-      guardar.disabled = true; msg.textContent = 'Guardando…';
+      if (n.base <= 0 || n.base > 5) { aviso('El puntaje base debe ser mayor que 0 y no pasar de 5.', 'error'); cajas.base.focus(); return; }
+      if (n.minimo > n.base) { aviso('El mínimo no puede ser mayor que la base.', 'error'); cajas.minimo.focus(); return; }
+      guardar.disabled = true; aviso('Guardando…', '');
       var r = await db.rpc('portal2027_guardar_config_conducta', {
         p_asignacion: S.asig.id, p_base: n.base, p_mal: n.descuento_mal, p_ausencia: n.descuento_ausencia,
         p_tardanza: n.descuento_tardanza, p_bono: n.bono_bien, p_minimo: n.minimo
       });
-      if (r.error) { msg.textContent = 'No se guardó. ' + P.traducirError(r.error); guardar.disabled = false; return; }
-      v.close();
-      window.alert('Descuentos guardados. Pulse «Traer asistencia y comportamiento» en cada semana para aplicarlos.');
+      if (r.error) { aviso('No se guardó. ' + P.traducirError(r.error), 'error'); guardar.disabled = false; return; }
+      aviso('Descuentos guardados. Pulse «Traer asistencia y comportamiento» en cada semana para aplicarlos.', 'ok');
+      guardar.hidden = true; restablecer.hidden = true; cancelar.textContent = 'Cerrar';
     };
     v.addEventListener('close', function () { v.remove(); });
     document.body.appendChild(v);
