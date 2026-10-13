@@ -226,6 +226,7 @@
         el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(asig.id) + '&trimestre=' + encodeURIComponent(tr.id), texto: 'Volver a la libreta' }),
           el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } }),
+          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-aprobados.html?asignacion=' + encodeURIComponent(asig.id), texto: 'Cuadro de aprobados y reprobados' }),
           el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar sesión', onclick: P.cerrarSesion })
         ])
       ]));
