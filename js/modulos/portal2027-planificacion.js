@@ -90,13 +90,13 @@
     } catch (e) { aviso('No se guardó. ' + textoError(e), 'error'); return false; }
   }
   async function quitar(c) {
-    if (!window.confirm('¿Quitar la Clase ' + c.numero + ' («' + c.tema + '») de la planificación?\nLa apreciación de esa semana y sus notas se conservan en la libreta.')) { return; }
+    if (!window.confirm('¿Quitar la Clase ' + c.numero + ' («' + c.tema + '») de la planificación?\nSu apreciación semanal irá a la papelera de la libreta: dejará de contar y podrá restaurarla si se equivocó.')) { return; }
     aviso('Guardando…', 'info');
     try {
       var r = await db.rpc('portal2027_eliminar_plan_clase', { p_id: c.id, p_version: c.version });
       if (r.error) { throw r.error; }
       await cargar(); dibujar();
-      aviso('Clase ' + c.numero + ' quitada de la planificación.', 'ok');
+      aviso('Clase ' + c.numero + ' quitada. ' + (r.data && r.data.apreciacion_en_papelera ? 'Su apreciación semanal está en la papelera de la libreta (se puede restaurar).' : 'Su apreciación estaba bloqueada y se quedó en la libreta.'), 'ok');
     } catch (e) { aviso('No se quitó. ' + textoError(e), 'error'); }
   }
 
