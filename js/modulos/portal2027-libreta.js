@@ -340,6 +340,73 @@
     });
   }
 
+  // Ventana para cambiar los descuentos de conducta de esta asignación (portal2027_guardar_config_conducta).
+  async function abrirDescuentos() {
+    var POR_DEFECTO = { base: 5, descuento_mal: 0.5, descuento_ausencia: 0.5, descuento_tardanza: 0.25, bono_bien: 0, minimo: 1 };
+    var CAMPOS = [
+      ['base', 'Puntaje base (máximo 5)'],
+      ['descuento_mal', 'Baja por cada «Mal»'],
+      ['descuento_ausencia', 'Baja por cada ausencia'],
+      ['descuento_tardanza', 'Baja por cada tardanza'],
+      ['bono_bien', 'Sube por cada «Bien» (0 = no sube)'],
+      ['minimo', 'Puntaje mínimo']
+    ];
+    var actual = {};
+    Object.keys(POR_DEFECTO).forEach(function (k) { actual[k] = POR_DEFECTO[k]; });
+    try {
+      var c = await db.from('portal2027_config_conducta_semanal').select('*').eq('asignacion_id', S.asig.id).maybeSingle();
+      if (c.error) { throw c.error; }
+      if (c.data) { Object.keys(POR_DEFECTO).forEach(function (k) { actual[k] = Number(c.data[k]); }); }
+    } catch (e) { window.alert('No se pudieron cargar los descuentos. ' + textoError(e)); return; }
+
+    var v = document.createElement('dialog');
+    v.className = 'portal2027-desglose';
+    var h = document.createElement('h3'); h.textContent = 'Descuentos de conducta';
+    var ayuda = document.createElement('p'); ayuda.className = 'desglose-info';
+    ayuda.textContent = 'Puntaje de la semana = base − (Mal × descuento) − (ausencias × descuento) − (tardanzas × descuento) + (Bien × bono). Nunca baja del mínimo ni pasa de la base. Ausencia justificada y «sin marcar» no descuentan. Después de guardar, use «Traer asistencia y comportamiento» en cada semana para aplicarlo.';
+    var cuerpo = document.createElement('div'); cuerpo.style.display = 'grid'; cuerpo.style.gap = '8px'; cuerpo.style.margin = '12px 0';
+    var cajas = {};
+    CAMPOS.forEach(function (par) {
+      var fila = document.createElement('label'); fila.style.display = 'flex'; fila.style.justifyContent = 'space-between'; fila.style.gap = '12px'; fila.style.alignItems = 'center';
+      var t = document.createElement('span'); t.textContent = par[1];
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.setAttribute('inputmode', 'decimal'); inp.setAttribute('autocomplete', 'off'); inp.maxLength = 5; inp.style.width = '80px';
+      inp.value = String(actual[par[0]]);
+      cajas[par[0]] = inp; fila.append(t, inp); cuerpo.appendChild(fila);
+    });
+    var msg = document.createElement('p'); msg.className = 'desglose-info'; msg.setAttribute('role', 'alert');
+    var botones = document.createElement('div'); botones.style.display = 'flex'; botones.style.gap = '8px'; botones.style.flexWrap = 'wrap';
+    var guardar = document.createElement('button'); guardar.type = 'button'; guardar.textContent = 'Guardar';
+    var restablecer = document.createElement('button'); restablecer.type = 'button'; restablecer.textContent = 'Restablecer valores';
+    var cancelar = document.createElement('button'); cancelar.type = 'button'; cancelar.textContent = 'Cancelar';
+    botones.append(guardar, restablecer, cancelar);
+    v.append(h, ayuda, cuerpo, msg, botones);
+
+    restablecer.onclick = function () { Object.keys(POR_DEFECTO).forEach(function (k) { cajas[k].value = String(POR_DEFECTO[k]); }); msg.textContent = 'Valores por defecto puestos. Pulse Guardar para aplicarlos.'; };
+    cancelar.onclick = function () { v.close(); };
+    guardar.onclick = async function () {
+      var n = {};
+      for (var i = 0; i < CAMPOS.length; i++) {
+        var k = CAMPOS[i][0], x = Number(String(cajas[k].value).replace(',', '.'));
+        if (cajas[k].value.trim() === '' || !isFinite(x) || x < 0) { msg.textContent = 'Revise «' + CAMPOS[i][1] + '»: escriba un número desde 0.'; cajas[k].focus(); return; }
+        n[k] = x;
+      }
+      if (n.base <= 0 || n.base > 5) { msg.textContent = 'El puntaje base debe ser mayor que 0 y no pasar de 5.'; cajas.base.focus(); return; }
+      if (n.minimo > n.base) { msg.textContent = 'El mínimo no puede ser mayor que la base.'; cajas.minimo.focus(); return; }
+      guardar.disabled = true; msg.textContent = 'Guardando…';
+      var r = await db.rpc('portal2027_guardar_config_conducta', {
+        p_asignacion: S.asig.id, p_base: n.base, p_mal: n.descuento_mal, p_ausencia: n.descuento_ausencia,
+        p_tardanza: n.descuento_tardanza, p_bono: n.bono_bien, p_minimo: n.minimo
+      });
+      if (r.error) { msg.textContent = 'No se guardó. ' + P.traducirError(r.error); guardar.disabled = false; return; }
+      v.close();
+      window.alert('Descuentos guardados. Pulse «Traer asistencia y comportamiento» en cada semana para aplicarlos.');
+    };
+    v.addEventListener('close', function () { v.remove(); });
+    document.body.appendChild(v);
+    v.showModal();
+  }
+
   async function abrirDesglose(ev) {
     var ventana = document.createElement('dialog');
     ventana.className = 'portal2027-desglose';
@@ -457,6 +524,14 @@
           pintar();
         };
         zonaAgregar.appendChild(botonConducta);
+
+        // Descuentos de la conducta (por materia y grupo): cuánto baja cada «Mal», ausencia o tardanza.
+        var botonDescuentos = document.createElement('button');
+        botonDescuentos.type = 'button'; botonDescuentos.className = 'desglose-agregar-btn'; botonDescuentos.textContent = 'Ajustar descuentos';
+        botonDescuentos.title = 'Cuántos puntos baja cada «Mal», ausencia o tardanza en la conducta de la semana';
+        botonDescuentos.disabled = S.cerrado;
+        botonDescuentos.onclick = function () { abrirDescuentos(); };
+        zonaAgregar.appendChild(botonDescuentos);
 
         if (grupos.length === 0) {
           var vacio = document.createElement('p');
