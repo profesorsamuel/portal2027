@@ -138,3 +138,17 @@
 .desglose-col-borrar{padding:.2rem .6rem;font-size:.75rem;font-weight:600;letter-spacing:0;text-transform:none;color:#b3261e;background:#fff;border:1px solid #d9b8b4;border-radius:6px;min-height:1.7rem}
 .desglose-col-borrar:hover:not(:disabled){background:#b3261e;color:#fff;border-color:#b3261e}
 .desglose-col-borrar:disabled{opacity:.45;cursor:not-allowed}
+
+/* Panel de visibilidad de columnas (preferencias del navegador). */
+.libreta-panel-columnas{margin:14px 0;padding:16px;border:1px solid #cbd5e1;border-radius:14px;background:#f8fafc;box-shadow:0 5px 20px #0f172a0b}
+.libreta-panel-barra,.libreta-panel-titulo{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.libreta-panel-barra strong{margin-right:auto;font-size:1.05rem;color:#0f2942}
+.libreta-panel-barra button,.libreta-panel-titulo button{border:1px solid #b7c9d9;background:white;color:#17446a;border-radius:8px;padding:7px 10px;cursor:pointer}
+.libreta-panel-grupos{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}
+.libreta-panel-grupo{padding:12px;border-radius:10px;background:white;border:1px solid #dbe4ed}
+.libreta-panel-titulo strong{width:100%;color:#17324d}
+.libreta-panel-titulo button{font-size:.78rem;padding:5px 7px}
+.libreta-col-opcion{display:flex;gap:9px;align-items:center;padding:7px 5px;font-size:.88rem;cursor:pointer;border-radius:6px}
+.libreta-col-opcion:hover{background:#eff6ff}
+.libreta-col-opcion input{accent-color:#2563eb;width:16px;height:16px}
+.libreta-panel-columnas[hidden]{display:none}
