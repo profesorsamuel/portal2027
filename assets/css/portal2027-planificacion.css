@@ -19,3 +19,5 @@ tr.fila-activa td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
 .plan-vista-previa li.bien::before { content: "✓ "; color: var(--ok); font-weight: 700; }
 .plan-vista-previa li.mal::before { content: "✗ "; font-weight: 700; }
 @media (max-width: 640px) { .plan-activa .cabecera-acciones { margin-left: 0; } }
+.plan-grupo { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border: 1px solid var(--linea); border-radius: 8px; background: #f3f7f4; font-weight: 600; cursor: pointer; }
+.plan-grupo input { width: auto; min-width: 0; }
