@@ -885,10 +885,52 @@
       el('div', { clase: 'col-acciones' }, [
         ev.semana ? boton('Desglose', 'Ver registros de la semana', function () { abrirDesglose(ev); }) : null,
         boton(ev.bloqueada ? '🔒' : '🔓', ev.bloqueada ? 'Desbloquear columna' : 'Bloquear columna', function () { alternarBloqueo(ev); }),
-        boton(ev.oculta ? '👁' : '🙈', ev.oculta ? 'Mostrar columna' : 'Ocultar columna (sigue contando)', function () { alternarOculta(ev); }),
         boton('🗑', 'Enviar a la papelera', function () { aPapelera(ev, true); })
       ])
     ]);
+  }
+
+  // Anchos independientes por columna; solo se almacenan en este navegador.
+  function claveAnchos() { return 'portal2027-anchos-' + (S.asig ? S.asig.id : '') + '-' + S.trimestreId; }
+  function leerAnchos() {
+    try { return JSON.parse(localStorage.getItem(claveAnchos()) || '{}') || {}; } catch (_) { return {}; }
+  }
+  function iniciarRedimension(tabla, columnas) {
+    var anchos = leerAnchos();
+    var encabezados = Array.from(tabla.querySelectorAll('thead tr:nth-child(2) th.col-eval'));
+    encabezados.forEach(function(th, i) {
+      var ev = columnas[i];
+      if (!ev) { return; }
+      var id = String(ev.id);
+      var ancho = Math.max(105, Math.min(420, Number(anchos[id]) || 145));
+      th.style.width = ancho + 'px'; th.style.minWidth = ancho + 'px'; th.style.maxWidth = ancho + 'px';
+      var agarrador = document.createElement('span');
+      agarrador.className = 'libreta-col-resize'; agarrador.title = 'Arrastre para ajustar el ancho';
+      agarrador.setAttribute('role','separator'); agarrador.setAttribute('aria-label','Ajustar ancho de columna');
+      th.appendChild(agarrador);
+      agarrador.addEventListener('pointerdown', function(e) {
+        if (e.button !== 0) { return; }
+        e.preventDefault(); e.stopPropagation();
+        var inicio = e.clientX, inicial = th.getBoundingClientRect().width;
+        document.body.classList.add('libreta-redimensionando');
+        function mover(evt) {
+          var nuevo = Math.max(105, Math.min(420, Math.round(inicial + evt.clientX - inicio)));
+          th.style.width = nuevo + 'px'; th.style.minWidth = nuevo + 'px'; th.style.maxWidth = nuevo + 'px';
+        }
+        function terminar(evt) {
+          mover(evt);
+          document.removeEventListener('pointermove', mover);
+          document.removeEventListener('pointerup', terminar);
+          document.removeEventListener('pointercancel', terminar);
+          document.body.classList.remove('libreta-redimensionando');
+          anchos[id] = parseInt(th.style.width, 10);
+          try { localStorage.setItem(claveAnchos(), JSON.stringify(anchos)); } catch (_) {}
+        }
+        document.addEventListener('pointermove', mover);
+        document.addEventListener('pointerup', terminar);
+        document.addEventListener('pointercancel', terminar);
+      });
+    });
   }
 
   function dibujarTabla() {
@@ -930,6 +972,7 @@
       el('thead', null, [el('tr', null, fila1), el('tr', null, fila2)]),
       el('tbody', null, cuerpo)
     ]);
+    iniciarRedimension(tabla, cols);
     zonaTabla.appendChild(barraGanchosColumnas());
     zonaTabla.appendChild(el('div', { clase: 'libreta-scroll' }, [tabla]));
     S.mats.forEach(function (m) { actualizarFila(m.id); });
