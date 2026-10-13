@@ -1,0 +1,21 @@
+/* portal2027-planificacion.css — planificación del trimestre por clases */
+.plan-activa { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: .25rem 0 0; padding: .8rem 1rem; border-radius: var(--radio); border: 2px solid var(--ok); background: #e8f5ec; color: #1d5a35; font-size: 1.05rem; }
+.plan-activa strong { font-size: 1.15rem; }
+.plan-activa .cabecera-acciones { margin-left: auto; }
+.plan-sin-activa { margin: .25rem 0 0; padding: .8rem 1rem; border-radius: var(--radio); border: 1px dashed var(--linea); background: #eef4f3; color: var(--tinta); }
+.gancho { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; white-space: nowrap; }
+.gancho-activa { color: #1d5a35; }
+.gancho-activa::before { content: "✓"; display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ok); color: #fff; font-size: .95rem; }
+.gancho-proxima { color: var(--acento-oscuro); }
+.gancho-pasada { color: var(--texto-suave); font-weight: 500; }
+tr.fila-activa td { background: #f1faf4; }
+tr.fila-activa td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
+.plan-tema { min-width: 14rem; }
+.plan-tema-input { min-width: 16rem; }
+.plan-lote textarea { width: 100%; min-height: 6.5rem; font: inherit; padding: .5rem; border: 1px solid #aebdba; border-radius: 8px; }
+.plan-vista-previa { margin: .6rem 0 0; padding: 0; list-style: none; display: grid; gap: .3rem; font-size: .92rem; }
+.plan-vista-previa li { padding: .35rem .6rem; border-radius: 6px; background: #f3f7f4; }
+.plan-vista-previa li.mal { background: #fdecea; color: #7a1d14; }
+.plan-vista-previa li.bien::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+.plan-vista-previa li.mal::before { content: "✗ "; font-weight: 700; }
+@media (max-width: 640px) { .plan-activa .cabecera-acciones { margin-left: 0; } }
