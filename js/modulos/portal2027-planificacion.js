@@ -40,6 +40,21 @@
     var p = f.split('-').map(Number), d = new Date(p[0], p[1] - 1, p[2] + 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  function diaSemana(f) { var a = f.split('-').map(Number); return new Date(a[0], a[1]-1, a[2]).getDay(); }
+  function moverDias(f, n) { var a = f.split('-').map(Number), d = new Date(a[0], a[1]-1, a[2]+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function lunesSiguiente(f) { var d = diaSemana(f); return moverDias(f, d === 0 ? 1 : 8-d); }
+  function viernesDe(f) { return moverDias(f, 5-diaSemana(f)); }
+  function fechaConDia(f) { var dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']; return dias[diaSemana(f)]+' '+fechaTexto(f); }
+  function validarSemana(ed, ini, fin) {
+    var t = trimestre();
+    if (!t || ini < t.fecha_inicio || fin > t.fecha_fin) return 'Las fechas deben estar dentro del trimestre.';
+    if (diaSemana(ini) !== 1 || diaSemana(fin) !== 5 || fin !== viernesDe(ini)) return 'Cada clase debe comenzar un lunes y terminar el viernes de esa misma semana.';
+    var otras = S.plan.filter(function(c){return !ed || c.id !== ed.id;}).sort(function(a,b){return a.fecha_inicio.localeCompare(b.fecha_inicio);});
+    if (otras.some(function(c){return ini <= c.fecha_fin && fin >= c.fecha_inicio;})) return 'La semana se cruza con otra clase existente.';
+    var todas = otras.concat([{fecha_inicio:ini,fecha_fin:fin}]).sort(function(a,b){return a.fecha_inicio.localeCompare(b.fecha_inicio);});
+    for(var i=1;i<todas.length;i++) if(todas[i].fecha_inicio !== lunesSiguiente(todas[i-1].fecha_fin)) return 'Las clases deben seguir semanas consecutivas, sin saltos ni traslapes.';
+    return '';
+  }
   function trimestre() { return S.trimestres.filter(function (t) { return t.id === S.trimestreId; })[0]; }
   function estadoClase(c) {
     var h = hoy();
@@ -52,7 +67,7 @@
   function siguienteNumero() { return 1 + Math.max(0, ...S.plan.map(function (c) { return c.numero; })); }
   function sugerirDesde() {
     var t = trimestre();
-    if (S.plan.length) { return sumarDia(S.plan[S.plan.length - 1].fecha_fin); }
+    if (S.plan.length) { return lunesSiguiente(S.plan[S.plan.length - 1].fecha_fin); }
     return (t && t.fecha_inicio) || hoy();
   }
   function urlAsistencia(c) { return P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(S.asig.id) + '&trimestre=' + encodeURIComponent(S.trimestreId) + '&clase=' + encodeURIComponent(c.id); }
@@ -225,12 +240,13 @@
     var inNum = el('input', { type: 'number', min: '1', max: '60', value: String(ed ? ed.numero : siguienteNumero()), disabled: !!ed || S.cerrado, 'aria-label': 'Número de clase' });
     var inTema = el('input', { type: 'text', clase: 'plan-tema-input', maxlength: '120', placeholder: 'Ej.: La célula', value: ed ? ed.tema : '', disabled: S.cerrado, required: true });
     var inIni = el('input', { type: 'date', min: lim.min, max: lim.max, value: ed ? ed.fecha_inicio : sugerirDesde(), disabled: S.cerrado, required: true });
-    var inFin = el('input', { type: 'date', min: lim.min, max: lim.max, value: ed ? ed.fecha_fin : '', disabled: S.cerrado, required: true });
+    var inFin = el('input', { type: 'date', min: lim.min, max: lim.max, value: ed ? ed.fecha_fin : viernesDe(sugerirDesde()), disabled: S.cerrado, required: true });
+    inIni.addEventListener('change', function () { if (inIni.value && diaSemana(inIni.value) === 1) inFin.value = viernesDe(inIni.value); });
     var botones = [el('button', { clase: 'boton boton-secundario', type: 'submit', disabled: S.cerrado, texto: ed ? 'Guardar cambios' : 'Agregar clase' })];
     if (ed) { botones.push(el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cancelar', onclick: function () { S.editando = null; dibujar(); } })); }
     var form = el('form', { clase: 'formulario-fila', novalidate: true }, [
       el('label', null, ['Clase Nº', inNum]), el('label', null, ['Tema', inTema]),
-      el('label', null, ['Desde', inIni]), el('label', null, ['Hasta', inFin])
+      el('label', null, ['Desde (lunes)', inIni]), el('label', null, ['Hasta (viernes)', inFin])
     ].concat(botones));
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -239,11 +255,13 @@
       if (inIni.value > inFin.value) { aviso('La fecha de inicio es posterior a la final.', 'error'); return; }
       var n = Number(inNum.value);
       if (!ed && !(n >= 1 && n <= 60 && Math.floor(n) === n)) { aviso('El número de clase debe ser de 1 a 60.', 'error'); return; }
+      var problema = validarSemana(ed, inIni.value, inFin.value);
+      if (problema) { aviso(problema, 'error'); return; }
       guardarClase(ed, n, inTema.value, inIni.value, inFin.value);
     });
     var hijos = [el('h2', { texto: ed ? 'Editar Clase ' + ed.numero : 'Agregar clase' }), form];
     if (t && (t.fecha_inicio || t.fecha_fin)) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Las fechas deben estar dentro del trimestre: ' + (t.fecha_inicio ? fechaTexto(t.fecha_inicio) : '…') + ' al ' + (t.fecha_fin ? fechaTexto(t.fecha_fin) : '…') + '. Las clases no pueden cruzarse.' }));
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Semanas completas de lunes a viernes, consecutivas y sin traslapes. Trimestre: ' + (t.fecha_inicio ? fechaTexto(t.fecha_inicio) : '…') + ' al ' + (t.fecha_fin ? fechaTexto(t.fecha_fin) : '…') + '.' }));
     }
     return el('section', { clase: 'bloque' }, hijos);
   }
@@ -291,7 +309,7 @@
         el('td', null, [gancho]),
         el('td', { texto: 'Clase ' + c.numero }),
         el('td', { clase: 'plan-tema', texto: c.tema }),
-        el('td', { texto: fechaTexto(c.fecha_inicio) }), el('td', { texto: fechaTexto(c.fecha_fin) }),
+        el('td', { texto: fechaConDia(c.fecha_inicio) }), el('td', { texto: fechaConDia(c.fecha_fin) }),
         el('td', { texto: String(sesionesDe(c)) }),
         el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlAsistencia(c), texto: 'Asistencia' }),
