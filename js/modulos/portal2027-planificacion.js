@@ -31,7 +31,7 @@
     if (/portal2027_plan_clases|portal2027_guardar_plan_clase|schema cache/i.test(m)) { return 'Falta instalar la migración 0029 en Supabase. (' + m + ')'; }
     return P.traducirError(e);
   }
-  function fechaTexto(f) { var p = String(f).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function fechaTexto(f) { if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(String(f))) return 'Sin fecha'; var p = String(f).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   function hoy() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -334,6 +334,17 @@
     return sec;
   }
 
+  function calendarioSeguro() {
+    try { return dibujarCalendario(); }
+    catch (e) {
+      console.error('Portal2027: error en calendario', e);
+      return el('section', { clase: 'bloque plan-calendario' }, [
+        el('h2', { texto: 'Calendario del trimestre' }),
+        el('p', { clase: 'mensaje error', texto: 'No se pudo dibujar el calendario. Las demás funciones de planificación siguen disponibles.' })
+      ]);
+    }
+  }
+
   function dibujarTabla() {
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Clases del trimestre' })]);
     if (S.plan.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'No hay clases planificadas.' })); return sec; }
@@ -376,7 +387,7 @@
         el('label', null, ['Trimestre', selTrim]),
         el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Planificación recargada.'); } })
       ]), S.cerrado ? el('p', { clase: 'mensaje info', texto: 'Este trimestre está cerrado: la planificación no se puede cambiar.' }) : null]),
-      dibujarCalendario(), dibujarActiva(), dibujarGrupos(), dibujarFormulario(), dibujarLote(), dibujarTabla()
+      calendarioSeguro(), dibujarActiva(), dibujarGrupos(), dibujarFormulario(), dibujarLote(), dibujarTabla()
     ]);
     contenido.appendChild(cuerpo);
   }
