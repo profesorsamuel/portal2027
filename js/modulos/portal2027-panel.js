@@ -71,11 +71,11 @@
       el('tbody', null, filas.map(function (f) {
         return el('tr', null, [el('td', { texto: String(f.anio) }), el('td', { texto: f.grupo }), el('td', { texto: f.materia + (f.profesor ? ' · ' + f.profesor : '') }),
           el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-horario.html', texto: 'Horario y calendario' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Abrir libreta' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-horario.html', texto: 'Horario' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(f.id), texto: 'Libreta' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(f.id), texto: 'Planificación' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases y tareas' }),
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-ejercicios.html?asignacion=' + encodeURIComponent(f.id), texto: 'Ejercicios virtuales' })])])]);
       }))
     ]);

@@ -772,7 +772,17 @@
 
   /* ================= PROFESOR ================= */
   async function renderProfesor(zona, info) {
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Mis estudiantes' })]);
+    // Panel plegable nativo: cerrado al entrar y accesible por teclado.
+    var sec = el('section', { clase: 'bloque' });
+    var plegable = document.createElement('details');
+    plegable.className = 'portal2027-estudiantes-plegable';
+    var encabezado = document.createElement('summary');
+    encabezado.textContent = 'Mis estudiantes';
+    plegable.appendChild(encabezado);
+    var interior = document.createElement('div');
+    interior.className = 'portal2027-estudiantes-interior';
+    plegable.appendChild(interior);
+    sec.appendChild(plegable);
     zona.appendChild(sec);
     var asig = await consultar(db.from('portal2027_asignaciones').select('salon_id').eq('profesor_id', info.sesion.user.id));
     // Administración sin grupos propios: igual que en «Mis grupos y materias», ve los estudiantes de todos los grupos.
@@ -787,7 +797,7 @@
     });
     mats = mats.filter(function (m) { return m.estudiante && m.salon; });
     if (mats.length === 0) {
-      sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay estudiantes en sus grupos.' }));
+      interior.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay estudiantes en sus grupos.' }));
       return;
     }
     mats.sort(function (a, b) {
@@ -808,8 +818,8 @@
         } })])
       ]);
     });
-    sec.appendChild(textoTabla(['Año', 'Grupo', 'Código', 'Nombre', ''], filas, ''));
-    sec.appendChild(detalle);
+    interior.appendChild(textoTabla(['Año', 'Grupo', 'Código', 'Nombre', ''], filas, ''));
+    interior.appendChild(detalle);
   }
 
   /* ================= ESTUDIANTE ================= */
