@@ -131,3 +131,10 @@
   .desc-fila{gap:.6rem}
   .desc-btn-texto{margin-right:0;width:100%;text-align:left}
 }
+
+/* Botón «Eliminar columna» en el encabezado del desglose */
+.tabla-desglose th.col-registro{padding-top:.55rem;padding-bottom:.55rem}
+.col-registro-titulo{display:block;margin-bottom:.35rem}
+.desglose-col-borrar{padding:.2rem .6rem;font-size:.75rem;font-weight:600;letter-spacing:0;text-transform:none;color:#b3261e;background:#fff;border:1px solid #d9b8b4;border-radius:6px;min-height:1.7rem}
+.desglose-col-borrar:hover:not(:disabled){background:#b3261e;color:#fff;border-color:#b3261e}
+.desglose-col-borrar:disabled{opacity:.45;cursor:not-allowed}
