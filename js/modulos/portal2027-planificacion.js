@@ -329,7 +329,10 @@
       cuadricula.appendChild(tarjeta);
       cursor = moverDias(cursor, 7);
     }
-    sec.appendChild(el('p', { clase: 'plan-cal-resumen', texto: ocupadas + ' semanas cubiertas · ' + libres + ' semanas disponibles' }));
+    sec.appendChild(el('p', { clase: 'plan-cal-resumen', texto: ocupadas + ' de ' + (ocupadas + libres) + ' semanas planificadas · ' + libres + ' disponibles' }));
+    var progreso = el('div', { clase: 'plan-cal-progreso', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(ocupadas + libres), 'aria-valuenow': String(ocupadas) }, [el('div', { clase: 'plan-cal-progreso-barra' })]);
+    progreso.firstChild.style.width = (ocupadas + libres ? Math.round(100 * ocupadas / (ocupadas + libres)) : 0) + '%';
+    sec.appendChild(progreso);
     sec.appendChild(cuadricula);
     return sec;
   }
