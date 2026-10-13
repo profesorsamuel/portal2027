@@ -43,3 +43,7 @@
 .asis-calendario{border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin:12px 0;background:#f8fafc}
 .asis-cal-cabecera{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}.asis-cal-cabecera strong{margin-right:auto}.asis-cal-cabecera span{font-size:.85rem;color:#475569}
 .asis-cal-dias{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.asis-cal-dia{border:1px solid #cbd5e1;border-radius:8px;padding:9px 4px;display:flex;flex-direction:column;gap:5px;align-items:center;cursor:pointer;color:#123047;background:#eff6ff}.asis-cal-dia strong{font-size:1rem}.asis-cal-dia small{font-size:.72rem}.asis-cal-registrada{background:#dcfce7;border-color:#86efac}.asis-cal-hoy{background:#dbeafe;border-color:#60a5fa}.asis-cal-atrasada{background:#fee2e2;border-color:#fca5a5}.asis-cal-libre,.asis-cal-dia:disabled{background:#f1f5f9;color:#64748b;cursor:not-allowed;opacity:.8}.asis-cal-elegida{outline:3px solid #1d4ed8;outline-offset:1px}.asis-cal-ayuda{font-size:.8rem;color:#475569;margin:7px 0}@media(max-width:580px){.asis-cal-dias{gap:3px}.asis-cal-dia{padding:7px 1px;font-size:.7rem}.asis-cal-dia strong{font-size:.8rem}.asis-cal-dia small{font-size:.62rem}}
+
+/* Fechas visibles del trimestre en asistencia */
+.asistencia-periodo-trimestre{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;background:#edf5ff;border:1px solid #a9c9eb;border-radius:8px;padding:11px 14px;margin:10px 0;color:#163e65;font-size:14px}
+.asistencia-periodo-trimestre strong{font-weight:700}
