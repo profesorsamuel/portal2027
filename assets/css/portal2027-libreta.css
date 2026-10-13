@@ -171,3 +171,11 @@
 .libreta-gancho{display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;white-space:nowrap}
 .libreta-gancho.activo{background:#e9f6ef;border-color:#9fd2b0}
 .libreta-gancho input{margin:0;width:14px;height:14px;accent-color:#16834a;cursor:pointer}
+
+/* Ajuste manual de ancho en cada encabezado de nota. */
+.tabla-libreta { table-layout: fixed; width: max-content; min-width: 100%; }
+.tabla-libreta th.col-eval { position: relative; box-sizing: border-box; min-width: 105px; overflow: visible; }
+.libreta-col-resize { position: absolute; right: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 6; touch-action: none; }
+.libreta-col-resize:hover, .libreta-redimensionando .libreta-col-resize { background: rgba(37,99,235,.18); }
+.libreta-redimensionando, .libreta-redimensionando * { cursor: col-resize !important; user-select: none !important; }
+.tabla-libreta .col-eval .tema-input { max-width: 100%; box-sizing: border-box; }
