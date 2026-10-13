@@ -606,8 +606,29 @@
         var thead = document.createElement('thead'), fila = document.createElement('tr');
         var thEst = document.createElement('th'); thEst.textContent = 'Estudiante'; thEst.className = 'col-est'; fila.appendChild(thEst);
         grupos.forEach(function (g) {
-          var th = document.createElement('th');
-          th.textContent = g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
+          var th = document.createElement('th'); th.className = 'col-registro';
+          var nombreCol = g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
+          var rotulo = document.createElement('span'); rotulo.className = 'col-registro-titulo'; rotulo.textContent = nombreCol;
+          var btnCol = document.createElement('button');
+          btnCol.type = 'button'; btnCol.className = 'desglose-col-borrar'; btnCol.textContent = 'Eliminar columna';
+          btnCol.title = 'Borra esta columna completa (los registros de todos los estudiantes)';
+          btnCol.setAttribute('aria-label', 'Eliminar la columna ' + nombreCol);
+          btnCol.disabled = bloqueado;
+          btnCol.onclick = async function () {
+            var regs = Object.keys(g.porMat).map(function (k) { return g.porMat[k]; }).filter(Boolean);
+            if (regs.length === 0) { window.alert('Esta columna no tiene registros.'); return; }
+            if (!window.confirm('¿Eliminar la columna «' + nombreCol + '» completa?\n\nSe borrarán ' + regs.length + ' registro(s) de todos los estudiantes y el promedio semanal se recalculará.')) { return; }
+            btnCol.disabled = true; btnCol.textContent = 'Eliminando…';
+            await cola; // primero terminan las notas que aún se estén guardando
+            var fallos = 0, ultimoError = null;
+            for (var i = 0; i < regs.length; i++) {
+              var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: regs[i].id, p_version: regs[i].version });
+              if (q.error) { fallos++; ultimoError = q.error; }
+            }
+            if (fallos > 0) { window.alert('No se pudieron eliminar ' + fallos + ' de ' + regs.length + ' registros. ' + P.traducirError(ultimoError)); }
+            await recargar(); pintar();
+          };
+          th.append(rotulo, btnCol);
           fila.appendChild(th);
         });
         var thProm = document.createElement('th'); thProm.textContent = 'Promedio semanal'; thProm.className = 'col-prom-sem'; fila.appendChild(thProm);
