@@ -307,19 +307,12 @@
   }
   function panelColumnas() {
     var box = el('div', { clase: 'libreta-panel-columnas' });
-    var barra = el('div', { clase: 'libreta-panel-barra' }, [
-      el('strong', { texto: 'Personalizar columnas' }),
-      botonVista('Mostrar todas', 'Mostrar todas las notas', function() { vistaRapida('todas'); panelColumnasActualizar(); }),
-      botonVista('Solo promedios', 'Ocultar las notas individuales', function() { vistaRapida('ninguna'); panelColumnasActualizar(); }),
-      botonVista('Cerrar', 'Cerrar panel', function() { box.hidden = true; })
-    ]);
-    box.appendChild(barra);
-    var tabs = el('div', { clase: 'libreta-vista-tabs' });
-    var tabCols = botonVista('✓ Columnas', 'Seleccionar columnas', function() { listado.hidden = false; listaEst.hidden = true; });
-    var tabEst = botonVista('✓ Estudiantes', 'Seleccionar estudiantes', function() { listado.hidden = true; listaEst.hidden = false; actualizarEstudiantes(); });
-    tabs.appendChild(tabCols); tabs.appendChild(tabEst); box.appendChild(tabs);
-    var listado = el('div', { clase: 'libreta-panel-grupos' }); box.appendChild(listado);
-    var listaEst = el('div', { clase: 'libreta-panel-estudiantes' }); listaEst.hidden = true; box.appendChild(listaEst);
+    box.appendChild(el('div', { clase: 'libreta-panel-barra' }, [
+      el('strong', { texto: 'Seleccionar estudiantes visibles' }),
+      botonVista('Cerrar', 'Cerrar selección de estudiantes', function() { box.hidden = true; })
+    ]));
+    var listaEst = el('div', { clase: 'libreta-panel-estudiantes' });
+    box.appendChild(listaEst);
     function actualizarEstudiantes() {
       listaEst.textContent = '';
       var barraEst = el('div', { clase: 'libreta-panel-barra' }, [
@@ -342,26 +335,8 @@
       }
       buscarEst.addEventListener('input', pintar); pintar();
     }
-    function panelColumnasActualizar() {
-      listado.textContent = '';
-      M.CATEGORIAS.forEach(function(c) {
-        var evals = S.evals.filter(function(e) { return !e.eliminada_en && e.categoria === c; });
-        var grupo = el('div', { clase: 'libreta-panel-grupo' });
-        var titulo = el('div', { clase: 'libreta-panel-titulo' }, [el('strong', { texto: M.ETIQUETAS[c] }),
-          botonVista('Ver grupo', 'Mostrar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = false; }); S.verOcultas = true; guardarVista(); dibujarTabla(); panelColumnasActualizar(); }),
-          botonVista('Ocultar grupo', 'Ocultar esta categoría', function() { evals.forEach(function(e) { vistaOcultas[e.id] = true; }); guardarVista(); dibujarTabla(); panelColumnasActualizar(); })]);
-        grupo.appendChild(titulo);
-        if (!evals.length) { grupo.appendChild(el('small', { texto: 'Todavía no hay notas en esta categoría.' })); }
-        evals.forEach(function(e, i) {
-          var check = el('input', { type: 'checkbox', checked: estaVisible(e) });
-          check.addEventListener('change', function() { if (e.oculta && check.checked) { S.verOcultas = true; } ponerVista(e, check.checked); });
-          grupo.appendChild(el('label', { clase: 'libreta-col-opcion' }, [check, el('span', { texto: (e.titulo || e.nombre || e.descripcion || M.ETIQUETAS[c] + ' ' + (i + 1)) + (e.oculta ? ' · oculta previamente' : '') })]));
-        });
-        listado.appendChild(grupo);
-      });
-    }
-    panelColumnasActualizar();
-    return { elemento: box, actualizar: function() { panelColumnasActualizar(); if (!listaEst.hidden) actualizarEstudiantes(); } };
+    actualizarEstudiantes();
+    return { elemento: box, actualizar: actualizarEstudiantes };
   }
 
   function visibles() {
@@ -868,7 +843,7 @@
   // Casillas compactas sobre la tabla: incluso las ocultas permanecen accesibles.
   function barraGanchosColumnas() {
     var barra = el('div', { clase: 'libreta-ganchos-barra' });
-    barra.appendChild(el('span', { clase: 'libreta-ganchos-titulo', texto: 'Columnas ✓:' }));
+    barra.appendChild(el('span', { clase: 'libreta-ganchos-titulo', texto: '✓ Mostrar columnas:' }));
     (S.filtroCat ? [S.filtroCat] : M.CATEGORIAS).forEach(function(c) {
       var evals = S.evals.filter(function(e) { return !e.eliminada_en && e.categoria === c; });
       if (!evals.length) { return; }
@@ -1094,14 +1069,12 @@
 
     var panelVista = panelColumnas();
     panelVista.elemento.hidden = true;
-    var btnVista = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: '☑ Seleccionar columnas y estudiantes', onclick: function() { panelVista.elemento.hidden = !panelVista.elemento.hidden; if (!panelVista.elemento.hidden) { panelVista.actualizar(); } } });
-    var btnTodas = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: '👁 Ver todas', onclick: function() { vistaRapida('todas'); } });
-    var btnProm = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'Solo promedios', onclick: function() { vistaRapida('ninguna'); } });
+    var btnVista = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: '☑ Estudiantes', onclick: function() { panelVista.elemento.hidden = !panelVista.elemento.hidden; if (!panelVista.elemento.hidden) { panelVista.actualizar(); } } });
     var cuerpo = el('div', { clase: 'libreta-cuerpo secciones' }, [
       el('section', { clase: 'bloque' }, [
         el('div', { clase: 'formulario-fila' }, [
           el('label', null, ['Trimestre', selTrim]), el('label', null, ['Categoría', selCat]), el('label', null, ['Estudiante', buscar]),
-          btnVista, btnTodas, btnProm,
+          btnVista,
           btnImp, btnHist, btnPap, btnRec, btnPub
         ]),
         el('p', { clase: S.cerrado ? 'mensaje ok' : 'bloque-ayuda', texto: S.cerrado ? 'Trimestre CERRADO: la libreta está en solo lectura (columnas, notas y asistencia bloqueadas por la base).' : 'Trimestre abierto.' }),
