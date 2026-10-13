@@ -142,3 +142,16 @@ label.check input { width: 1.1rem; height: 1.1rem; }
   .fichas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ficha { min-width: 0; }
 }
+
+/* Navegación visual simplificada, sin cambiar la lógica de Supabase */
+[hidden] { display: none !important; }
+.panel-acciones { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.75rem; margin:1.1rem 0 .4rem; }
+.accion-horario { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; min-height:112px; padding:1rem .5rem; background:#fff; color:#173b42; border:2px solid #d5e2e4; border-radius:14px; font-size:1.5rem; box-shadow:0 2px 8px #132c3610; transition:background .15s,border-color .15s; }
+.accion-horario strong { font-size:.98rem; line-height:1.25; text-align:center; }
+.accion-horario small { font-size:.76rem; font-weight:400; text-align:center; color:#52676d; }
+.accion-horario:hover,.accion-horario:focus-visible { background:#e9f6f3; border-color:#18786b; }
+.accion-horario.activa { background:#143c43; border-color:#143c43; color:white; }
+.accion-horario.activa small { color:#d9f1ed; }
+.instruccion-panel { padding:.8rem 1rem; background:#edf5f4; border-radius:10px; color:#274e54; font-weight:600; }
+@media(max-width:850px){.panel-acciones {grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:520px){.panel-acciones {grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.accion-horario {min-height:98px;padding:.7rem .3rem}.accion-horario strong{font-size:.88rem}}
