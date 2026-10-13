@@ -1,1 +1,174 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Horario y calendario · El Jiral</title><link rel="stylesheet" href="../assets/css/portal2027-base.css"><link rel="stylesheet" href="../assets/css/portal2027-componentes.css"><link rel="stylesheet" href="../assets/css/portal2027-horario.css"></head><body data-raiz="../"><main class="portal"><header class="bloque"><h1>Horario y calendario de clases</h1><a href="portal2027-profesor.html">← Panel docente</a><p id="estado" role="status">Cargando…</p></header><section class="bloque"><h2>1. Horario semanal</h2><label>Año lectivo <select id="anio"></select></label> <label>Profesor <select id="profesor"></select></label><p><strong>Opción sencilla:</strong> prepare su horario con un clic, revise las clases y guarde. Sin JSON ni códigos.</p><div style="padding:14px;border:1px solid #94a3b8;border-radius:10px;margin:12px 0"><button id="preparar-facil" type="button" style="padding:10px">1. Preparar mis 24 clases de 2027</button><div id="panel-facil" hidden><p>Puede cambiar horas y materias antes de guardar.</p><div class="tabla-contenedor"><table class="tabla-datos"><thead><tr><th>Día</th><th>Inicio</th><th>Fin</th><th>Tipo</th><th>Grupo / materia</th></tr></thead><tbody id="vista-facil"></tbody></table></div><button id="guardar-facil" type="button" style="padding:10px;margin-top:10px">2. Guardar horario completo</button></div></div><p><button id="cargar-plantilla" type="button">Cargar horario de Samuel 2027 (editable)</button></p><div id="zona-archivo" role="button" tabindex="0" aria-label="Arrastra un archivo JSON o selecciona uno" style="border:2px dashed #64748b;border-radius:10px;padding:20px;margin:12px 0;text-align:center;background:#f8fafc;cursor:pointer"><strong>Arrastra aquí tu archivo .json</strong><p>O selecciónalo desde tu computadora</p><input type="file" id="archivo-horario" accept=".json,application/json" style="max-width:100%"><p id="archivo-estado" aria-live="polite">El archivo se carga para revisión; no se guarda automáticamente.</p></div><details id="detalle-importar"><summary>Importar horario (JSON)</summary><textarea id="importacion" rows="7" placeholder='[{"dia":1,"inicio":"07:30","fin":"08:10","tipo":"clase","asignacion_id":"UUID","etiqueta":""}]'></textarea><button id="importar" type="button">Validar y reemplazar horario</button></details><div class="tabla-contenedor"><table class="tabla-datos"><thead><tr><th>Día</th><th>Inicio</th><th>Fin</th><th>Tipo</th><th>Grupo / materia o etiqueta</th><th>Acciones</th></tr></thead><tbody id="franjas"></tbody></table></div><h3>Agregar o corregir franja</h3><form id="franja"><input type="hidden" id="franja-id"><label>Día <select id="dia" required><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option></select></label><label>Inicio <input id="inicio" type="time" required></label><label>Fin <input id="fin" type="time" required></label><label>Tipo <select id="tipo"><option value="clase">Clase</option><option value="recreo">Recreo</option><option value="consejeria">Consejería</option><option value="otro">Otro</option></select></label><label>Asignación <select id="asignacion"></select></label><label>Etiqueta <input id="etiqueta" maxlength="60"></label><button type="submit">Guardar franja</button><button type="button" id="limpiar">Nueva franja</button></form></section><section class="bloque"><h2>2. Calendario de clases</h2><label>Trimestre <select id="trimestre"></select></label><label>Bloques dobles de <select id="doble-asignacion"></select></label><select id="doble"><option value="una">Una sesión por bloques consecutivos</option><option value="dos">Una sesión por cada bloque</option></select><button id="guardar-doble">Guardar criterio</button><h3>Días sin clases</h3><form id="sinclases"><label>Desde <input type="date" id="desde" required></label><label>Hasta <input type="date" id="hasta" required></label><label>Motivo <input id="motivo" maxlength="80" required></label><label><input type="checkbox" id="global"> Todo el colegio (solo administración)</label><button type="submit">Registrar días sin clases</button></form><div id="exclusiones"></div><h3>Sesiones generadas</h3><p>Se calculan automáticamente según el trimestre, el horario y las suspensiones registradas. No se almacenan duplicados.</p><div id="resumen"></div><div class="tabla-contenedor"><table class="tabla-datos"><thead><tr><th>Fecha</th><th>Hora</th><th>Grupo y materia</th><th>Sesión</th></tr></thead><tbody id="sesiones"></tbody></table></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script><script src="../js/core/portal2027-conexion.js"></script><script src="../js/modulos/portal2027-horario.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Horario y calendario · El Jiral</title>
+<link rel="stylesheet" href="../assets/css/portal2027-base.css">
+<link rel="stylesheet" href="../assets/css/portal2027-componentes.css">
+<link rel="stylesheet" href="../assets/css/portal2027-horario.css">
+</head>
+<body data-raiz="../">
+<main class="portal">
+
+  <header class="bloque cabecera-horario">
+    <div>
+      <a class="volver" href="portal2027-profesor.html">← Volver al panel docente</a>
+      <h1>Horario y calendario de clases</h1>
+      <p class="subtitulo">Aquí arma su semana de clases y ve cuántas sesiones tendrá en el trimestre.</p>
+    </div>
+    <div class="selectores">
+      <label>Año lectivo <select id="anio"></select></label>
+      <label>Profesor <select id="profesor"></select></label>
+    </div>
+    <p id="estado" role="status" class="barra-estado">Cargando…</p>
+  </header>
+
+  <nav class="indice" aria-label="Secciones de la página">
+    <a href="#semana">Mi semana</a>
+    <a href="#editar">Editar horario</a>
+    <a href="#calendario">Calendario del trimestre</a>
+  </nav>
+
+  <!-- ===================== 1. HORARIO SEMANAL ===================== -->
+  <section class="bloque" id="semana">
+    <h2>1. Mi horario semanal</h2>
+    <p class="ayuda">Así se ve su semana. Hoy aparece marcado. Si algo no está bien, baje a «Editar horario».</p>
+    <div id="resumen-semana" class="fichas"></div>
+    <div id="semana-grid" class="semana-grid" aria-live="polite"></div>
+  </section>
+
+  <section class="bloque" id="editar">
+    <h2>2. Editar horario</h2>
+
+    <details id="detalle-facil" class="tarjeta">
+      <summary>Preparar el horario de 2027 con un clic <small>(recomendado la primera vez)</small></summary>
+      <div class="tarjeta-cuerpo">
+        <ol class="pasos">
+          <li>Presione <strong>Preparar</strong> y revise las clases que aparecen.</li>
+          <li>Cambie horas o materias si hace falta.</li>
+          <li>Presione <strong>Guardar horario completo</strong>.</li>
+        </ol>
+        <button id="preparar-facil" type="button" class="boton boton-principal boton-auto">1. Preparar mis 24 clases de 2027</button>
+        <div id="panel-facil" hidden>
+          <p class="ayuda">Puede cambiar horas y materias antes de guardar.</p>
+          <div class="tabla-contenedor">
+            <table class="tabla-datos tabla-compacta">
+              <thead><tr><th>Día</th><th>Inicio</th><th>Fin</th><th>Tipo</th><th>Grupo / materia</th></tr></thead>
+              <tbody id="vista-facil"></tbody>
+            </table>
+          </div>
+          <button id="guardar-facil" type="button" class="boton boton-principal boton-auto">2. Guardar horario completo</button>
+        </div>
+      </div>
+    </details>
+
+    <h3>Franjas guardadas</h3>
+    <p class="ayuda">Ordenadas por día. Use <em>Editar</em> para corregir una franja o <em>Eliminar</em> para quitarla.</p>
+    <div class="tabla-contenedor">
+      <table class="tabla-datos tabla-franjas">
+        <thead><tr><th>Inicio</th><th>Fin</th><th>Tipo</th><th>Grupo / materia o etiqueta</th><th>Acciones</th></tr></thead>
+        <tbody id="franjas"></tbody>
+      </table>
+    </div>
+
+    <h3>Agregar o corregir una franja</h3>
+    <form id="franja" class="tarjeta tarjeta-cuerpo form-grid">
+      <input type="hidden" id="franja-id">
+      <label>Día
+        <select id="dia" required>
+          <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option>
+        </select>
+      </label>
+      <label>Inicio <input id="inicio" type="time" required></label>
+      <label>Fin <input id="fin" type="time" required></label>
+      <label>Tipo
+        <select id="tipo">
+          <option value="clase">Clase</option><option value="recreo">Recreo</option><option value="consejeria">Consejería</option><option value="otro">Otro</option>
+        </select>
+      </label>
+      <label>Grupo y materia <select id="asignacion"></select></label>
+      <label>Etiqueta (opcional) <input id="etiqueta" maxlength="60" placeholder="Ej.: Reunión"></label>
+      <div class="acciones-form">
+        <button type="submit" class="boton boton-principal boton-auto">Guardar franja</button>
+        <button type="button" id="limpiar" class="boton boton-secundario">Nueva franja</button>
+      </div>
+    </form>
+
+    <details id="detalle-avanzado" class="tarjeta">
+      <summary>Opciones avanzadas: cargar plantilla o archivo JSON</summary>
+      <div class="tarjeta-cuerpo">
+        <p class="ayuda">Solo si ya tiene un archivo de horario. Lo que cargue aquí se revisa primero; no se guarda solo.</p>
+        <p><button id="cargar-plantilla" type="button" class="boton boton-secundario">Cargar horario de Samuel 2027 (editable)</button></p>
+        <div id="zona-archivo" class="zona-archivo" role="button" tabindex="0" aria-label="Arrastre un archivo JSON o seleccione uno">
+          <strong>Arrastre aquí su archivo .json</strong>
+          <p>o selecciónelo desde su computadora</p>
+          <input type="file" id="archivo-horario" accept=".json,application/json">
+          <p id="archivo-estado" aria-live="polite">El archivo se carga para revisión; no se guarda automáticamente.</p>
+        </div>
+        <details id="detalle-importar" class="sub-detalle">
+          <summary>Pegar horario (JSON)</summary>
+          <textarea id="importacion" rows="7" placeholder='[{"dia":1,"inicio":"07:30","fin":"08:10","tipo":"clase","asignacion_id":"UUID","etiqueta":""}]'></textarea>
+          <button id="importar" type="button" class="boton boton-secundario">Validar y reemplazar horario</button>
+        </details>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== 2. CALENDARIO ===================== -->
+  <section class="bloque" id="calendario">
+    <h2>3. Calendario del trimestre</h2>
+    <p class="ayuda">Las sesiones se calculan solas con su horario, las fechas del trimestre y los días sin clases.</p>
+
+    <div class="dos-columnas">
+      <div class="tarjeta tarjeta-cuerpo">
+        <h3>Trimestre y bloques dobles</h3>
+        <label>Trimestre <select id="trimestre"></select></label>
+        <label>Si una materia tiene dos horas seguidas, contar…
+          <span class="fila-select">
+            <select id="doble-asignacion" aria-label="Materia con bloque doble"></select>
+          </span>
+        </label>
+        <div class="fila-select">
+          <select id="doble" aria-label="Criterio de bloque doble">
+            <option value="una">Una sesión por bloques consecutivos</option>
+            <option value="dos">Una sesión por cada bloque</option>
+          </select>
+          <button id="guardar-doble" type="button" class="boton boton-secundario">Guardar criterio</button>
+        </div>
+      </div>
+
+      <div class="tarjeta tarjeta-cuerpo">
+        <h3>Días sin clases</h3>
+        <form id="sinclases" class="form-grid form-simple">
+          <label>Desde <input type="date" id="desde" required></label>
+          <label>Hasta <input type="date" id="hasta" required></label>
+          <label class="ancho-completo">Motivo <input id="motivo" maxlength="80" required placeholder="Ej.: Feriado, jornada de capacitación"></label>
+          <label class="check ancho-completo"><input type="checkbox" id="global"> Todo el colegio (solo administración)</label>
+          <div class="acciones-form"><button type="submit" class="boton boton-principal boton-auto">Registrar días sin clases</button></div>
+        </form>
+        <div id="exclusiones" class="chips-dias"></div>
+      </div>
+    </div>
+
+    <h3>Sesiones del trimestre</h3>
+    <div id="resumen" class="fichas"></div>
+    <div class="barra-filtro">
+      <label>Mostrar <select id="filtro-sesiones"><option value="">Todos los grupos</option></select></label>
+      <span id="contador-sesiones" class="ayuda"></span>
+    </div>
+    <div class="tabla-contenedor">
+      <table class="tabla-datos tabla-sesiones">
+        <thead><tr><th>Fecha</th><th>Hora</th><th>Grupo y materia</th><th>Sesión</th></tr></thead>
+        <tbody id="sesiones"></tbody>
+      </table>
+    </div>
+    <p class="centro-boton"><button id="ver-mas" type="button" class="boton boton-secundario" hidden>Ver más sesiones</button></p>
+  </section>
+
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script src="../js/core/portal2027-conexion.js"></script>
+<script src="../js/modulos/portal2027-horario.js"></script>
+</body>
+</html>
