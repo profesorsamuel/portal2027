@@ -28,3 +28,13 @@
 .asis-toque.est-bien { background: #e6f3ea; border-color: #3a8f5b; color: #1d5b34; }
 .asis-toque.est-mal { background: #fbe9e7; border-color: #c0392b; color: #9b2c1f; }
 .asis-toque:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+/* Asistencia + comportamiento en la misma celda */
+.celda-doble { white-space: nowrap; text-align: center; padding: .35rem .4rem; }
+.celda-doble .celda-asis { display: inline-block; vertical-align: middle; }
+.celda-doble .celda-asis + .celda-asis { margin-left: .4rem; padding-left: .4rem; border-left: 2px dashed #c9d4d1; }
+.celda-doble .asis-toque { min-width: 3.2rem; min-height: 2.6rem; }
+.sub-doble { display: flex; justify-content: space-around; gap: .4rem; margin-top: .25rem; font-size: .7rem; font-weight: 600; letter-spacing: .02em; color: var(--texto-suave); text-transform: uppercase; }
+.col-sesion { min-width: 10.5rem; }
+.col-comp { background: #f3f7f4; }
+.asis-guardando.celda-asis .asis-toque { outline: 3px solid #f0c040; }
