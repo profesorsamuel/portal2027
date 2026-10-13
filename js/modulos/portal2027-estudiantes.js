@@ -775,7 +775,11 @@
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Mis estudiantes' })]);
     zona.appendChild(sec);
     var asig = await consultar(db.from('portal2027_asignaciones').select('salon_id').eq('profesor_id', info.sesion.user.id));
-    var ids = asig.map(function (a) { return a.salon_id; });
+    // Administración sin grupos propios: igual que en «Mis grupos y materias», ve los estudiantes de todos los grupos.
+    if (asig.length === 0 && info.roles && info.roles.indexOf('administrador') !== -1) {
+      asig = await consultar(db.from('portal2027_asignaciones').select('salon_id'));
+    }
+    var ids = asig.map(function (a) { return a.salon_id; }).filter(function (id, i, arr) { return arr.indexOf(id) === i; });
     var mats = ids.length === 0 ? [] : await todas(function () {
       return db.from('portal2027_matriculas')
         .select('salon:portal2027_salones(nombre, anio:portal2027_anios(anio)), estudiante:portal2027_estudiantes(id,codigo,nombres,apellidos,foto_ruta)')
