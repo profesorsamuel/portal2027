@@ -1,0 +1,260 @@
+[
+  {
+    "dia": 1,
+    "inicio": "12:20",
+    "fin": "12:55",
+    "tipo": "consejeria",
+    "etiqueta": "Consejería"
+  },
+  {
+    "dia": 1,
+    "inicio": "12:55",
+    "fin": "13:30",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 1,
+    "inicio": "14:05",
+    "fin": "14:40",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 1,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  },
+  {
+    "dia": 1,
+    "inicio": "15:35",
+    "fin": "16:10",
+    "tipo": "clase",
+    "grupo": "9B",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 2,
+    "inicio": "12:20",
+    "fin": "12:55",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 2,
+    "inicio": "13:30",
+    "fin": "14:05",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 2,
+    "inicio": "14:05",
+    "fin": "14:40",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 2,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  },
+  {
+    "dia": 2,
+    "inicio": "15:35",
+    "fin": "16:10",
+    "tipo": "clase",
+    "grupo": "9A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 2,
+    "inicio": "16:10",
+    "fin": "16:45",
+    "tipo": "clase",
+    "grupo": "9A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 3,
+    "inicio": "12:20",
+    "fin": "12:55",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 3,
+    "inicio": "12:55",
+    "fin": "13:30",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 3,
+    "inicio": "14:05",
+    "fin": "14:40",
+    "tipo": "clase",
+    "grupo": "9B",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 3,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  },
+  {
+    "dia": 3,
+    "inicio": "15:00",
+    "fin": "15:35",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 3,
+    "inicio": "16:45",
+    "fin": "17:20",
+    "tipo": "clase",
+    "grupo": "9A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 4,
+    "inicio": "12:20",
+    "fin": "12:55",
+    "tipo": "clase",
+    "grupo": "9A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 4,
+    "inicio": "13:30",
+    "fin": "14:05",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Informática",
+    "etiqueta": ""
+  },
+  {
+    "dia": 4,
+    "inicio": "14:05",
+    "fin": "14:40",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Informática",
+    "etiqueta": ""
+  },
+  {
+    "dia": 4,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  },
+  {
+    "dia": 4,
+    "inicio": "16:10",
+    "fin": "16:45",
+    "tipo": "clase",
+    "grupo": "9B",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 4,
+    "inicio": "16:45",
+    "fin": "17:20",
+    "tipo": "clase",
+    "grupo": "9B",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "12:55",
+    "fin": "13:30",
+    "tipo": "clase",
+    "grupo": "9A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "13:30",
+    "fin": "14:05",
+    "tipo": "clase",
+    "grupo": "8B",
+    "materia": "Informática",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "14:05",
+    "fin": "14:40",
+    "tipo": "clase",
+    "grupo": "8B",
+    "materia": "Informática",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "14:40",
+    "fin": "15:00",
+    "tipo": "recreo",
+    "etiqueta": "Recreo"
+  },
+  {
+    "dia": 5,
+    "inicio": "15:35",
+    "fin": "16:10",
+    "tipo": "clase",
+    "grupo": "9B",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "16:10",
+    "fin": "16:45",
+    "tipo": "clase",
+    "grupo": "8A",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  },
+  {
+    "dia": 5,
+    "inicio": "16:45",
+    "fin": "17:20",
+    "tipo": "clase",
+    "grupo": "9C",
+    "materia": "Ciencias Naturales",
+    "etiqueta": ""
+  }
+]
