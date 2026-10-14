@@ -1,3 +1,5 @@
+-- OPCIONAL: datos de demostración o reparación específica; no necesaria para crear el esquema.
+-- Revise sus requisitos antes de ejecutarla. En una base nueva puede omitirse.
 -- 0043: restaura la Clase 3 de la planificación (y su «Apreciación 3» en la libreta) en los grupos
 -- que la perdieron (ej. 9B), copiándola del grupo hermano donde sí existe (ej. 9C).
 -- Ejecutar DESPUÉS de 0041 y 0042. Se puede ejecutar varias veces. No borra datos ni notas.

@@ -1,3 +1,5 @@
+-- OPCIONAL: datos de demostración o reparación específica; no necesaria para crear el esquema.
+-- Revise sus requisitos antes de ejecutarla. En una base nueva puede omitirse.
 -- 0035_portal2027_asignaciones_samuel_2027.sql
 -- Ejecutar una sola vez en Supabase SQL Editor, después de revisar el SELECT final.
 -- Crea únicamente las cuatro asignaciones faltantes; conserva las existentes.

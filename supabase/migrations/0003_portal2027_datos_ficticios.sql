@@ -1,3 +1,5 @@
+-- OPCIONAL: datos de demostración o reparación específica; no necesaria para crear el esquema.
+-- Revise sus requisitos antes de ejecutarla. En una base nueva puede omitirse.
 -- 0003_portal2027_datos_ficticios.sql
 -- Datos de configuración de PRUEBA (sin personas). Se pueden borrar antes de usar datos reales.
 insert into public.portal2027_anios (anio, activo) values (2027, true) on conflict (anio) do nothing;
