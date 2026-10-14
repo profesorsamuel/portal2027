@@ -148,7 +148,10 @@
     var r = await P.db.auth.signInWithPassword({ email: correo, password: clave });
     // Compatibilidad con cuentas antiguas: solo después de credenciales incorrectas.
     var cedula = normalizarCedula(clave);
-    if (credencialesIncorrectas(r.error) && cedula && cedula !== clave) {
+    // El segundo intento solo corresponde a una cédula con separadores,
+    // nunca a una contraseña personal arbitraria que contenga símbolos.
+    var formatoCedula = /^[A-Za-z0-9]+(?:[-.\s][A-Za-z0-9]+)+$/.test(clave);
+    if (credencialesIncorrectas(r.error) && formatoCedula && cedula && cedula !== clave) {
       r = await P.db.auth.signInWithPassword({ email: correo, password: cedula });
     }
     return r;
@@ -229,10 +232,11 @@
         if (!r.error) { entro = true; }
         else if (!credencialesIncorrectas(r.error)) { throw r.error; }
       }
-      if (!entro) { mensaje('login', generico, 'error'); ocupado(form, false); return; }
+      if (!entro) { form.cedula.value = ''; mensaje('login', generico, 'error'); ocupado(form, false); return; }
       form.cedula.value = '';
       await enrutar();
     } catch (e) {
+      form.cedula.value = '';
       mensaje('login', textoError(e), 'error');
     }
     ocupado(form, false);
