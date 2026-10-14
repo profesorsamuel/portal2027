@@ -76,8 +76,7 @@
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(f.id), texto: 'Planificación' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-asistencia.html?asignacion=' + encodeURIComponent(f.id), texto: 'Asistencia' }),
             el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-clases.html?asignacion=' + encodeURIComponent(f.id), texto: 'Clases' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-seguimiento.html?asignacion=' + encodeURIComponent(f.id), texto: 'Seguimiento' }),
-            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-aprobados.html?asignacion=' + encodeURIComponent(f.id), texto: 'Aprobados' })])])]);
+            el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/portal2027-seguimiento.html?asignacion=' + encodeURIComponent(f.id), texto: 'Seguimiento' })])])]);
       }))
     ]);
     sec.appendChild(el('div', { clase: 'tabla-contenedor' }, [tabla]));

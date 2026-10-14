@@ -52,7 +52,7 @@
   async function cargar(asig, trims) {
     var r = await Promise.all([
       todas(function () { return db.from('portal2027_evaluaciones').select('id,categoria,trimestre_id').eq('asignacion_id', asig.id).is('eliminada_en', null).order('id'); }),
-      todas(function () { return db.from('portal2027_matriculas').select('id,estudiante:portal2027_estudiantes(codigo,nombres,apellidos,nombre_acudiente,telefono_acudiente)').eq('salon_id', asig.salon.id).eq('anio_id', asig.salon.anio_id).order('id'); }),
+      todas(function () { return db.from('portal2027_matriculas').select('id,estado,estudiante:portal2027_estudiantes(codigo,nombres,apellidos,sexo,nombre_acudiente,telefono_acudiente)').eq('salon_id', asig.salon.id).eq('anio_id', asig.salon.anio_id).order('id'); }),
       todas(function () {
         return db.from('portal2027_notas').select('evaluacion_id,matricula_id,valor,evaluacion:portal2027_evaluaciones!inner(asignacion_id,eliminada_en)')
           .eq('evaluacion.asignacion_id', asig.id).is('evaluacion.eliminada_en', null).order('id');
@@ -71,7 +71,7 @@
     });
     return r[1].filter(function (m) { return m.estudiante; }).map(function (m) {
       return {
-        asig: asig, est: m.estudiante,
+        asig: asig, est: m.estudiante, estado: m.estado,
         tri: trims.map(function (t) {
           var ev = r[0].filter(function (e) { return e.trimestre_id === t.id; });
           var res = M.calcular(ev, notas[m.id] || {});
@@ -234,29 +234,110 @@
     } finally { boton.disabled = false; }
   }
 
-  /* ---------- 3) CUADRO DE FRACASO ---------- */
+  /* ---------- 3) CUADRO DE FRACASO + cuadro oficial de aprobados y reprobados ---------- */
+  var INSTITUCION = 'MINISTERIO DE EDUCACIÓN – DIRECCIÓN REGIONAL DE COLÓN – C.E.B.G. EL JIRAL';
   function vistaFracaso(filas, trims, ctx) {
-    var zona = el('div'), res = el('div');
+    var C = P.aprobadosCore, zona = el('div'), kp = el('div'), avisos = el('div', { clase: 'no-imprimir' }), hojaZona = el('div'), ayuda = el('div', { clase: 'no-imprimir' });
+    var cache = {}, token = 0, hoja = null, nombrePdf = 'Cuadro_Aprobados.pdf';
+    cache[ctx.asignacionId] = filas;
+    var grupos = [{ id: ctx.asignacionId, nombre: ctx.grupo, grado: ctx.grado, seccion: ctx.seccion, asig: null }];
     var selTr = el('select', null, trims.map(function (t, i) { return opcion(String(i), 'Trimestre ' + t.numero, false); }).concat([opcion('f', 'Nota final (promedio de trimestres)', true)]));
     var inMeta = el('input', { type: 'number', min: '0', max: '100', step: '0.5', value: String(META_FRACASO), style: 'width:5rem' });
-    function pintar() {
-      var meta = Number(inMeta.value) || 0, k = selTr.value;
-      var val = function (f) { return k === 'f' ? finalAnual(f) : (f.tri[+k] ? f.tri[+k].final : null); };
-      var con = filas.filter(function (f) { return val(f) !== null; });
-      var rep = con.filter(function (f) { return reprueba(val(f)); });
-      var mat = filas.length, pct = mat ? rep.length / mat * 100 : 0, tope = Math.floor(mat * meta / 100 + 1e-9), faltan = Math.max(0, rep.length - tope), ok = pct <= meta;
-      res.textContent = '';
-      res.appendChild(kpis([[meta.toFixed(2) + '%', 'meta permitida'], [pct.toFixed(2) + '%', ok ? 'fracaso actual (dentro de meta)' : 'fracaso actual (SOBRE la meta)'], [rep.length + ' / ' + mat, 'reprobados / matrícula'], [faltan || '—', 'faltan por aprobar']]));
-      res.appendChild(tabla(['Grupo', 'Matrícula', 'Aprobados', 'Reprobados', 'Sin calif.', '% fracaso', 'Estado', 'Tope', 'Faltan'], [el('tr', null, [
-        td(ctx.grupo, 'c'), td(String(mat), 'c'), td(String(con.length - rep.length), 'c'), td(String(rep.length), 'c'), td(String(mat - con.length), 'c'),
-        el('td', { clase: 'c final' + (ok ? '' : ' rojo'), texto: pct.toFixed(2) + '%' }), td(ok ? 'Dentro de meta' : 'Sobre la meta', 'c'), td(String(tope), 'c'), td(faltan ? String(faltan) : '—', 'c')])]));
-      res.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Reprobados: ' + (rep.map(function (f) { return nombreEst(f.est) + ' (' + fmt(val(f)) + ')'; }).join(' · ') || 'ninguno') + '.' }));
-      res.appendChild(el('p', { clase: 'bloque-ayuda', texto: '% de fracaso = reprobados ÷ matrícula total (los «sin calificación» cuentan en la matrícula, no como reprobados). Tope = máximo de reprobados que cabe en la meta. Faltan = reprobados que deben subir a ' + MIN.toFixed(1) + ' para llegar a la meta.' }));
+    var selJor = el('select', null, ['Matutina', 'Vespertina', 'Nocturna'].map(function (j, i) { return opcion(j, j, i === 0); }));
+    var chips = el('div', { clase: 'seg-chips no-imprimir' });
+    var estado = el('p', { clase: 'bloque-ayuda no-imprimir', role: 'status', 'aria-live': 'polite', hidden: true });
+    var bPdf = el('button', { clase: 'boton', type: 'button', texto: '📄 Descargar PDF', onclick: function () { descargarCuadro(); } });
+    var bImp = el('button', { clase: 'boton boton-secundario', type: 'button', texto: '🖨️ Imprimir', onclick: function () { imprimirCuadro(); } });
+    function msg(t, c) { estado.hidden = !t; estado.className = 'bloque-ayuda no-imprimir' + (c ? ' ' + c : ''); estado.textContent = t || ''; }
+    function ordenar() { grupos.sort(function (a, b) { return (Number(a.grado) - Number(b.grado)) || String(a.seccion).localeCompare(String(b.seccion)); }); }
+    function dibujarChips() {
+      ordenar(); chips.textContent = '';
+      grupos.forEach(function (g) {
+        var c = el('input', { type: 'checkbox', checked: true, value: g.id }); c.addEventListener('change', pintar);
+        chips.appendChild(el('label', { clase: 'seg-chip' }, [c, ' ' + g.grado + '°' + g.seccion]));
+      });
     }
-    selTr.addEventListener('change', pintar); inMeta.addEventListener('change', pintar);
-    zona.appendChild(el('div', { clase: 'formulario-fila no-imprimir' }, [campo('Periodo', selTr), campo('Meta de fracaso (%)', inMeta), el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } }), el('a', { clase: 'boton boton-secundario', href: 'portal2027-aprobados.html?asignacion=' + encodeURIComponent(ctx.asignacionId), texto: 'Abrir cuadro de aprobados y reprobados' })]));
-    zona.appendChild(res);
-    pintar();
+    function itemsDe(fl, k) {
+      return fl.map(function (f) {
+        var t = k === 'f' ? null : f.tri[+k];
+        return { nombre: nombreEst(f.est), sexo: f.est.sexo, retirado: C.esRetirado(f.estado), final: k === 'f' ? finalAnual(f) : (t ? t.final : null), cat: t ? t.res.categorias : null };
+      });
+    }
+    async function pintar() {
+      var mi = ++token, k = selTr.value, meta = Number(inMeta.value) || 0;
+      var ids = Array.prototype.map.call(chips.querySelectorAll('input:checked'), function (c) { return c.value; });
+      var sel = grupos.filter(function (g) { return ids.indexOf(g.id) !== -1; });
+      bPdf.disabled = bImp.disabled = true;
+      try {
+        if (!sel.length) { kp.textContent = ''; hojaZona.textContent = ''; avisos.textContent = ''; ayuda.textContent = ''; msg('Seleccione al menos un grado.'); hoja = null; return; }
+        msg('Calculando cuadro…');
+        var res = [];
+        for (var i = 0; i < sel.length; i++) {
+          if (!cache[sel[i].id]) { cache[sel[i].id] = await cargar(sel[i].asig, trims); }
+          res.push(C.calcularGrupo(sel[i].grado + '°' + sel[i].seccion, itemsDe(cache[sel[i].id], k)));
+        }
+        if (mi !== token) { return; }
+        var mat = 0, rep = 0, trTxt = k === 'f' ? 'Nota final' : 'Trimestre ' + trims[+k].numero;
+        res.forEach(function (r) { mat += r.activos; rep += C.tot(r.rep); });
+        var pct = mat ? rep / mat * 100 : 0, tope = Math.floor(mat * meta / 100 + 1e-9), faltan = Math.max(0, rep - tope), ok = pct <= meta;
+        kp.textContent = '';
+        kp.appendChild(kpis([[meta.toFixed(2) + '%', 'meta permitida'], [pct.toFixed(2) + '%', ok ? 'fracaso actual (dentro de meta)' : 'fracaso actual (SOBRE la meta)'], [rep + ' / ' + mat, 'reprobados / matrícula'], [faltan || '—', 'faltan por aprobar (tope ' + tope + ')']]));
+        hoja = el('section', { clase: 'aprobados-hoja' });
+        hoja.innerHTML = C.htmlCuadro({ institucion: INSTITUCION, profesor: ctx.firma, asignatura: ctx.materia, nivelesTxt: C.niveles(sel), trimestre: trTxt, anio: ctx.anio, jornada: selJor.value, resumenes: res, mostrarExamen: C.llave(ctx.materia) !== 'informatica' && k !== 'f' });
+        hojaZona.textContent = ''; hojaZona.appendChild(hoja);
+        nombrePdf = 'Cuadro_Aprobados_' + (C.llave(ctx.materia).replace(/[^a-z0-9]+/g, '_') || 'materia') + '_' + trTxt.replace(/\s+/g, '_') + '.pdf';
+        avisos.textContent = '';
+        var sin = res.filter(function (r) { return r.sinSexo.length; });
+        if (sin.length) {
+          avisos.appendChild(el('div', { clase: 'aprobados-aviso-sexo' }, [el('b', { texto: '⚠️ Estudiantes sin género registrado (cuentan en el TOTAL, pero no en M/F). Complete el dato en la ficha del estudiante:' })].concat(
+            sin.map(function (r) { return el('p', { texto: r.grupo + ': ' + r.sinSexo.join('; ') }); }))));
+        }
+        var nombres = [].concat.apply([], res.map(function (r) { return r.reprobados; }));
+        ayuda.textContent = '';
+        ayuda.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Reprobados (solo en pantalla, no salen en el cuadro): ' + (nombres.map(function (x) { return x.grupo + ' ' + x.nombre + ' (' + fmt(x.final) + ')'; }).join(' · ') || 'ninguno') + '.' }));
+        ayuda.appendChild(el('p', { clase: 'bloque-ayuda', texto: '% = categoría ÷ matrícula del grado (los retirados no cuentan en la matrícula; los «sin calificación» sí). El TOTAL cuenta a todos aunque no tengan género. Tope = máximo de reprobados que cabe en la meta. Faltan = reprobados que deben subir a ' + MIN.toFixed(1) + ' para llegar a la meta.' }));
+        msg('');
+      } catch (e) { if (mi === token) { msg('No se pudo generar el cuadro. ' + ((e && e.message) || ''), 'error'); } }
+      finally { if (mi === token) { bPdf.disabled = bImp.disabled = !hoja; } }
+    }
+    // Retirados editables: recalcula la fila TOTALES.
+    hojaZona.addEventListener('input', function (ev) {
+      if (!hoja || !ev.target.closest || !ev.target.closest('td.ed')) { return; }
+      ['h', 'm'].forEach(function (k) { var t = 0; hoja.querySelectorAll('td.ed[data-k="' + k + '"]').forEach(function (x) { t += parseInt(x.textContent, 10) || 0; }); hoja.querySelector('td.tot-ret[data-k="' + k + '"]').textContent = t; });
+    });
+    function imprimirCuadro() {
+      var st = document.createElement('style'); st.textContent = '@page{size:A4 landscape;margin:10mm}';
+      document.head.appendChild(st); document.body.classList.add('imprimiendo-cuadro');
+      function fin() { document.body.classList.remove('imprimiendo-cuadro'); st.remove(); window.removeEventListener('afterprint', fin); }
+      window.addEventListener('afterprint', fin); window.print();
+    }
+    async function descargarCuadro() {
+      bPdf.disabled = true;
+      try {
+        if (!window.html2canvas || !window.jspdf) { throw new Error('No cargaron las librerías de PDF. Revise internet y recargue (Ctrl+F5).'); }
+        await document.fonts.ready; hoja.classList.add('capturando');
+        var cv = await window.html2canvas(hoja, { scale: 2.5, backgroundColor: '#ffffff', useCORS: true }); hoja.classList.remove('capturando');
+        var pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' }), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), m = 12;
+        var f = Math.min((W - 2 * m) / cv.width, (H - 2 * m) / cv.height), w = cv.width * f, h = cv.height * f;
+        pdf.addImage(cv.toDataURL('image/jpeg', 0.95), 'JPEG', (W - w) / 2, (H - h) / 2, w, h); pdf.save(nombrePdf);
+        msg('Listo: se descargó «' + nombrePdf + '».');
+      } catch (e) { msg('No se pudo generar el PDF. ' + ((e && e.message) || ''), 'error'); }
+      finally { if (hoja) { hoja.classList.remove('capturando'); } bPdf.disabled = !hoja; }
+    }
+    [selTr, inMeta, selJor].forEach(function (c) { c.addEventListener('change', pintar); });
+    zona.appendChild(el('div', { clase: 'formulario-fila no-imprimir' }, [campo('Periodo', selTr), campo('Meta de fracaso (%)', inMeta), campo('Jornada', selJor)]));
+    zona.appendChild(el('p', { clase: 'seg-sub no-imprimir', texto: 'Grados a incluir' })); zona.appendChild(chips);
+    zona.appendChild(el('div', { clase: 'cabecera-acciones no-imprimir' }, [bPdf, bImp]));
+    [estado, kp, avisos, hojaZona, ayuda].forEach(function (n) { zona.appendChild(n); });
+    dibujarChips(); pintar();
+    // Otros grados del mismo profesor, materia y año (se cargan al marcarlos).
+    todas(function () { return db.from('portal2027_asignaciones').select('id,salon:portal2027_salones(id,nombre,grado,seccion,anio_id)').eq('materia_id', ctx.materiaId).eq('profesor_id', ctx.profesorId); })
+      .then(function (l) {
+        var nuevos = l.filter(function (a) { return a.salon && a.salon.anio_id === ctx.anioId && a.id !== ctx.asignacionId; });
+        if (!nuevos.length) { return; }
+        nuevos.forEach(function (a) { grupos.push({ id: a.id, nombre: a.salon.nombre, grado: a.salon.grado, seccion: a.salon.seccion, asig: { id: a.id, salon: { id: a.salon.id, anio_id: a.salon.anio_id } } }); });
+        dibujarChips(); pintar();
+      }).catch(function () { /* si falla, queda solo el grado actual */ });
     return zona;
   }
 
@@ -271,12 +352,12 @@
     var id = new URLSearchParams(window.location.search).get('asignacion');
     contenido.textContent = '';
     try {
-      var asig = id ? await consultar(db.from('portal2027_asignaciones').select('id, profesor_id, salon:portal2027_salones(id,nombre,anio_id,anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)').eq('id', id).maybeSingle()) : null;
+      var asig = id ? await consultar(db.from('portal2027_asignaciones').select('id, profesor_id, materia_id, salon:portal2027_salones(id,nombre,grado,seccion,anio_id,anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)').eq('id', id).maybeSingle()) : null;
       if (!asig) { errorPantalla('No se encontró esta asignación o no tiene acceso a ella.'); return; }
       var trims = await consultar(db.from('portal2027_trimestres').select('id,numero').eq('anio_id', asig.salon.anio_id).order('numero'));
       var filas = await cargar(asig, trims);
       var ctx = { materia: asig.materia.nombre, grupo: asig.salon.nombre, anio: asig.salon.anio.anio, firma: P.nombreCompleto(info.perfil) || '[Su nombre]',
-        asignacionId: asig.id, profesorEsSesion: !!(info.sesion && info.sesion.user && info.sesion.user.id === asig.profesor_id) };
+        asignacionId: asig.id, materiaId: asig.materia_id, profesorId: asig.profesor_id, anioId: asig.salon.anio_id, grado: asig.salon.grado, seccion: asig.salon.seccion, profesorEsSesion: !!(info.sesion && info.sesion.user && info.sesion.user.id === asig.profesor_id) };
 
       contenido.appendChild(el('header', { clase: 'panel-cabecera' }, [
         el('div', null, [el('p', { clase: 'panel-centro', texto: 'C.E.B.G. El Jiral · Seguimiento académico' }), el('h1', { texto: ctx.materia + ' · ' + ctx.grupo }), el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + ctx.anio + ' · ' + filas.length + ' estudiantes' })]),

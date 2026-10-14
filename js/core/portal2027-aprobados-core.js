@@ -1,5 +1,5 @@
 /* portal2027-aprobados-core.js — lógica del cuadro de aprobados y reprobados SIN tocar el DOM.
-   calcularGrupo(): cuenta aprobados/reprobados/sin calificaciones por sexo (usa el motor único de notas).
+   calcularGrupo(): cuenta aprobados/reprobados/sin calificaciones por sexo (la nota final ya viene del motor único portal2027.evaluacion).
    htmlCuadro(): devuelve el HTML imprimible del cuadro (una sola página horizontal). */
 (function (raiz) {
   'use strict';
@@ -14,21 +14,21 @@
   function tot(c) { return c.M + c.F + c.X; }
   function pct(n, d) { return (d ? 100 * n / d : 0).toFixed(2) + '%'; }
 
-  // matriculas: [{id, estado, estudiante:{nombres,apellidos,sexo}}]; notas: { matriculaId: { evaluacionId: valor } }
-  function calcularGrupo(grupo, evaluaciones, matriculas, notas) {
-    var r = { grupo: grupo, activos: 0, ap: nuevo(), rep: nuevo(), sin: nuevo(), ret: nuevo(), pendientes: [], sinSexo: [] };
-    matriculas.forEach(function (m) {
-      var e = m.estudiante; if (!e) { return; }
-      var s = sexo(e.sexo), nombre = e.apellidos + ', ' + e.nombres;
-      if (s === 'X') { r.sinSexo.push(nombre); }
-      if (esRetirado(m.estado)) { r.ret[s]++; return; }
+  // items: [{nombre, sexo, retirado, final, cat}]  cat = categorias del motor (o null si es nota final anual).
+  function calcularGrupo(grupo, items) {
+    var r = { grupo: grupo, activos: 0, ap: nuevo(), rep: nuevo(), sin: nuevo(), ret: nuevo(), pendientes: [], reprobados: [], sinSexo: [] };
+    items.forEach(function (it) {
+      var s = sexo(it.sexo);
+      if (s === 'X') { r.sinSexo.push(it.nombre); }
+      if (it.retirado) { r.ret[s]++; return; }
       r.activos++;
-      var res = M.calcular(evaluaciones, notas[m.id] || {}), c = res.categorias;
-      var tipo = res.final === null ? 'sin' : (M.redondear1(res.final) >= MIN ? 'ap' : 'rep');
+      var tipo = (it.final === null || it.final === undefined) ? 'sin' : (M.redondear1(it.final) >= MIN ? 'ap' : 'rep');
       r[tipo][s]++;
-      if (tipo === 'ap' && c.examen.cantidad === 0 && c.apreciacion.promedio !== null && c.ejercicio_escrito.promedio !== null) {
+      if (tipo === 'rep') { r.reprobados.push({ grupo: grupo, nombre: it.nombre, final: it.final }); }
+      var c = it.cat;
+      if (tipo === 'ap' && c && c.examen.cantidad === 0 && c.apreciacion.promedio !== null && c.ejercicio_escrito.promedio !== null) {
         var need = 3 * MIN - c.apreciacion.promedio - c.ejercicio_escrito.promedio;
-        r.pendientes.push({ grupo: grupo, nombre: nombre, minimo: Math.min(TOPE, Math.max(0, need)) });
+        r.pendientes.push({ grupo: grupo, nombre: it.nombre, minimo: Math.min(TOPE, Math.max(0, need)) });
       }
     });
     r.pendientes.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
@@ -72,5 +72,5 @@
       '<div class="aprobados-firmas"><span>______________________________<br>FIRMA DEL PROFESOR</span><span>______________________________<br>FIRMA DEL DIRECTOR</span></div>';
   }
 
-  P.aprobadosCore = { calcularGrupo: calcularGrupo, htmlCuadro: htmlCuadro, niveles: niveles, llave: llave, esc: esc };
+  P.aprobadosCore = { calcularGrupo: calcularGrupo, htmlCuadro: htmlCuadro, niveles: niveles, llave: llave, esc: esc, esRetirado: esRetirado, tot: tot, pct: pct };
 })(typeof window !== 'undefined' ? window : globalThis);
