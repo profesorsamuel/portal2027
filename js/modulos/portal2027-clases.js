@@ -8,6 +8,7 @@
   var el = P.el;
   var db = P.db;
   var C = P.clases;
+  var F = P.archivos;
   var M = P.evaluacion;
   var contenido = document.getElementById('contenido');
 
@@ -130,7 +131,7 @@
       el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']),
       enviar, progreso, textoProgreso, resumen, reintentar
     ]);
-    function peso(a) { return (a.size / 1048576).toFixed(2) + ' MB'; }
+    function peso(a) { return F.peso(a.size); }
     function dibujarPrevias() {
       lista.textContent = '';
       items.forEach(function (it) {
@@ -163,7 +164,7 @@
           it.final = await C.reducirImagen(it.original);
           var validacion = C.validar(it.final);
           if (validacion.error) { throw new Error(validacion.error); }
-        } catch (e) { console.error('Preparación de foto', it.original.name, e); it.error = 'No se pudo preparar. Quite esta foto y vuelva a elegir una imagen JPG o PNG de hasta 10 MB.'; }
+        } catch (e) { console.error('Preparación de foto', it.original.name, e); it.error = F.errorTamano(it.final || it.original, 'materiales') || 'No se pudo preparar esta foto. Quite el archivo y elija otra imagen JPG o PNG.'; }
         dibujarPrevias();
       }
       preparando = false; archivo.disabled = false; enviar.disabled = false; dibujarPrevias();
@@ -260,7 +261,8 @@
     var pub = el('input', { type: 'checkbox', checked: true });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Agregar material' });
     var f = el('form', { clase: 'formulario-clases' }, [
-      campo('Título', titulo), campo('Descripción (opcional)', desc), S.tipoMaterial === 'enlace' ? campo('Enlace de tarea o recurso', enlace) : campo('Archivo (hasta 10 MB)', archivo),
+      campo('Título', titulo), campo('Descripción (opcional)', desc), S.tipoMaterial === 'enlace' ? campo('Enlace de tarea o recurso', enlace) : campo('Archivo (hasta ' + F.maxMB('materiales') + ' MB)', archivo),
+      S.tipoMaterial === 'enlace' ? null : F.vincularPeso(archivo, 'materiales'),
       el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']), enviar
     ]);
     f.addEventListener('submit', async function (ev) {

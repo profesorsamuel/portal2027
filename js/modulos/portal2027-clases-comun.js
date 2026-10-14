@@ -6,6 +6,7 @@
 
   var P = window.portal2027;
   var db = P.db;
+  var F = P.archivos;
 
   var MIME = {
     pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', txt: 'text/plain',
@@ -15,9 +16,9 @@
   };
 
   var C = (P.clases = {
-    BUCKET_MATERIALES: 'portal2027-materiales',
-    BUCKET_ENTREGAS: 'portal2027-entregas',
-    MAX: 10 * 1024 * 1024,
+    BUCKET_MATERIALES: F.LIMITES.materiales.bucket,
+    BUCKET_ENTREGAS: F.LIMITES.entregas.bucket,
+    MAX: F.LIMITES.materiales.maxBytes,
     ACEPTAR: '.pdf,.jpg,.jpeg,.png,.txt,.docx,.pptx,.xlsx'
   });
 
@@ -25,7 +26,7 @@
   // del navegador aplica EXIF antes de dibujar; no se aplica una segunda rotación.
   C.reducirImagen = async function (archivo, opciones) {
     var o = opciones || {};
-    var umbral = o.umbralBytes == null ? 1024 * 1024 : o.umbralBytes;
+    var umbral = o.umbralBytes == null ? F.COMPRESION.umbralBytes : o.umbralBytes;
     if (!archivo || !/^image\//i.test(archivo.type || '') || archivo.size <= umbral) { return archivo; }
     var origen;
     try {
@@ -52,8 +53,8 @@
           if (datos[a] < 255) { return archivo; }
         }
       }
-      var limite = o.maxBytes || 1.5 * 1024 * 1024;
-      var lado = Math.min(o.maxLado || 1600, Math.max(ancho, alto));
+      var limite = o.maxBytes || F.COMPRESION.maxBytes;
+      var lado = Math.min(o.maxLado || F.COMPRESION.maxLado, Math.max(ancho, alto));
       var pasos = o.pasos || [];
       if (!o.pasos) {
         while (true) {
@@ -90,13 +91,13 @@
   };
 
   // Devuelve { tipo } si el archivo es válido, o { error }.
-  C.validar = function (archivo) {
+  C.validar = function (archivo, uso) {
     if (!archivo) { return { error: 'Elija un archivo.' }; }
     var m = /\.([A-Za-z0-9]+)$/.exec(archivo.name || '');
     var tipo = m ? MIME[m[1].toLowerCase()] : null;
     if (!tipo) { return { error: 'Tipo de archivo no permitido. Use PDF, JPG, PNG, TXT, Word, PowerPoint o Excel.' }; }
-    if (archivo.size === 0) { return { error: 'El archivo está vacío.' }; }
-    if (archivo.size > C.MAX) { return { error: 'El archivo pesa más de 10 MB.' }; }
+    var problema = F.errorTamano(archivo, uso || 'materiales');
+    if (problema) { return { error: problema }; }
     return { tipo: tipo };
   };
 
@@ -145,17 +146,5 @@
     return isNaN(d.getTime()) ? null : d.toISOString();
   };
 
-  // Mensajes de la base que sí se muestran tal cual (están en español y son claros).
-  C.textoError = function (e) {
-    var m = (e && e.message) || '';
-    if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
-    if (/mime type|not supported/i.test(m)) { return 'Tipo de archivo no permitido.'; }
-    if (/maximum allowed size|too large|payload/i.test(m)) { return 'El archivo pesa más de 10 MB.'; }
-    if (/already exists|duplicate key/i.test(m) && /evaluacion_uq/.test(m)) { return 'Esa columna de la libreta ya está vinculada a otra tarea.'; }
-    if (/ya fue revisada|no está disponible|no corresponde|no se encontró|motivo|vinculada|bloqueada|papelera|entre 0 y 5|revisadas|misma materia|no pertenece|No tiene permiso/i.test(m)
-        && !/duplicate key/i.test(m)) {
-      return m.replace(/\s*\(row-level security\)/, '');
-    }
-    return P.traducirError(e);
-  };
+  C.textoError = function (e, uso) { return F.textoError(e, uso || 'materiales'); };
 })();

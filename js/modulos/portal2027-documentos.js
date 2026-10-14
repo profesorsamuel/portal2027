@@ -8,10 +8,11 @@
   var P = window.portal2027;
   var el = P.el;
   var db = P.db;
+  var F = P.archivos;
 
   var D = (P.docs = {
-    BUCKET: 'portal2027-documentos',
-    MAX: 5 * 1024 * 1024,
+    BUCKET: F.LIMITES.documentos.bucket,
+    MAX: F.LIMITES.documentos.maxBytes,
     ACEPTAR: '.pdf,.jpg,.jpeg,.png'
   });
   var MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
@@ -25,8 +26,8 @@
     var m = /\.([A-Za-z0-9]+)$/.exec(archivo.name || '');
     var tipo = m ? MIME[m[1].toLowerCase()] : null;
     if (!tipo) { return { error: 'Tipo de archivo no permitido. Use PDF, JPG o PNG.' }; }
-    if (archivo.size === 0) { return { error: 'El archivo está vacío.' }; }
-    if (archivo.size > D.MAX) { return { error: 'El archivo pesa más de 5 MB.' }; }
+    var problema = F.errorTamano(archivo, 'documentos');
+    if (problema) { return { error: problema }; }
     return { tipo: tipo };
   };
 
@@ -57,19 +58,7 @@
     return d && !isNaN(d.getTime()) ? d.toLocaleDateString('es-PA', { dateStyle: 'medium' }) : '';
   };
 
-  D.textoError = function (e) {
-    var m = (e && e.message) || '';
-    if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
-    if (/mime type|not supported|invalid_mime/i.test(m)) { return 'Tipo de archivo no permitido. Use PDF, JPG o PNG.'; }
-    if (/maximum allowed size|too large|payload/i.test(m)) { return 'El archivo pesa más de 5 MB.'; }
-    if (/new row violates row-level security/i.test(m)) { return 'No tiene permiso para subir este documento (¿ya fue aprobado?).'; }
-    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) { return 'No hay conexión con el servidor. Revise su internet e intente de nuevo.'; }
-    if (/ya fue aprobado|no está disponible|no corresponde|no se encontró|observación|matriculado|pesa más|no permitido|no es válido|no existe|No tiene permiso/i.test(m)
-        && !/duplicate key/i.test(m)) {
-      return m.replace(/\s*\(row-level security\)/, '');
-    }
-    return P.traducirError(e);
-  };
+  D.textoError = function (e) { return F.textoError(e, 'documentos'); };
 
   function chip(estado) { return el('span', { clase: 'doc-chip doc-' + estado, texto: ESTADOS[estado] || estado }); }
   function btn(texto, fn, extra) {
@@ -98,7 +87,7 @@
     if (mats.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no tiene una matrícula registrada.' })); return; }
     var mat = mats[0];
 
-    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Año lectivo ' + mat.anio.anio + '. Formatos PDF, JPG o PNG, hasta 5 MB. Puede reemplazar un documento mientras no esté aprobado.' }));
+    sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Año lectivo ' + mat.anio.anio + '. Formatos PDF, JPG o PNG, hasta ' + F.maxMB('documentos') + ' MB. Puede reemplazar un documento mientras no esté aprobado.' }));
     var msg = barra();
     var cont = el('ul', { clase: 'doc-lista' });
     sec.appendChild(msg);
@@ -121,7 +110,7 @@
       if (!doc || doc.estado !== 'aprobado') {
         var archivo = el('input', { type: 'file', accept: D.ACEPTAR });
         var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: doc ? 'Sustituir documento' : 'Subir documento' });
-        var f = el('form', { clase: 'doc-formulario' }, [el('label', null, ['Archivo (PDF, JPG o PNG, hasta 5 MB)', archivo]), enviar]);
+        var f = el('form', { clase: 'doc-formulario' }, [el('label', null, ['Archivo (PDF, JPG o PNG, hasta ' + F.maxMB('documentos') + ' MB)', archivo]), F.vincularPeso(archivo, 'documentos'), enviar]);
         f.addEventListener('submit', async function (ev) {
           ev.preventDefault();
           var arch = archivo.files[0];

@@ -8,6 +8,7 @@
   var el = P.el;
   var db = P.db;
   var C = P.clases;
+  var F = P.archivos;
 
   async function consultar(q) { var r = await q; if (r.error) { throw r.error; } return r.data; }
 
@@ -44,7 +45,7 @@
       var progreso = el('progress', { max: '1', value: '0', hidden: true, 'aria-label': 'Archivos preparados para entregar' });
       var estadoEntrega = el('p', { role: 'status', 'aria-live': 'polite' });
       var f = el('form', { clase: 'formulario-clases' }, [
-        el('label', null, ['Hasta 15 fotos JPG/PNG o un documento individual (hasta 10 MB por archivo)', archivo]),
+        el('label', null, ['Hasta 15 fotos JPG/PNG o un documento individual (hasta ' + F.maxMB('entregas') + ' MB por archivo)', archivo]),
         el('p', { clase: 'bloque-ayuda', texto: en ? 'Esta tanda reemplazará todos los adjuntos de su entrega actual.' : 'Elija las fotos de su cuaderno o ejercicios.' }),
         lista, el('label', null, ['Comentario (opcional)', coment]), enviar, progreso, estadoEntrega
       ]);
@@ -62,9 +63,9 @@
           quitar.disabled = preparando || entregaOcupada || bloqueada;
           lista.appendChild(el('li', null, [img, el('div', null, [
             el('strong', { texto: it.original.name }),
-            el('small', { texto: 'Original: ' + (it.original.size / 1048576).toFixed(2) + ' MB · Final: ' + (it.final ? (it.final.size / 1048576).toFixed(2) + ' MB' : 'Sin preparar') }),
+            el('small', { texto: 'Original: ' + F.peso(it.original.size) + ' · Final: ' + (it.final ? F.peso(it.final.size) : 'Sin preparar') }),
             el('small', { texto: it.error || (it.subida ? 'Subido; pendiente de confirmar la entrega' : 'Listo para enviar') })
-          ]), quitar]));
+          ]), F.esPDF(it.original) ? F.detalleArchivo(it.original, 'entregas') : null, quitar]));
         });
       }
       archivo.addEventListener('change', async function () {
@@ -84,10 +85,10 @@
             items.push(it);
             try {
               it.final = await C.reducirImagen(it.original);
-              var v = C.validar(it.final); if (v.error) { throw new Error(v.error); }
+              var v = C.validar(it.final, 'entregas'); if (v.error) { throw new Error(v.error); }
             } catch (e) {
               console.error('Preparar adjunto', it.original.name, e);
-              it.error = 'No se pudo preparar. Quite este archivo y elija otro permitido de hasta 10 MB.';
+              it.error = F.errorTamano(it.final || it.original, 'entregas') || 'No se pudo preparar. Quite este archivo y elija otro de los formatos permitidos.';
             }
             dibujarFotos();
           }
@@ -118,7 +119,7 @@
                   it.ruta = t.id + '/' + matriculaId + '/' + Date.now() + '-' +
                     (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).slice(2)) + '-' + C.nombreSeguro(it.final.name);
                 }
-                var v = C.validar(it.final); if (v.error) { throw new Error(v.error); }
+                var v = C.validar(it.final, 'entregas'); if (v.error) { throw new Error(v.error); }
                 var s = await db.storage.from(C.BUCKET_ENTREGAS).upload(it.ruta, it.final, { contentType: v.tipo, cacheControl: '0', upsert: false });
                 if (s.error) {
                   // Si se perdió la respuesta de una subida confirmada, reutiliza la misma ruta.

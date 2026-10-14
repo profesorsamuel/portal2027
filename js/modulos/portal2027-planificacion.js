@@ -8,6 +8,7 @@
   var P = window.portal2027;
   var el = P.el;
   var db = P.db;
+  var F = P.archivos;
   var contenido = document.getElementById('contenido');
 
   var S = { info: null, rolPanel: null, asig: null, trimestres: [], trimestreId: null, plan: [], sesiones: [], cerrado: false, editando: null, lote: '', previa: null, hermanas: [], planHermanas: {}, aplicarA: {}, pdfs: {}, pdfDisponible: true };
@@ -40,10 +41,11 @@
   }
   function textoError(e) {
     var m = (e && e.message) || '';
+    console.error('Planificación', e);
     if (/^CONFLICTO/.test(m)) { return m.replace(/^CONFLICTO:\s*/, 'Conflicto: ') + ' Pulse «Recargar».'; }
     if (/^(No tiene permiso|El trimestre|Escriba|Fechas|Las fechas|Ya existe|La clase|El número|Grupo )/.test(m)) { return m.replace(/\s*\(row-level security\)/, ''); }
-    if (/portal2027_plan_clases|portal2027_guardar_plan_clase|schema cache/i.test(m)) { return 'Falta instalar la migración 0029 en Supabase. (' + m + ')'; }
-    return P.traducirError(e);
+    if (/portal2027_plan_clases|portal2027_guardar_plan_clase|schema cache/i.test(m)) { return 'No se pudo acceder a la planificación. Comuníquese con la administración.'; }
+    return F.textoError(e, 'planificacion');
   }
   function fechaTexto(f) { if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(String(f))) return 'Sin fecha'; var p = String(f).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   function hoy() {
@@ -97,12 +99,12 @@
       if (!ids.length) return;
       var docs = await consultar(db.from('portal2027_plan_pdf').select('clase_id,nombre_archivo,ruta,actualizado_en').in('clase_id', ids));
       docs.forEach(function(d) { S.pdfs[d.clase_id] = d; });
-    } catch(e) { S.pdfDisponible = false; }
+    } catch(e) { console.error('Cargar PDF de planificación; comprobar migración 0039 y permisos', e); S.pdfDisponible = false; }
   }
   async function abrirPDF(c) {
     var d = S.pdfs[c.id]; if (!d) return;
     try {
-      var r = await db.storage.from('portal2027-planificaciones').createSignedUrl(d.ruta, 120);
+      var r = await db.storage.from(F.LIMITES.planificacion.bucket).createSignedUrl(d.ruta, 120);
       if (r.error) throw r.error;
       window.open(r.data.signedUrl, '_blank', 'noopener,noreferrer');
     } catch(e) { aviso('No se pudo abrir el PDF: ' + textoError(e), 'error'); }
@@ -112,21 +114,22 @@
     input.addEventListener('change', async function() {
       var archivo = input.files && input.files[0]; if (!archivo) return;
       if (!/\.pdf$/i.test(archivo.name) || archivo.type && archivo.type !== 'application/pdf') { aviso('Seleccione un archivo PDF válido.', 'error'); return; }
-      if (archivo.size > 15 * 1024 * 1024) { aviso('El PDF no debe superar 15 MB.', 'error'); return; }
+      var problemaPeso = F.errorTamano(archivo, 'planificacion');
+      if (problemaPeso) { aviso(problemaPeso, 'error'); return; }
       var anterior = S.pdfs[c.id];
-      await accionConfirmada('pdf|' + c.id, 'Reemplazar PDF de planificación',
-        '¿Reemplazar el PDF de la Clase ' + c.numero + '?', 'Reemplazar PDF', async function() {
+      await accionConfirmada('pdf|' + c.id, anterior ? 'Reemplazar PDF de planificación' : 'Subir PDF de planificación',
+        archivo.name + ' · Pesa ' + F.peso(archivo.size) + ' · Máximo: ' + F.maxMB('planificacion') + ' MB. ' + (anterior ? '¿Reemplazar' : '¿Subir') + ' el PDF de la Clase ' + c.numero + '?', anterior ? 'Reemplazar PDF' : 'Subir PDF', async function() {
         var ruta = c.id + '/' + crypto.randomUUID() + '.pdf';
         aviso('Subiendo PDF de la Clase ' + c.numero + '…', 'info');
         try {
-          var up = await db.storage.from('portal2027-planificaciones').upload(ruta, archivo, { contentType:'application/pdf', upsert:false });
+          var up = await db.storage.from(F.LIMITES.planificacion.bucket).upload(ruta, archivo, { contentType:'application/pdf', upsert:false });
           if (up.error) throw up.error;
           var saved = await db.from('portal2027_plan_pdf').upsert({ clase_id:c.id, ruta:ruta, nombre_archivo:archivo.name, actualizado_en:new Date().toISOString() }, {onConflict:'clase_id'});
-          if (saved.error) { await db.storage.from('portal2027-planificaciones').remove([ruta]); throw saved.error; }
-          if (anterior) await db.storage.from('portal2027-planificaciones').remove([anterior.ruta]);
+          if (saved.error) { await db.storage.from(F.LIMITES.planificacion.bucket).remove([ruta]); throw saved.error; }
+          if (anterior) await db.storage.from(F.LIMITES.planificacion.bucket).remove([anterior.ruta]);
           await recargar('PDF guardado para Clase ' + c.numero + '.');
-        } catch(e) { aviso('Error al subir PDF. Revise que instaló la migración 0039. ' + textoError(e), 'error'); }
-      }, !!anterior);
+        } catch(e) { aviso('No se pudo guardar el PDF. ' + textoError(e), 'error'); }
+      }, true);
     });
     input.click();
   }
@@ -137,14 +140,14 @@
         try {
           var r = await db.from('portal2027_plan_pdf').delete().eq('clase_id',c.id);
           if (r.error) throw r.error;
-          await db.storage.from('portal2027-planificaciones').remove([d.ruta]);
+          await db.storage.from(F.LIMITES.planificacion.bucket).remove([d.ruta]);
           await recargar('PDF eliminado.');
         } catch(e) { aviso('No se pudo eliminar el PDF: ' + textoError(e), 'error'); }
       });
   }
   function celdaPDF(c) {
     var d = S.pdfs[c.id];
-    if (!S.pdfDisponible) return el('td', {texto:'Instalar SQL 0039'});
+    if (!S.pdfDisponible) return el('td', {texto:'PDF no disponible. Consulte a la administración.'});
     var botones = [];
     if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',texto:'Ver PDF',onclick:function(){abrirPDF(c);}}));
     botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',disabled:S.cerrado,texto:d?'Reemplazar':'Subir PDF',onclick:function(){subirPDF(c);}}));

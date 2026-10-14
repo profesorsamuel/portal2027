@@ -17,8 +17,8 @@
   var COLUMNAS_BD = COLUMNAS.filter(function (c) { return c !== 'cedula'; }).concat(['apellidos']);
   var OBLIGATORIAS = ['codigo_estudiante', 'nombres', 'cedula', 'sexo', 'grado', 'seccion', 'anio_lectivo'];
   var MIN_CEDULA = 6;
-  var BUCKET = 'portal2027-fotos';
-  var MAX_FOTO = 2 * 1024 * 1024;
+  var BUCKET = P.archivos.LIMITES.fotos.bucket;
+  var MAX_FOTO = P.archivos.LIMITES.fotos.maxBytes;
   var MAX_FILAS = 3000;
   var RE_CORREO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/i;
 
@@ -125,7 +125,7 @@
       var a = ev.target.files && ev.target.files[0];
       if (!a) { return; }
       seleccionado = a;
-      nombreArchivo.textContent = 'Foto elegida: ' + (a.name || 'foto') + ' (' + (a.size / 1048576).toFixed(1) + ' MB). Toque «Subir foto» para guardarla.';
+      nombreArchivo.textContent = 'Foto elegida: ' + (a.name || 'foto') + ' (' + P.archivos.peso(a.size) + '). Toque «Subir foto» para guardarla.';
       aviso.mostrar('', 'info');
       var url = URL.createObjectURL(a);
       var vista = el('img', { src: url, alt: 'Vista previa', clase: 'foto-img' });
@@ -154,11 +154,13 @@
         var tipo = tipoImagen(bytes);
         var envio = archivo;
         if (!tipo || archivo.size > MAX_FOTO) {
-          try { envio = await P.clases.reducirImagen(archivo, { umbralBytes: tipo ? MAX_FOTO : 1024 * 1024, maxBytes: MAX_FOTO, pasos: [[1280, 0.85], [1280, 0.7], [1024, 0.7], [800, 0.65], [640, 0.6]] }); } catch (e) { envio = null; }
+          try { envio = await P.clases.reducirImagen(archivo, { umbralBytes: tipo ? MAX_FOTO : P.archivos.COMPRESION.umbralBytes, maxBytes: MAX_FOTO, pasos: [[1280, 0.85], [1280, 0.7], [1024, 0.7], [800, 0.65], [640, 0.6]] }); } catch (e) { console.error('Preparar foto de perfil', e); envio = null; }
           if (!envio) { aviso.mostrar('No se pudo preparar esa foto. Pruebe con otra imagen JPG o PNG.', 'error'); ocupado(false); return; }
           tipo = tipoImagen(new Uint8Array(await envio.slice(0, 8).arrayBuffer()));
           if (!tipo) { aviso.mostrar('El archivo no es una imagen válida.', 'error'); ocupado(false); return; }
         }
+        var problemaPeso = P.archivos.errorTamano(envio, 'fotos');
+        if (problemaPeso) { aviso.mostrar(problemaPeso, 'error'); ocupado(false); return; }
         aviso.mostrar('Subiendo foto…', 'info');
         var ruta = est.id + '/foto';
         var s = await db.storage.from(BUCKET).upload(ruta, envio, { upsert: true, contentType: tipo, cacheControl: '0' });
@@ -173,7 +175,7 @@
         aviso.mostrar('Foto guardada.', 'ok');
         if (alCambiar) { alCambiar(); }
       } catch (e) {
-        aviso.mostrar('No se guardó la foto. ' + P.traducirError(e), 'error');
+        aviso.mostrar('No se guardó la foto. ' + P.archivos.textoError(e, 'fotos'), 'error');
       }
       ocupado(false);
     });
@@ -196,7 +198,7 @@
         aviso.mostrar('Foto quitada.', 'ok');
         if (alCambiar) { alCambiar(); }
       } catch (e) {
-        aviso.mostrar('No se quitó la foto. ' + P.traducirError(e), 'error');
+        aviso.mostrar('No se quitó la foto. ' + P.archivos.textoError(e, 'fotos'), 'error');
       } finally {
         quitarPendiente = false;
         ocupado(false);
@@ -208,7 +210,7 @@
     return el('div', { clase: 'foto-tarjeta' }, [
       imagen,
       el('div', { clase: 'foto-controles' }, [
-        el('p', { clase: 'bloque-ayuda', texto: 'Tome una foto con la cámara o elija una de la galería. Si pesa más de 2 MB, se reduce sola.' }),
+        el('p', { clase: 'bloque-ayuda', texto: 'Tome una foto con la cámara o elija una de la galería. Si pesa más de ' + P.archivos.maxMB('fotos') + ' MB, se reduce sola.' }),
         el('div', { clase: 'cabecera-acciones' }, [btnCamara, btnGaleria]),
         entrada,
         camara,
