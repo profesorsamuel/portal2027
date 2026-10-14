@@ -22,6 +22,50 @@
     m.hidden = !texto;
   }
 
+  function textoError(e) {
+    console.error('portal2027-acceso: operación interrumpida', {
+      nombre: e && e.name, codigo: e && e.code, estado: e && e.status
+    });
+    if (e && e.mensajePortal) { return e.mensajePortal; }
+    if (e && (Number(e.status) === 429 || /over_.*rate_limit/.test(e.code || ''))) {
+      return 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.';
+    }
+    return P.traducirError(e);
+  }
+
+  async function errorFuncion(r) {
+    var original = r && r.error;
+    var contexto = original && original.context;
+    var estado = Number(contexto && contexto.status);
+    var detalle = r && r.data;
+    if (contexto && typeof contexto.json === 'function') {
+      try {
+        var copia = typeof contexto.clone === 'function' ? contexto.clone() : contexto;
+        detalle = await copia.json();
+      } catch (ignorar) { /* respuesta sin JSON: usa el mensaje seguro */ }
+    }
+    var texto = 'No se pudo completar la solicitud. Revise su internet e inténtelo nuevamente.';
+    if (estado === 429) {
+      var segundos = Number(detalle && detalle.reintentar_en);
+      if (Number.isInteger(segundos) && segundos > 0 && segundos <= 900) {
+        texto = 'Demasiados intentos. Espere ' + (segundos < 60 ? segundos + ' segundos' : Math.ceil(segundos / 60) + ' minutos') + ' y vuelva a intentarlo.';
+      } else { texto = 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.'; }
+    } else if (estado === 503 || estado >= 500) {
+      texto = 'El servicio no está disponible por el momento. Inténtelo más tarde; si continúa, avise al docente.';
+    } else if (estado === 401) {
+      texto = 'Su sesión venció. Inicie sesión nuevamente.';
+    } else if (estado === 403) {
+      texto = 'No tiene permiso para realizar esta acción. Consulte con el docente.';
+    } else if (estado === 409) {
+      texto = 'Su cuenta no tiene un cambio temporal pendiente. Cierre sesión y vuelva a entrar.';
+    } else if (estado === 400) {
+      texto = 'Revise los datos escritos. Si está cambiando la contraseña, compruebe la clave temporal y elija otra clave nueva.';
+    }
+    var error = new Error(texto);
+    error.mensajePortal = texto; error.status = estado || 0;
+    return error;
+  }
+
   function ocupado(form, si) {
     Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"]'), function (b) { b.disabled = si; });
   }
@@ -51,7 +95,7 @@
     var sel = $('est-grupo');
     try {
       var r = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { accion: 'grupos' } });
-      if (r.error) { throw r.error; }
+      if (r.error || (r.data && r.data.error)) { throw await errorFuncion(r); }
       var grupos = (r.data && r.data.grupos) || [];
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: grupos.length ? 'Elija su grado…' : 'No hay grados disponibles' }));
@@ -60,7 +104,7 @@
     } catch (e) {
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: 'No se pudieron cargar los grados' }));
-      mensaje('login', 'No se pudo cargar la lista de grados. Revise su internet y recargue la página.', 'error');
+      mensaje('login', textoError(e), 'error');
     }
   }
 
@@ -78,7 +122,7 @@
     try {
       var r = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { accion: 'estudiantes', grupo: grupo } });
       if (turno !== solicitudLista) { return; }
-      if (r.error || (r.data && r.data.error)) { throw r.error || new Error(r.data.error); }
+      if (r.error || (r.data && r.data.error)) { throw await errorFuncion(r); }
       if (!r.data || !Array.isArray(r.data.estudiantes)) { throw new Error('Actualice la función portal2027-buscar-estudiante en Supabase con el código de este ZIP.'); }
       var estudiantes = r.data.estudiantes;
       sel.textContent = '';
@@ -89,7 +133,7 @@
       if (turno !== solicitudLista) { return; }
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: 'No se pudo cargar la lista' }));
-      mensaje('login', e.message || 'No se pudo cargar la lista de estudiantes. Vuelva a elegir el grado.', 'error');
+      mensaje('login', e.mensajePortal ? textoError(e) : 'No se pudo cargar la lista de estudiantes. Vuelva a elegir el grado o avise al docente.', 'error');
     }
   }
 
@@ -152,20 +196,12 @@
       ocupado(form, true); cancelar.disabled = true; mensaje('temporal', '', 'info');
       try {
         var r = await P.db.functions.invoke('portal2027-cambiar-clave', { body: { claveActual: actual, claveNueva: nueva } });
-        if (r.error || !r.data || !r.data.ok) {
-          var texto = r.data && r.data.error;
-          if (!texto && r.error && r.error.context && typeof r.error.context.json === 'function') {
-            try { var detalle = await r.error.context.json(); texto = detalle.error; } catch (ignorar) { /* respuesta no JSON */ }
-          }
-          console.error('No se pudo cambiar la contraseña', r.error);
-          mensaje('temporal', texto || 'No se pudo cambiar la contraseña. Revise la clave temporal o consulte al docente.', 'error'); return;
-        }
+        if (r.error || !r.data || !r.data.ok) { throw await errorFuncion(r); }
         form.reset();
         await salir();
         mensaje('login', 'Contraseña guardada. Entre con su nueva contraseña personal.', 'ok');
       } catch (e) {
-        console.error('Cambio de contraseña interrumpido', e);
-        mensaje('temporal', 'No se pudo completar el cambio. Revise su internet e inténtelo nuevamente.', 'error');
+        mensaje('temporal', textoError(e), 'error');
       } finally { ocupado(form, false); cancelar.disabled = false; }
     });
     var etiqueta = document.querySelector('label[for="est-cedula"]');
@@ -185,7 +221,7 @@
     mensaje('login', '', 'info');
     try {
       var b = await P.db.functions.invoke('portal2027-buscar-estudiante', { body: { grupo: grupo, nombre: nombre } });
-      if (b.error) { throw b.error; }
+      if (b.error || (b.data && b.data.error)) { throw await errorFuncion(b); }
       var candidatos = (b.data && b.data.candidatos) || [];
       var entro = false;
       for (var i = 0; i < candidatos.length && !entro; i++) {
@@ -197,7 +233,7 @@
       form.cedula.value = '';
       await enrutar();
     } catch (e) {
-      mensaje('login', P.traducirError(e), 'error');
+      mensaje('login', textoError(e), 'error');
     }
     ocupado(form, false);
   }
@@ -209,7 +245,7 @@
     } catch (e) { mostrar('login'); mensaje('login', e.message, 'error'); return; }
     var info;
     try { info = await P.cargarSesion(); }
-    catch (e) { mostrar('login'); mensaje('login', P.traducirError(e), 'error'); return; }
+    catch (e) { mostrar('login'); mensaje('login', textoError(e), 'error'); return; }
 
     if (!info) { mostrar('login'); return; }
 
@@ -264,7 +300,7 @@
         form.clave.value = '';
         await enrutar();
       } catch (e) {
-        mensaje('login', P.traducirError(e), 'error');
+        mensaje('login', textoError(e), 'error');
       }
       ocupado(form, false);
     });
@@ -280,7 +316,7 @@
         if (r.error) { throw r.error; }
         mensaje('recuperar', 'Si el correo está registrado, recibirá un enlace en unos minutos. Revise también la carpeta de correo no deseado.', 'ok');
       } catch (e) {
-        mensaje('recuperar', P.traducirError(e), 'error');
+        mensaje('recuperar', textoError(e), 'error');
       }
       ocupado(form, false);
     });
@@ -299,7 +335,7 @@
         mensaje('nueva', 'Contraseña guardada. Entrando…', 'ok');
         await enrutar();
       } catch (e) {
-        mensaje('nueva', P.traducirError(e), 'error');
+        mensaje('nueva', textoError(e), 'error');
       }
       ocupado(form, false);
     });
