@@ -66,22 +66,22 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
   background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
   padding: 0.55rem 0.6rem; font: inherit; font-size: 0.95rem; font-weight: 600; white-space: nowrap; color: var(--texto-suave); cursor: pointer;
 }
-.pestana:hover { color: var(--tinta); }
+.pestana:is(:hover, :focus-visible, :active) { color: var(--tinta); }
 .pestana.activa { color: var(--tinta); border-bottom-color: var(--acento); }
 
 /* Administración en pestañas: barra fija arriba; solo se ve la pestaña elegida. */
 .menu-secciones { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: .4rem; padding: .6rem 0 .7rem; margin: 0 0 1.25rem; background: var(--papel); border-bottom: 2px solid var(--linea); }
 .menu-secciones .pestana { font: inherit; font-weight: 600; font-size: .95rem; padding: .5rem .95rem; border: 1px solid var(--linea); border-radius: 999px; background: var(--blanco); color: var(--tinta); cursor: pointer; }
-.menu-secciones .pestana:hover { background: #e7eeed; border-color: var(--tinta-suave); }
+.menu-secciones .pestana:is(:hover, :focus-visible, :active) { background: #e7eeed; border-color: var(--tinta-suave); }
 .menu-secciones .pestana.activa { background: var(--tinta); border-color: var(--tinta); color: #fff; }
 .menu-secciones .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
-.menu-secciones ~ .secciones .estado-panel { top: 3.6rem; }
+.menu-secciones ~ .secciones .estado-panel { position: static; top: auto; }
 .secciones .oculta { display: none !important; }
 .secciones.secciones-admin { display: contents; }
 
 /* Tablas más legibles */
 .tabla-datos tbody tr:nth-child(even) { background: #f7faf9; }
-.tabla-datos tbody tr:hover { background: #eef4f3; }
+.tabla-datos tbody tr:is(:hover, :focus-within, :active) { background: #eef4f3; }
 .tabla-datos thead th { border-bottom: 2px solid var(--linea); text-transform: uppercase; letter-spacing: .03em; font-size: .78rem; }
 .bloque { box-shadow: 0 1px 2px rgba(20, 50, 59, .06); }
 .bloque > h2 { padding-bottom: .5rem; margin-bottom: .75rem; border-bottom: 1px solid var(--linea); }
@@ -93,7 +93,7 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 /* Directorio de docentes: filtro por nivel y buscador */
 .filtro-docentes { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0; }
 .filtro-docentes .pestana { font: inherit; font-weight: 600; font-size: .95rem; padding: .45rem .9rem; border: 1px solid var(--linea); border-radius: 999px; background: var(--blanco); color: var(--tinta); cursor: pointer; }
-.filtro-docentes .pestana:hover { background: #e7eeed; border-color: var(--tinta-suave); }
+.filtro-docentes .pestana:is(:hover, :focus-visible, :active) { background: #e7eeed; border-color: var(--tinta-suave); }
 .filtro-docentes .pestana.activa { background: var(--tinta); border-color: var(--tinta); color: #fff; }
 .filtro-docentes .pestana:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 .cabecera-acciones input[type="search"] { padding: .45rem .6rem; border: 1px solid #aebdba; border-radius: 8px; font: inherit; min-width: 15rem; }
@@ -153,3 +153,50 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .portal2027-estudiantes-plegable[open] > summary::after { content:'▴'; }
 .portal2027-estudiantes-plegable > summary:focus-visible { outline:3px solid #247c9b; outline-offset:2px; }
 .portal2027-estudiantes-interior { padding-top:14px; }
+
+/* Etapa 2: formularios sin zoom automático y controles accesibles al tacto. */
+input, select, textarea {
+  /* Se mantiene el tamaño mínimo incluso si un formulario hereda letra pequeña. */
+  font-size: max(16px, 1rem) !important;
+}
+
+@media (max-width: 700px), (pointer: coarse) {
+  .boton, .boton-chico, .pestana {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .boton { align-content: center; }
+  input[type="checkbox"], .portal input[type="checkbox"] {
+    /* El control mismo es el área táctil, también en tablas sin etiqueta. */
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    padding: 0;
+    vertical-align: middle;
+    accent-color: var(--tinta);
+  }
+  label:has(input[type="checkbox"]) { min-height: 44px; cursor: pointer; }
+}
+
+@media (max-width: 700px) {
+  /* Las dos barras se desplazan por separado, sin superponer barras fijas. */
+  .navegacion-admin { position: static; top: auto; min-width: 0; max-width: 100%; }
+  .menu-secciones, .menu-subsecciones {
+    position: static;
+    top: auto;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    min-width: 0;
+    padding: .6rem .25rem .7rem;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: .25rem;
+  }
+  .menu-secciones > *, .menu-subsecciones > * { flex-shrink: 0; }
+  .estado-panel, .menu-secciones ~ .secciones .estado-panel {
+    position: static;
+    top: auto;
+  }
+}

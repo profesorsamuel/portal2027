@@ -23,6 +23,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--papel);
@@ -47,7 +48,12 @@ p { margin: 0; }
   padding: 0.5rem 1rem;
 }
 
-.portal { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 1.5rem 1rem 2rem; }
+.portal { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 1.5rem 1rem 2rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+}
 
 /* Alternar acceso y panel con el ancla de la URL (sin JavaScript) */
 #panel { display: none; }
@@ -108,9 +114,9 @@ input {
   cursor: pointer;
 }
 .boton-principal { background: var(--tinta); color: #ffffff; margin-top: 1.25rem; }
-.boton-principal:hover { background: var(--tinta-suave); }
+.boton-principal:is(:hover, :focus-visible, :active) { background: var(--tinta-suave); }
 .boton-secundario { background: transparent; color: var(--tinta); border-color: var(--tinta); }
-.boton-secundario:hover { background: #e7eeed; }
+.boton-secundario:is(:hover, :focus-visible, :active) { background: #e7eeed; }
 
 /* Panel de ejemplo */
 .panel-cabecera {
@@ -145,7 +151,12 @@ input {
 .tabla-notas .final { font-weight: 700; color: var(--ok); }
 .tabla-notas .final.sin-nota { color: var(--texto-suave); font-weight: 600; }
 
-.pie { text-align: center; color: var(--texto-suave); font-size: 0.88rem; padding: 1rem; border-top: 1px solid var(--linea); }
+.pie { text-align: center; color: var(--texto-suave); font-size: 0.88rem; padding: 1rem; border-top: 1px solid var(--linea);
+  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+}
 
 /* Celular */
 @media (max-width: 760px) {
