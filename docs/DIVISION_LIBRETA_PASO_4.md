@@ -1,5 +1,7 @@
 # División de libreta — Paso 4: navegación por teclado
 
+La continuación de preferencias visuales y anchos está en DIVISION_LIBRETA_PASO_5.md.
+
 ## Instalación
 
 Requiere las etapas 1 a 5 y el paso 3 de división de libreta (que incluye los pasos 1 y 2). No necesita SQL.
