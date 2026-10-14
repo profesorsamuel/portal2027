@@ -15,3 +15,33 @@
 .seg-firma { margin-top: 2rem; text-align: center; }
 .seg-oculto { display: none; }
 @media print { .seg-pestanas, .seg-kpis.no-imprimir { display: none !important; } .seg-tabla td.rojo { background: #fde8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+/* Cuadro oficial de aprobados y reprobados (dentro de «Cuadro de fracaso») */
+.seg-sub { font-weight: 700; margin: .9rem 0 .2rem; }
+.seg-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: .4rem 0 .75rem; }
+.seg-chip { border: 1px solid #6054dd; border-radius: 999px; padding: .3rem .85rem; background: #f3f1ff; cursor: pointer; }
+.aprobados-aviso-sexo { background: #fff6cc; border: 1px solid #e6c200; color: #6b5400; border-radius: 10px; padding: .6rem .9rem; margin: .6rem 0; }
+.aprobados-aviso-sexo p { margin: .25rem 0 0; }
+.aprobados-hoja { background: #fff; color: #172033; padding: 20px; margin: 14px auto; max-width: 1300px; font-size: 12px; border: 1px solid var(--linea); border-radius: 8px; }
+.aprobados-hoja.capturando { width: 1200px; max-width: none; border: 0; }
+.aprobados-inst { border: 1.5px solid #222; padding: 9px; text-align: center; font-weight: 700; font-size: 13px; }
+.aprobados-hoja h2 { text-align: center; font-size: 15px; margin: 12px 0 4px; }
+.aprobados-hoja h4 { margin: 12px 0 4px; font-size: 12px; }
+.aprobados-prof { text-align: center; margin: 0 0 8px; }
+.aprobados-datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; margin-bottom: 10px; }
+.aprobados-tabla { width: 100%; border-collapse: collapse; text-align: center; font-size: 11px; }
+.aprobados-tabla th { background: #493ddd; color: #fff; }
+.aprobados-tabla td, .aprobados-tabla th { border: 1px solid #333; padding: 5px 3px; }
+.aprobados-total { background: #e9edf6; font-weight: 700; }
+.aprobados-tabla td.ed, .aprobados-tabla .aprobados-total td.tot-ret { background: #ffe8cc; min-width: 34px; }
+.aprobados-pend { line-height: 1.6; margin: 0; } .aprobados-pend span { white-space: nowrap; }
+.aprobados-causas { border-bottom: 1px solid #333; min-height: 22px; }
+.aprobados-pie { margin-top: 10px; border: 1px dashed #888; padding: 8px; font-size: 11px; }
+.aprobados-firmas { display: flex; justify-content: space-around; text-align: center; margin-top: 34px; }
+@media print {
+  body.imprimiendo-cuadro * { visibility: hidden; }
+  body.imprimiendo-cuadro .aprobados-hoja, body.imprimiendo-cuadro .aprobados-hoja * { visibility: visible; }
+  body.imprimiendo-cuadro .aprobados-hoja { position: absolute; left: 0; top: 0; width: 100%; max-width: none; margin: 0; padding: 0; border: 0; font-size: 10px; }
+  .aprobados-tabla { font-size: 9px; } .aprobados-tabla th, .aprobados-tabla td { padding: 3px 2px; }
+  .aprobados-tabla th, .aprobados-tabla td.ed, .aprobados-total, .aprobados-total td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
