@@ -7,6 +7,26 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 import { comprobarSolicitudPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
+import { consumirIntentoPortal } from '../_shared/portal2027-intentos.ts';
+
+// Solo para Supabase hospedado: toma el último salto añadido por el gateway.
+// Debe volver a verificarse si se añade un proxy propio delante de Supabase.
+function conexionDe(req: Request) {
+  const cabecera = req.headers.get('x-forwarded-for') || '';
+  if (!cabecera || cabecera.length > 4096) return null;
+  const partes = cabecera.split(',');
+  const ip = partes[partes.length - 1].trim();
+  if (/^[0-9.]+$/.test(ip)) {
+    const octetos = ip.split('.');
+    if (octetos.length !== 4 || octetos.some(x => !/^\d{1,3}$/.test(x) || Number(x) > 255)) return null;
+    return octetos.map(x => String(Number(x))).join('.');
+  }
+  if (/^[a-f0-9:]+$/i.test(ip) && ip.includes(':')) {
+    try { return new URL('https://[' + ip + ']/').hostname.toLowerCase(); } catch { return null; }
+  }
+  return null;
+}
+
 // Minúsculas, sin tildes ni signos: "María  José" -> ["maria", "jose"]
 const palabras = (t: string) =>
   String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -20,8 +40,31 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const conexion = conexionDe(req);
+  if (!conexion) {
+    console.error('portal2027-buscar-estudiante: falta dirección válida del gateway');
+    return responder({ error: 'No se pudo comprobar su conexión. Inténtelo más tarde.' }, 503);
+  }
+  const limiteConexion = await consumirIntentoPortal(servicio, 'buscar_ip', conexion);
+  if (limiteConexion) return limiteConexion;
+
   let cuerpo: { accion?: string; grupo?: string; nombre?: string };
   try { cuerpo = await req.json(); } catch { return responder({ error: 'Solicitud no válida' }, 400); }
+
+  if (!cuerpo || typeof cuerpo !== 'object' || Array.isArray(cuerpo) ||
+      (cuerpo.grupo !== undefined && (typeof cuerpo.grupo !== 'string' || cuerpo.grupo.length > 30)) ||
+      (cuerpo.nombre !== undefined && (typeof cuerpo.nombre !== 'string' || cuerpo.nombre.length > 200))) {
+    return responder({ error: 'Revise el grado y el nombre e inténtelo nuevamente.' }, 400);
+  }
+  if (cuerpo.accion !== 'grupos' && cuerpo.accion !== 'estudiantes') {
+    const grupoControl = String(cuerpo.grupo || '').trim().toUpperCase();
+    const nombreControl = Array.from(new Set(palabras(cuerpo.nombre || ''))).sort().join(' ');
+    if (grupoControl && nombreControl) {
+      const limiteNombre = await consumirIntentoPortal(servicio, 'buscar_nombre',
+        JSON.stringify([conexion, grupoControl, nombreControl]));
+      if (limiteNombre) return limiteNombre;
+    }
+  }
 
   const { data: anio } = await servicio.from('portal2027_anios').select('id').eq('activo', true).maybeSingle();
   if (!anio) return responder({ grupos: [], candidatos: [] });
