@@ -4,13 +4,7 @@
 // crea las materias que falten y, si vienen grupos, crea las asignaciones del año activo.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-const responder = (cuerpo: unknown, estado = 200) =>
-  new Response(JSON.stringify(cuerpo), { status: estado, headers: { ...CORS, 'Content-Type': 'application/json' } });
+import { comprobarSolicitudPortal, comprobarAdministradorPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
 const DOMINIO = 'docentes.portal2027.app'; // correo interno cuando el profesor no tiene uno propio
 const MAX_LOTE = 100;
@@ -22,19 +16,16 @@ const correoDerivado = (nombres: string, apellidos: string) =>
   sinTildes(`${nombres} ${apellidos}`).toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '') + '@' + DOMINIO;
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return responder({ error: 'Método no permitido' }, 405);
+  const rechazo = comprobarSolicitudPortal(req);
+  if (rechazo) return rechazo;
 
-  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-  const { data: u, error: eu } = await servicio.auth.getUser(token);
-  if (eu || !u?.user) return responder({ error: 'Sesión no válida' }, 401);
-
-  const { data: perfilAdmin } = await servicio.from('portal2027_perfiles').select('activo').eq('id', u.user.id).maybeSingle();
-  const { data: rolAdmin } = await servicio.from('portal2027_roles_usuario').select('rol')
-    .eq('usuario_id', u.user.id).eq('rol', 'administrador').maybeSingle();
-  if (!perfilAdmin?.activo || !rolAdmin) return responder({ error: 'Solo la administración puede importar profesores' }, 403);
+  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const permiso = await comprobarAdministradorPortal(req, servicio);
+  if (permiso.respuesta) return permiso.respuesta;
+  const usuario = permiso.usuario;
+  if (!usuario) return responder({ error: 'Inicie sesión nuevamente.' }, 401);
 
   let cuerpo: { profesores?: any[] };
   try { cuerpo = await req.json(); } catch { return responder({ error: 'Solicitud no válida' }, 400); }
@@ -102,7 +93,7 @@ Deno.serve(async (req) => {
     if (ep) { fallo('Cuenta lista pero no se guardó el perfil (¿ejecutó la migración 0019?): ' + ep.message, correo); continue; }
 
     const { error: er } = await servicio.from('portal2027_roles_usuario')
-      .upsert({ usuario_id: uid, rol: 'profesor', asignado_por: u.user.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
+      .upsert({ usuario_id: uid, rol: 'profesor', asignado_por: usuario.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
     if (er) { fallo('Cuenta lista pero sin rol profesor: ' + er.message, correo); continue; }
 
     // Consejería: rol consejero y, si trae grupos, su asignación como consejero del grupo (año activo).
@@ -110,7 +101,7 @@ Deno.serve(async (req) => {
     let consejerias = 0;
     if (esConsejero) {
       const { error: ec2 } = await servicio.from('portal2027_roles_usuario')
-        .upsert({ usuario_id: uid, rol: 'consejero', asignado_por: u.user.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
+        .upsert({ usuario_id: uid, rol: 'consejero', asignado_por: usuario.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
       if (ec2) avisos.push('rol consejero: ' + ec2.message);
       else for (const g of consejeria) {
         if (!anio) { avisos.push('no hay año activo: no se asignó consejería'); break; }
