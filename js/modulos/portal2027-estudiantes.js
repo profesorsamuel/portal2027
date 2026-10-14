@@ -255,7 +255,7 @@
 
     // Envía códigos y cédulas a la función de servidor, de 200 en 200. No guarda la cédula en ninguna tabla.
     async function crearAccesosEnLotes(filas, alAvanzar) {
-      var res = { creados: 0, actualizados: 0, errores: [] };
+      var res = { creados: 0, actualizados: 0, errores: [], claves: [] };
       for (var d = 0; d < filas.length; d += 200) {
         if (alAvanzar) { alAvanzar(Math.min(d + 200, filas.length), filas.length); }
         var r = await db.functions.invoke('portal2027-crear-accesos', { body: { accesos: filas.slice(d, d + 200) } });
@@ -263,12 +263,14 @@
           var det = '';
           try { det = (await r.error.context.json()).error; } catch (x) { /* sin detalle */ }
           if (!det && r.error.name === 'FunctionsFetchError') {
-            det = 'no se pudo contactar la función «portal2027-crear-accesos». Revise en Supabase > Edge Functions que esté creada y con «Verify JWT» DESACTIVADO.';
+            det = 'no se pudo contactar la función «portal2027-crear-accesos». Revise que la función esté desplegada, su configuración de autenticación y la sesión del administrador.';
           }
-          throw new Error(det || r.error.message);
+          var fallo = new Error(det || r.error.message);
+          fallo.resultadoParcial = res;
+          throw fallo;
         }
         r.data.resultados.forEach(function (x) {
-          if (x.estado === 'creado') { res.creados++; } else if (x.estado === 'actualizado') { res.actualizados++; } else { res.errores.push(x); }
+          if (x.estado === 'creado') { res.creados++; if (typeof x.clave_temporal === 'string' && x.clave_temporal) { res.claves.push({ codigo: x.codigo, clave: x.clave_temporal }); } } else if (x.estado === 'actualizado') { res.actualizados++; } else { res.errores.push(x); }
         });
       }
       return res;
@@ -596,6 +598,44 @@
       zona.appendChild(aviso2);
       zona.appendChild(resumen);
 
+      // Claves exclusivamente en memoria de esta vista; no se guardan en navegador ni base de datos.
+      var clavesVisibles = [];
+      function mostrarClaves(nuevas) {
+        if (nuevas && nuevas.length) { clavesVisibles = clavesVisibles.concat(nuevas); }
+        var anterior = resumen.querySelector('[data-claves-temporales]');
+        if (anterior) { anterior.remove(); }
+        if (!clavesVisibles.length) { return; }
+        var bloque = el('div', { 'data-claves-temporales': 'si' });
+        bloque.appendChild(el('h4', { texto: 'Claves temporales — entregar individualmente' }));
+        bloque.appendChild(el('p', { texto: 'Información confidencial. Copie una clave por estudiante. Si descarga el archivo, guárdelo en lugar seguro y elimínelo después de la entrega.' }));
+        var tabla = el('table');
+        var cuerpo = el('tbody');
+        clavesVisibles.forEach(function (dato) {
+          var boton = el('button', { type: 'button', texto: 'Copiar clave' });
+          boton.addEventListener('click', function () {
+            navigator.clipboard.writeText(dato.clave).then(function () { boton.textContent = 'Copiada'; })
+              .catch(function () { aviso2.mostrar('No se pudo copiar automáticamente. Seleccione la clave manualmente.', 'error'); });
+          });
+          cuerpo.appendChild(el('tr', null, [el('td', { texto: dato.codigo }), el('td', { texto: dato.clave }), el('td', null, [boton])]));
+        });
+        tabla.appendChild(cuerpo);
+        bloque.appendChild(tabla);
+        var descargar = el('button', { type: 'button', texto: 'Descargar CSV de claves' });
+        descargar.addEventListener('click', function () {
+          var csv = 'codigo_estudiante,clave_temporal\r\n' + clavesVisibles.map(function (x) {
+            return [x.codigo, x.clave].map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+          }).join('\r\n');
+          var url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+          var a = document.createElement('a'); a.href = url; a.download = 'claves-temporales-confidencial.csv'; a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        });
+        bloque.appendChild(descargar);
+        var borrar = el('button', { type: 'button', texto: 'Borrar claves de esta pantalla' });
+        borrar.addEventListener('click', function () { clavesVisibles = []; mostrarClaves(); });
+        bloque.appendChild(borrar);
+        resumen.appendChild(bloque);
+      }
+
       function leer(buffer) {
         if (!window.XLSX) { throw new Error('No se pudo cargar la biblioteca para leer Excel. Revise su internet y recargue.'); }
         var libro = window.XLSX.read(buffer, { type: 'array', raw: true });
@@ -616,7 +656,9 @@
       var accesosPendientes = false;
       entrada.addEventListener('change', async function () {
         if (accesosPendientes) { return; }
+        if (clavesVisibles.length && !window.confirm('Hay claves temporales visibles. Se conservarán durante este proceso. Continúe solo si ya las entregó o desea acumularlas.')) { entrada.value = ''; return; }
         resumen.textContent = '';
+        mostrarClaves();
         aviso2.mostrar('', 'info');
         var archivo = entrada.files && entrada.files[0];
         if (!archivo) { return; }
@@ -626,6 +668,7 @@
           if (!(await P.confirmar('Crear o actualizar accesos', '¿Crear o actualizar el acceso de ' + filas.length + ' estudiantes?', 'Procesar accesos'))) { entrada.value = ''; return; }
           entrada.disabled = true;
           var rr = await crearAccesosEnLotes(filas, function (n, t) { aviso2.mostrar('Procesando ' + n + ' de ' + t + '…', 'info'); });
+          mostrarClaves(rr.claves);
           var creados = rr.creados, actualizados = rr.actualizados, errores = rr.errores;
           entrada.value = '';
           aviso2.mostrar('Listo. Accesos creados: ' + creados + ', actualizados: ' + actualizados + ', con error: ' + errores.length + '.', errores.length ? 'error' : 'ok');
@@ -637,7 +680,8 @@
           await cargarBase();
           dibujarLista();
         } catch (e) {
-          aviso2.mostrar(e.message || P.traducirError(e), 'error');
+          if (e.resultadoParcial) { mostrarClaves(e.resultadoParcial.claves); }
+          aviso2.mostrar((e.message || P.traducirError(e)) + (e.resultadoParcial && e.resultadoParcial.claves.length ? ' Las claves de los lotes anteriores permanecen visibles para entregarlas.' : ''), 'error');
         } finally {
           accesosPendientes = false;
           entrada.disabled = false;
