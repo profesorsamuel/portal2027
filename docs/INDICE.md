@@ -13,6 +13,7 @@
 | [INSTALAR_HORARIO_SAMUEL_2027.md](INSTALAR_HORARIO_SAMUEL_2027.md) | Documento vigente o comprobación pendiente |
 | [INSTALAR_PDF_POR_CLASE.md](INSTALAR_PDF_POR_CLASE.md) | Documento vigente o comprobación pendiente |
 | [PLAN_RESTANTE_PORTAL2027.md](PLAN_RESTANTE_PORTAL2027.md) | Documento vigente o comprobación pendiente |
+| [PENDIENTES_REALES_Y_VERIFICACION_20261014.md](PENDIENTES_REALES_Y_VERIFICACION_20261014.md) | Documento vigente o comprobación pendiente |
 | [REVISION_SEGUIMIENTO_SEGURIDAD.md](REVISION_SEGUIMIENTO_SEGURIDAD.md) | Documento vigente o comprobación pendiente |
 | [REVISION_SEGURIDAD_0047_0049.md](REVISION_SEGURIDAD_0047_0049.md) | Documento vigente o comprobación pendiente |
 | [VERIFICACION_SUPABASE_REAL.md](VERIFICACION_SUPABASE_REAL.md) | Documento vigente o comprobación pendiente |
