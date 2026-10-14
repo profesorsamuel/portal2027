@@ -92,6 +92,8 @@
       var sync = await db.rpc('portal2027_sincronizar_apreciaciones', { p_asignacion: asigId, p_trimestre: trId });
       if (sync.error) { throw sync.error; }
     }
+    // Cada clase de la planificación debe tener su columna de apreciación (la restaura o la crea si falta).
+    await db.rpc('portal2027_asegurar_semanas_plan', { p_asignacion: asigId, p_trimestre: trId });
     var r = await Promise.all([
       todas(function () {
         return db.from('portal2027_evaluaciones')
