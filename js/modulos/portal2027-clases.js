@@ -110,7 +110,149 @@
   }
 
   /* ---------- materiales ---------- */
+  // Una tanda conserva sus resultados y títulos para reintentar solo fallidas.
+  function formImagenes() {
+    var items = [], ocupado = false, preparando = false, contexto = null;
+    var titulo = el('input', { type: 'text', maxlength: '110' });
+    var desc = el('textarea', { rows: '2', maxlength: '2000' });
+    var archivo = el('input', { type: 'file', accept: '.jpg,.jpeg,.png', multiple: true });
+    var pub = el('input', { type: 'checkbox', checked: true });
+    var lista = el('ul', { clase: 'fotos-previas' });
+    var resumen = el('div', { role: 'status', 'aria-live': 'polite' });
+    var progreso = el('progress', { max: '1', value: '0', hidden: true, 'aria-label': 'Fotos procesadas' });
+    var textoProgreso = el('p', { texto: '', 'aria-live': 'polite' });
+    var enviar = el('button', { type: 'submit', clase: 'boton boton-principal-chico', texto: 'Subir fotos' });
+    var reintentar = boton('Reintentar las fallidas', function () { subir(true); });
+    reintentar.hidden = true;
+    var f = el('form', { clase: 'formulario-clases' }, [
+      campo('Título (opcional; se numerará si hay varias fotos)', titulo), campo('Descripción (opcional)', desc),
+      campo('Fotos JPG o PNG (máximo 15 por tanda)', archivo), lista,
+      el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']),
+      enviar, progreso, textoProgreso, resumen, reintentar
+    ]);
+    function peso(a) { return (a.size / 1048576).toFixed(2) + ' MB'; }
+    function dibujarPrevias() {
+      lista.textContent = '';
+      items.forEach(function (it) {
+        var imagen = el('img', { clase: 'foto-previa-miniatura', alt: 'Vista previa de ' + it.original.name });
+        var url = URL.createObjectURL(it.final || it.original);
+        imagen.onload = imagen.onerror = function () { URL.revokeObjectURL(url); };
+        imagen.src = url;
+        var quitar = boton('Quitar', function () { items = items.filter(function (x) { return x !== it; }); dibujarPrevias(); });
+        quitar.disabled = preparando || ocupado || !!contexto;
+        lista.appendChild(el('li', null, [imagen, el('div', null, [
+          el('strong', { texto: it.original.name }),
+          el('small', { texto: 'Original: ' + peso(it.original) + ' · Final: ' + (it.final ? peso(it.final) : 'Sin preparar') }),
+          el('small', { texto: it.error || (it.ok ? 'Subida' : 'Lista para subir') })
+        ]), quitar]));
+      });
+    }
+    archivo.addEventListener('change', async function () {
+      if (ocupado || preparando) { return; }
+      var elegidas = Array.prototype.slice.call(archivo.files || []);
+      archivo.value = '';
+      if (items.length + elegidas.length > 15) { aviso('Puede elegir hasta 15 fotos por tanda. Quite algunas antes de agregar más.', 'error'); return; }
+      preparando = true; archivo.disabled = true; enviar.disabled = true;
+      // Empezar una nueva tanda después de terminar la anterior.
+      contexto = null; resumen.textContent = ''; reintentar.hidden = true;
+      for (var i = 0; i < elegidas.length; i++) {
+        var it = { original: elegidas[i], final: null, ok: false, error: '' };
+        items.push(it);
+        try {
+          if (!/\.(jpe?g|png)$/i.test(it.original.name)) { throw new Error('Elija una foto JPG o PNG.'); }
+          it.final = await C.reducirImagen(it.original);
+          var validacion = C.validar(it.final);
+          if (validacion.error) { throw new Error(validacion.error); }
+        } catch (e) { console.error('Preparación de foto', it.original.name, e); it.error = 'No se pudo preparar. Quite esta foto y vuelva a elegir una imagen JPG o PNG de hasta 10 MB.'; }
+        dibujarPrevias();
+      }
+      preparando = false; archivo.disabled = false; enviar.disabled = false; dibujarPrevias();
+    });
+    async function subir(esReintento) {
+      if (ocupado || preparando) { return; }
+      if (!items.length) { aviso('Elija al menos una foto.', 'error'); return; }
+      if (!esReintento) {
+        contexto = { asignacion: S.asig.id, trimestre: S.trimestreId, clase: S.claseId, descripcion: desc.value, publicado: pub.checked };
+        var base = titulo.value.trim();
+        items.forEach(function (it, i) { it.titulo = base ? base + (items.length > 1 ? ' ' + (i + 1) : '') : it.original.name.slice(0, 120); });
+      }
+      var tanda = items.filter(function (it) { return !it.ok; });
+      if (!tanda.length) { return; }
+      ocupado = true; enviar.disabled = true; reintentar.disabled = true;
+      // Evita cambiar de clase o reconstruir el formulario mientras sube.
+      var controles = Array.prototype.slice.call(zona.querySelectorAll('button,input,select,textarea'));
+      var anteriores = controles.map(function (c) { var d = c.disabled; c.disabled = true; return d; });
+      progreso.hidden = false; progreso.max = tanda.length; progreso.value = 0;
+      for (var i = 0; i < tanda.length; i++) {
+        var it = tanda[i];
+        textoProgreso.textContent = (i + 1) + ' de ' + tanda.length + ': ' + it.original.name;
+        try {
+          if (it.rutaPendiente) {
+            var limpieza = await db.storage.from(C.BUCKET_MATERIALES).remove([it.rutaPendiente]);
+            if (limpieza.error) { throw limpieza.error; }
+            it.rutaPendiente = null;
+          }
+          if (!/\.(jpe?g|png)$/i.test(it.original.name)) { throw new Error('Elija una foto JPG o PNG.'); }
+          if (!it.final) { it.final = await C.reducirImagen(it.original); }
+          var v = C.validar(it.final);
+          if (v.error) { throw new Error(v.error); }
+          var ruta = contexto.asignacion + '/' + Date.now() + '-' + (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).slice(2)) + '-' + C.nombreSeguro(it.final.name);
+          var s = await db.storage.from(C.BUCKET_MATERIALES).upload(ruta, it.final, { contentType: v.tipo, cacheControl: '0', upsert: false });
+          if (s.error) { throw s.error; }
+          it.rutaPendiente = ruta;
+          var g = await db.rpc('portal2027_crear_material_clase', {
+            p_asignacion: contexto.asignacion, p_trimestre: contexto.trimestre, p_clase: contexto.clase,
+            p_titulo: it.titulo, p_descripcion: contexto.descripcion, p_ruta: ruta,
+            p_nombre: it.final.name, p_publicado: contexto.publicado, p_enlace: null
+          });
+          if (g.error) { throw g.error; }
+          it.rutaPendiente = null; it.ok = true; it.error = '';
+        } catch (e) {
+          console.error('Subida de foto', it.original.name, e);
+          it.error = 'No se pudo guardar. Revise su conexión y reintente.';
+          if (it.rutaPendiente) {
+            try {
+              var borrado = await db.storage.from(C.BUCKET_MATERIALES).remove([it.rutaPendiente]);
+              if (borrado.error) { throw borrado.error; }
+              it.rutaPendiente = null;
+            } catch (errorBorrado) {
+              console.error('Limpieza de foto sin registro', it.rutaPendiente, errorBorrado);
+              it.error = 'No se guardó y falta retirar la copia subida. Reintente para limpiar esa copia antes de subirla otra vez.';
+            }
+          }
+        }
+        progreso.value = i + 1; dibujarPrevias();
+      }
+      ocupado = false;
+      controles.forEach(function (c, i) { c.disabled = anteriores[i]; });
+      titulo.disabled = desc.disabled = pub.disabled = true;
+      archivo.disabled = true; enviar.disabled = true; reintentar.disabled = false;
+      var fallidas = items.filter(function (it) { return !it.ok; });
+      resumen.textContent = '';
+      resumen.appendChild(el('p', { texto: 'Subidas: ' + (items.length - fallidas.length) + ' · No subidas: ' + fallidas.length }));
+      resumen.appendChild(el('ul', null, items.map(function (it) { return el('li', { texto: it.original.name + ': ' + (it.ok ? 'Subida' : it.error) }); })));
+      reintentar.hidden = !fallidas.length;
+      if (!fallidas.length) { resumen.appendChild(boton('Elegir otra tanda', function () { dibujar(); })); }
+      textoProgreso.textContent = 'Tanda terminada.';
+      dibujarPrevias();
+      try {
+        await cargar();
+        var seccion = f.parentNode;
+        var anterior = seccion.querySelector('.lista-clases');
+        if (anterior) { anterior.remove(); }
+        var vacio = seccion.querySelector('.vacio-texto');
+        if (vacio) { vacio.remove(); }
+        seccion.appendChild(el('ul', { clase: 'lista-clases' }, S.materiales.filter(function (m) {
+          return (m.clase_id || null) === contexto.clase && (S.verPapelera || !m.eliminado_en);
+        }).map(filaMaterial)));
+      } catch (e) { console.error('Actualizar materiales', e); aviso('La tanda terminó, pero no se pudo actualizar la lista. Pulse «Recargar».', 'error'); }
+    }
+    f.addEventListener('submit', function (ev) { ev.preventDefault(); subir(false); });
+    return f;
+  }
+
   function formMaterial() {
+    if (S.tipoMaterial === 'imagen') { return formImagenes(); }
     var titulo = el('input', { type: 'text', maxlength: '120', required: true });
     var desc = el('textarea', { rows: '2', maxlength: '2000' });
     var archivo = el('input', { type: 'file', accept: S.tipoMaterial === 'pdf' ? '.pdf' : S.tipoMaterial === 'imagen' ? '.jpg,.jpeg,.png' : C.ACEPTAR, required: S.tipoMaterial === 'pdf' || S.tipoMaterial === 'imagen' });
