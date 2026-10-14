@@ -28,7 +28,7 @@ Mover los cuatro SQL no los ejecuta y no altera la base instalada. El ZIP tampoc
 
 Límites por archivo: foto de perfil 2 MB; documentos administrativos 5 MB; materiales, entregas y planificación 15 MB. MB equivale a 1024 × 1024 bytes. Los PDF no se comprimen automáticamente. Los PNG transparentes y las imágenes pequeñas conservan sus archivos según la función compartida.
 
-El ZIP de etapas 1 a 5 dejó la división de portal2027-libreta.js como propuesta. El paso posterior de lectura y normalización de importaciones tiene su propio ZIP e instrucciones en DIVISION_LIBRETA_PASO_1.md; la vista previa y el guardado permanecen en la libreta. No se añadieron ponderaciones ni reglas de pendientes/exentos.
+El ZIP de etapas 1 a 5 dejó la división de portal2027-libreta.js como propuesta. Los pasos posteriores de lectura/normalización y planificación de importaciones tienen sus propios ZIP e instrucciones en DIVISION_LIBRETA_PASO_1.md y DIVISION_LIBRETA_PASO_2.md; la continuación de interfaz está en DIVISION_LIBRETA_PASO_3.md y el guardado permanece en la libreta. No se añadieron ponderaciones ni reglas de pendientes/exentos.
 
 ## Pruebas manuales finales
 

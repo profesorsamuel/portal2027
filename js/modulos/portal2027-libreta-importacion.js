@@ -1,5 +1,5 @@
-/* portal2027-libreta-importacion.js — funciones puras de lectura y normalización.
-   Extraídas sin cambiar sus cuerpos. No accede a la base, al DOM ni a cálculos de promedios.
+/* portal2027-libreta-importacion.js — lectura, planificación e interfaz de importaciones.
+   Extraídas sin cambiar sus cuerpos. Recibe dependencias explícitas; no guarda en la base ni calcula promedios. La interfaz usa los servicios del contexto.
    Cargar antes de portal2027-libreta.js. */
 (function () {
   'use strict';
@@ -45,6 +45,182 @@
     return '';
   }
 
+  // Recibe referencias al estado y servicios de la libreta; no duplica las notas.
+  function crearPlanificador(contexto) {
+    var S = contexto.estado;
+    var matsVisibles = contexto.matsVisibles;
+    var clave = contexto.clave;
+    var nombreEst = contexto.nombreEst;
+
+  // Arma el plan: a quién va cada nota y qué pasaría. No guarda nada.
+  function planificar(filas, ev, inicio) {
+    var mats = matsVisibles();
+    var porCodigo = {}, porClave = {};
+    mats.forEach(function (m) {
+      if (m.estudiante.codigo) { porCodigo[String(m.estudiante.codigo).trim()] = m; }
+      porClave[claveNombre((m.estudiante.apellidos || '') + ' ' + (m.estudiante.nombres || ''))] = m;
+    });
+    var porNombres = filas.some(function (r) { return r.texto; }) ||
+      filas.some(function (r) { return r.nums.length > 1 && porCodigo[String(r.nums[0]).trim()]; });
+    var items = [], usados = {};
+
+    function item(mat, etiqueta, valor, error) {
+      var it = { mat: mat, etiqueta: etiqueta, valor: valor, previa: null, estado: '', detalle: '' };
+      if (error) { it.estado = error.estado; it.detalle = error.detalle; return it; }
+      if (valor === null) { it.estado = 'vacia'; it.detalle = 'Sin nota en el archivo'; return it; }
+      var bad = validar(valor);
+      if (bad) { it.estado = 'invalida'; it.detalle = bad; return it; }
+      if (usados[mat.id]) { it.estado = 'repetido'; it.detalle = 'Este estudiante ya aparece antes'; return it; }
+      usados[mat.id] = true;
+      var n = S.notas[clave(ev.id, mat.id)];
+      it.previa = n && n.valor !== null ? n.valor : null;
+      it.estado = it.previa === null ? 'nueva' : (it.previa === valor ? 'igual' : 'cambia');
+      return it;
+    }
+
+    if (porNombres) {
+      filas.forEach(function (r) {
+        if (!r.texto && r.nums.length === 0) { return; }
+        var mat = null, nums = r.nums.slice(), amb = false;
+        for (var i = 0; i < nums.length && !mat; i++) {
+          var cm = porCodigo[String(nums[i]).trim()];
+          if (cm && (r.texto || nums.length > 1)) { mat = cm; nums.splice(i, 1); }
+        }
+        if (!mat && r.texto) {
+          var k = claveNombre(r.texto);
+          mat = porClave[k] || null;
+          if (!mat) {
+            var tk = tokensNombre(r.texto);
+            var cand = mats.filter(function (m) {
+              var st = tokensNombre((m.estudiante.apellidos || '') + ' ' + (m.estudiante.nombres || ''));
+              return tk.length > 0 && tk.every(function (t) { return st.indexOf(t) !== -1; });
+            });
+            if (cand.length === 1) { mat = cand[0]; } else if (cand.length > 1) { amb = true; }
+          }
+        }
+        var etiqueta = r.texto || String(r.nums[0]);
+        if (!mat) { items.push(item(null, etiqueta, null, { estado: 'noencontrado', detalle: amb ? 'Coincide con varios estudiantes' : 'No se encontró en esta lista' })); return; }
+        items.push(item(mat, nombreEst(mat.estudiante), nums.length ? aNumero(nums[nums.length - 1]) : null, null));
+      });
+    } else {
+      filas.forEach(function (r, i) {
+        var mat = mats[inicio + i];
+        if (!mat) { items.push(item(null, 'Fila ' + (i + 1), null, { estado: 'sobra', detalle: 'No hay más estudiantes en la lista' })); return; }
+        items.push(item(mat, nombreEst(mat.estudiante), r.nums.length ? aNumero(r.nums[r.nums.length - 1]) : null, null));
+      });
+    }
+    return { porNombres: porNombres, items: items };
+  }
+
+    return planificar;
+  }
+
+  // Vista y eventos existentes; el guardado sigue siendo un servicio de la libreta.
+  function crearInterfaz(contexto) {
+    var S = contexto.estado;
+    var M = contexto.evaluacion;
+    var el = contexto.el;
+    var aviso = contexto.aviso;
+    var numeroEscrito = contexto.numeroEscrito;
+    var matsVisibles = contexto.matsVisibles;
+    var nombreEst = contexto.nombreEst;
+    var cargarXlsx = contexto.cargarExcel;
+    var evalPorId = contexto.evalPorId;
+    var guardarImportacion = contexto.guardarImportacion;
+    var planificar = crearPlanificador(contexto);
+
+  var TEXTO_ESTADO = { nueva: 'Nueva', cambia: 'Cambia', igual: 'Sin cambio', vacia: 'Vacía', invalida: 'No válida', noencontrado: 'No encontrado', repetido: 'Repetido', sobra: 'Sobra' };
+
+  function abrirImportacion(zona, pre) {
+    if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden cargar notas.', 'error'); return; }
+    var cols = S.evals.filter(function (e) { return !e.eliminada_en && !e.bloqueada; });
+    zona.textContent = '';
+    if (cols.length === 0) {
+      zona.appendChild(el('section', { clase: 'bloque' }, [el('h3', { texto: 'Cargar notas' }), el('p', { clase: 'vacio-texto', texto: 'Primero cree una columna (botón + de la categoría) y que no esté bloqueada.' })]));
+      return;
+    }
+    function rotuloCol(e) {
+      var base = e.categoria === 'ejercicio_escrito' ? 'Ejercicio ' + numeroEscrito(e) : (e.tipo || M.ETIQUETAS[e.categoria]);
+      return M.ETIQUETAS[e.categoria] + ' · ' + base + (e.tema ? ' · ' + e.tema : '');
+    }
+    var selCol = el('select', { 'aria-label': 'Columna destino' }, cols.map(function (e) { return el('option', { value: e.id, texto: rotuloCol(e), selected: e.id === pre.evId }); }));
+    var mats = matsVisibles();
+    var selIni = el('select', { 'aria-label': 'Empezar en' }, mats.map(function (m, i) { return el('option', { value: String(i), texto: (i + 1) + '. ' + nombreEst(m.estudiante), selected: i === (pre.inicio || 0) }); }));
+    var area = el('textarea', { rows: '8', clase: 'importar-texto', 'aria-label': 'Notas copiadas de Excel', placeholder: 'Pegue aquí la columna de notas copiada de Excel.\nO filas con nombre y nota (Apellido Nombre [Tab] Nota).' });
+    area.value = pre.texto || '';
+    var archivo = el('input', { type: 'file', accept: '.xlsx,.xls,.csv,.tsv,.txt', 'aria-label': 'Archivo de Excel o CSV' });
+    var msg = el('p', { clase: 'mensaje', role: 'status', hidden: true });
+    var zonaPrev = el('div');
+    function mensaje(t, tipo) { msg.textContent = t; msg.className = 'mensaje ' + (tipo || 'info'); msg.hidden = !t; }
+
+    archivo.addEventListener('change', async function () {
+      var f = archivo.files && archivo.files[0];
+      if (!f) { return; }
+      mensaje('Leyendo el archivo…', 'info');
+      try {
+        var texto;
+        if (/\.(tsv|txt)$/i.test(f.name)) { texto = await f.text(); }
+        else {
+          var X = await cargarXlsx();
+          var buf = await f.arrayBuffer();
+          var libro = X.read(buf, { type: 'array' });
+          var hoja = libro.Sheets[libro.SheetNames[0]];
+          var filas = X.utils.sheet_to_json(hoja, { header: 1, raw: true, defval: '' });
+          texto = filas.map(function (r) { return r.join('\t'); }).join('\n');
+        }
+        area.value = texto;
+        mensaje('Archivo leído (primera hoja). Revise la vista previa y guarde.', 'ok');
+        revisar();
+      } catch (e) { mensaje('No se pudo leer el archivo. ' + ((e && e.message) || ''), 'error'); }
+    });
+
+    function revisar() {
+      zonaPrev.textContent = '';
+      var ev = evalPorId(selCol.value);
+      var filas = leerFilas(filasDeTexto(area.value));
+      if (filas.length === 0) { mensaje('No hay notas para revisar. Pegue o suba un archivo.', 'error'); return; }
+      var plan = planificar(filas, ev, Number(selIni.value) || 0);
+      var cuenta = {};
+      plan.items.forEach(function (it) { cuenta[it.estado] = (cuenta[it.estado] || 0) + 1; });
+      var aGuardar = plan.items.filter(function (it) { return it.estado === 'nueva' || it.estado === 'cambia'; });
+      var problemas = plan.items.filter(function (it) { return ['invalida', 'noencontrado', 'repetido', 'sobra'].indexOf(it.estado) !== -1; }).length;
+      mensaje('', 'info');
+      zonaPrev.appendChild(el('p', { clase: 'bloque-ayuda', texto: (plan.porNombres ? 'Se buscó a cada estudiante por su nombre o código.' : 'Solo hay números: se asignan en el orden de la lista, desde «Empezar en».') +
+        ' Nuevas: ' + (cuenta.nueva || 0) + ' · Cambian: ' + (cuenta.cambia || 0) + ' · Sin cambio: ' + (cuenta.igual || 0) + ' · Con problema: ' + problemas + '.' }));
+      zonaPrev.appendChild(el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+        el('thead', null, [el('tr', null, ['Estudiante', 'Nota actual', 'Nota nueva', 'Resultado'].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
+        el('tbody', null, plan.items.map(function (it) {
+          var malo = ['invalida', 'noencontrado', 'repetido', 'sobra'].indexOf(it.estado) !== -1;
+          return el('tr', { clase: malo ? 'fila-problema' : (it.estado === 'cambia' ? 'fila-cambia' : '') }, [
+            el('td', { texto: it.etiqueta }),
+            el('td', { texto: it.previa === null ? '—' : String(it.previa) }),
+            el('td', { texto: it.valor === null ? '—' : String(it.valor) }),
+            el('td', { texto: TEXTO_ESTADO[it.estado] + (it.detalle ? ': ' + it.detalle : '') })]);
+        }))
+      ])]));
+      var btnGuardar = el('button', { clase: 'boton', type: 'button', disabled: aGuardar.length === 0, texto: 'Guardar ' + aGuardar.length + ' nota(s)' });
+      btnGuardar.addEventListener('click', function () { guardarImportacion(aGuardar, ev, btnGuardar, mensaje, function () { zonaPrev.textContent = ''; }); });
+      zonaPrev.appendChild(el('div', { clase: 'cabecera-acciones' }, [btnGuardar]));
+      if (problemas > 0) { zonaPrev.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Las filas con problema no se guardan; corríjalas en el texto y vuelva a pulsar «Revisar».' })); }
+    }
+
+    var btnRev = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Revisar', onclick: revisar });
+    var btnCerrar = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar', onclick: function () { zona.textContent = ''; } });
+    zona.appendChild(el('section', { clase: 'bloque importar' }, [
+      el('h3', { texto: 'Cargar notas desde Excel' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Copie en Excel la columna de notas y péguela aquí, o suba el archivo (.xlsx, .csv). Si solo trae números, se asignan en el orden de esta lista (apellido, nombre). Si trae nombres o códigos, se busca a cada estudiante. Nada se guarda hasta que revise la vista previa.' }),
+      el('div', { clase: 'formulario-fila' }, [el('label', null, ['Columna destino', selCol]), el('label', null, ['Empezar en (solo si pega números)', selIni]), el('label', null, ['Archivo de Excel', archivo])]),
+      area, msg,
+      el('div', { clase: 'cabecera-acciones' }, [btnRev, btnCerrar]),
+      zonaPrev
+    ]));
+    zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (area.value) { revisar(); } else { area.focus(); }
+  }
+
+    return abrirImportacion;
+  }
+
   P.libretaImportacion = Object.freeze({
     esNum: esNum,
     aNumero: aNumero,
@@ -52,6 +228,8 @@
     claveNombre: claveNombre,
     filasDeTexto: filasDeTexto,
     leerFilas: leerFilas,
-    validar: validar
+    validar: validar,
+    crearPlanificador: crearPlanificador,
+    crearInterfaz: crearInterfaz
   });
 })();
