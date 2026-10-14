@@ -1,0 +1,17 @@
+{
+  "name": "portal2027",
+  "version": "1.0.0",
+  "description": "Comprobaciones locales de Portal 2027",
+  "scripts": {
+    "test": "node tests/portal2027.test.mjs"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "parse5": "^8.0.1",
+    "playwright": "^1.64.1"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
