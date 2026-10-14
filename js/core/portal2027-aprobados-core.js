@@ -40,10 +40,10 @@
     return Object.keys(g).sort(function (a, b) { return a - b; }).map(function (k) { return k + '° ' + g[k].sort().join(', '); }).join(' / ');
   }
 
-  function td(v, cls, extra) { return '<td' + (cls ? ' class="' + cls + '"' : '') + (extra || '') + '>' + v + '</td>'; }
+  function td(v, cls, extra) { return '<td' + (cls ? ' class="' + cls + '"' : '') + (extra || '') + '>' + esc(v) + '</td>'; }
   function fila(s, total) {
     var ed = function (k, v) { return td(v, 'ed', ' contenteditable="true" data-k="' + k + '"'); };
-    return '<tr' + (total ? ' class="aprobados-total"' : '') + '>' + td(esc(s.grupo)) + td(s.activos) +
+    return '<tr' + (total ? ' class="aprobados-total"' : '') + '>' + td(s.grupo) + td(s.activos) +
       td(s.ap.M) + td(s.ap.F) + td(tot(s.ap)) + td(pct(tot(s.ap), s.activos)) +
       td(s.rep.M) + td(s.rep.F) + td(tot(s.rep)) + td(pct(tot(s.rep), s.activos)) +
       td(s.sin.M) + td(s.sin.F) + td(tot(s.sin)) + td(pct(tot(s.sin), s.activos)) +
@@ -64,7 +64,7 @@
       d.resumenes.map(function (s) { return fila(s, false); }).join('') + fila(g, true) + '</tbody></table>';
     if (d.mostrarExamen) {
       h += '<h4>Estudiantes que deben cuidar su nota de Examen</h4><p class="aprobados-pend">' + (pend.length
-        ? pend.map(function (p) { return '<span>' + esc(p.grupo) + ' — ' + esc(p.nombre) + ': <b>' + p.minimo.toFixed(2) + '</b></span>'; }).join(' | ')
+        ? pend.map(function (p) { return '<span>' + esc(p.grupo) + ' — ' + esc(p.nombre) + ': <b>' + esc(Number(p.minimo).toFixed(2)) + '</b></span>'; }).join(' | ')
         : 'No hay estudiantes aprobados a la espera de nota de Examen en los grados seleccionados.') + '</p>';
     }
     return h + '<h4>CAUSAS DEL RETIRO DEL ALUMNO SIN CALIFICACIONES:</h4><div class="aprobados-causas" contenteditable="true"></div>' +

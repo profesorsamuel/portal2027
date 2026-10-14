@@ -27,3 +27,13 @@ test('No cambia clasificación de aprobados, reprobados y sin nota', () => {
   assert.equal(r.ap.M,1); assert.equal(r.rep.F,1); assert.equal(r.sin.F,1);
   assert.equal(r.ret.M,1); assert.equal(r.activos,3);
 });
+test('Escapa nombres y valores numéricos inyectados en las celdas', () => {
+  const grupo = core.calcularGrupo('<img src=x onerror=alert(1)>', [{nombre:'Alumno', sexo:'M', final:4, cat:null}]);
+  grupo.activos = '<b>1</b>';
+  grupo.ap.M = '<b>1</b>';
+  const html = core.htmlCuadro({institucion:'Escuela',profesor:'P',asignatura:'C',nivelesTxt:'9',trimestre:'1',anio:2027,jornada:'AM',resumenes:[grupo],mostrarExamen:false});
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(html.includes('&lt;b&gt;1&lt;/b&gt;'));
+  assert.ok(!html.includes('<img src=x onerror=alert(1)>'));
+  assert.ok(!html.includes('<td><b>1</b></td>'));
+});

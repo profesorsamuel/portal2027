@@ -97,3 +97,8 @@ Las etapas se numeraron dos veces a lo largo del proyecto (la primera guía de 9
 | [INSTALAR_BOLETIN_PDF.md](INSTALAR_BOLETIN_PDF.md) | Boletín de notas en PDF. |
 | [INSTALAR_PDF_POR_CLASE.md](INSTALAR_PDF_POR_CLASE.md) | Planificaciones en PDF por clase. |
 | [PROMPT_PLANIFICACION_MEDUCA_QUINCENAL_2027.md](PROMPT_PLANIFICACION_MEDUCA_QUINCENAL_2027.md) | Plantilla reutilizable de secuencia didáctica MEDUCA. |
+
+## CSP (octubre de 2026)
+
+| [CSP_INVENTARIO_5A.md](CSP_INVENTARIO_5A.md) | Inventario previo. |
+| [CSP_POR_PAGINA.md](CSP_POR_PAGINA.md) | Políticas exactas y deuda pendiente. |
