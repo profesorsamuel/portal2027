@@ -1,7 +1,5 @@
 # División de libreta — Paso 2: planificador de importación
 
-Este documento describe el paso 2. La continuación con la interfaz separada está en DIVISION_LIBRETA_PASO_3.md.
-
 ## Instalación
 
 Requiere las cinco etapas principales. Este ZIP trae el módulo de importación completo actualizado, incluidas las funciones del paso 1. Si ya aplicó el paso 1, sustituir los mismos archivos.

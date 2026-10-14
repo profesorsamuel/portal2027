@@ -1,5 +1,7 @@
 # División de libreta — Paso 1: lectura y normalización de importaciones
 
+Este documento describe el paso 1. Su continuación, con el planificador separado, está en DIVISION_LIBRETA_PASO_2.md.
+
 ## Instalación
 
 Requiere tener instaladas las cinco etapas anteriores. No necesita SQL.
