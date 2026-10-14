@@ -11,6 +11,9 @@
   --acento: #e8a317;
   --acento-oscuro: #8a5a00;
   --ok: #2f7d4f;
+  --tinta-panel: #173e49;
+  --foco: #247c9b;
+  --borde-panel: #b8cbd0;
   --radio: 10px;
   --fuente-titulo: Georgia, "Times New Roman", serif;
   --fuente-texto: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -38,27 +41,12 @@ p { margin: 0; }
 
 :focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 
-/* Aviso de datos simulados */
-.aviso-simulado {
-  background: var(--acento);
-  color: #2b1d00;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-}
-
 .portal { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 1.5rem 1rem 2rem;
   padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
   padding-right: calc(1rem + env(safe-area-inset-right, 0px));
   padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
   padding-left: calc(1rem + env(safe-area-inset-left, 0px));
 }
-
-/* Alternar acceso y panel con el ancla de la URL (sin JavaScript) */
-#panel { display: none; }
-#panel:target { display: block; }
-#panel:target ~ #acceso { display: none; }
 
 /* Acceso */
 .acceso {
@@ -99,8 +87,6 @@ input {
   width: 100%;
 }
 
-.enlace-recuperar { margin-top: 0.9rem; color: var(--tinta-suave); font-size: 0.95rem; }
-.nota-simulada { margin-top: 1.5rem; color: var(--texto-suave); font-size: 0.9rem; }
 
 /* Botones */
 .boton {
@@ -133,7 +119,6 @@ input {
 .panel-cabecera h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0.15rem 0 0.35rem; }
 .panel-datos { color: var(--texto-suave); }
 
-.panel-cuerpo { display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem; align-items: start; }
 
 .bloque { background: var(--blanco); border: 1px solid var(--linea); border-radius: var(--radio); padding: 1.25rem; }
 .bloque h2 { font-size: 1.3rem; margin-bottom: 0.4rem; }
@@ -147,7 +132,7 @@ input {
 .tabla-notas th, .tabla-notas td { padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--linea); text-align: right; }
 .tabla-notas thead th { font-size: 0.9rem; color: var(--texto-suave); font-weight: 600; }
 .tabla-notas th:first-child, .tabla-notas tbody th { text-align: left; font-weight: 600; color: var(--tinta); }
-.tabla-notas .vacio { color: #8da09d; }
+.tabla-notas .vacio { color: var(--texto-suave); }
 .tabla-notas .final { font-weight: 700; color: var(--ok); }
 .tabla-notas .final.sin-nota { color: var(--texto-suave); font-weight: 600; }
 
@@ -160,7 +145,7 @@ input {
 
 /* Celular */
 @media (max-width: 760px) {
-  .acceso, .panel-cuerpo { grid-template-columns: 1fr; }
+  .acceso { grid-template-columns: 1fr; }
   .acceso-marca, .acceso-formulario { padding: 2rem 1.25rem; }
 
   .tabla-notas thead { position: absolute; left: -9999px; }
@@ -174,3 +159,13 @@ input {
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* Etapa 4: identidad institucional compartida. */
+.logo-acceso { display: block; width: min(100%, 274px); height: auto; padding: .4rem; background: var(--blanco); border-radius: 8px; }
+.identidad-panel { display: flex; align-items: center; gap: .9rem; width: 100%; max-width: 1080px; margin: 0 auto; padding: .8rem 1rem 0; }
+.identidad-panel img { display: block; width: 148px; max-width: 40%; height: auto; flex-shrink: 0; }
+.identidad-panel > div { min-width: 0; color: var(--tinta); }
+.identidad-panel strong { display: block; overflow-wrap: anywhere; }
+.identidad-panel p { font-size: .88rem; color: var(--texto-suave); }
+@media (max-width: 700px) { .identidad-panel { gap: .6rem; } .identidad-panel img { width: 120px; } }
+@media print { .identidad-panel { display: none; } }

@@ -147,11 +147,11 @@ select { font: inherit; padding: 0.65rem 0.7rem; border: 1px solid #aebdba; bord
 .formulario-ficha > p { grid-column: 1 / -1; }
 
 /* Panel plegable de estudiantes en vista del profesor */
-.portal2027-estudiantes-plegable > summary { cursor:pointer; list-style:none; padding:14px 16px; border:1px solid #b8cbd0; border-radius:8px; background:#f0f6f6; font-weight:700; color:#173e49; display:flex; align-items:center; justify-content:space-between; }
+.portal2027-estudiantes-plegable > summary { cursor:pointer; list-style:none; padding:14px 16px; border:1px solid var(--borde-panel); border-radius:8px; background:#f0f6f6; font-weight:700; color:var(--tinta-panel); display:flex; align-items:center; justify-content:space-between; }
 .portal2027-estudiantes-plegable > summary::-webkit-details-marker { display:none; }
 .portal2027-estudiantes-plegable > summary::after { content:'▾'; font-size:1.2em; }
 .portal2027-estudiantes-plegable[open] > summary::after { content:'▴'; }
-.portal2027-estudiantes-plegable > summary:focus-visible { outline:3px solid #247c9b; outline-offset:2px; }
+.portal2027-estudiantes-plegable > summary:focus-visible { outline:3px solid var(--foco); outline-offset:2px; }
 .portal2027-estudiantes-interior { padding-top:14px; }
 
 /* Etapa 2: formularios sin zoom automático y controles accesibles al tacto. */
