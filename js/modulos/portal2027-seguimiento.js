@@ -254,7 +254,7 @@
       res.appendChild(el('p', { clase: 'bloque-ayuda', texto: '% de fracaso = reprobados ÷ matrícula total (los «sin calificación» cuentan en la matrícula, no como reprobados). Tope = máximo de reprobados que cabe en la meta. Faltan = reprobados que deben subir a ' + MIN.toFixed(1) + ' para llegar a la meta.' }));
     }
     selTr.addEventListener('change', pintar); inMeta.addEventListener('change', pintar);
-    zona.appendChild(el('div', { clase: 'formulario-fila no-imprimir' }, [campo('Periodo', selTr), campo('Meta de fracaso (%)', inMeta), el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } })]));
+    zona.appendChild(el('div', { clase: 'formulario-fila no-imprimir' }, [campo('Periodo', selTr), campo('Meta de fracaso (%)', inMeta), el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } }), el('a', { clase: 'boton boton-secundario', href: 'portal2027-aprobados.html?asignacion=' + encodeURIComponent(ctx.asignacionId), texto: 'Abrir cuadro de aprobados y reprobados' })]));
     zona.appendChild(res);
     pintar();
     return zona;
