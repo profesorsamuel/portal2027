@@ -13,6 +13,20 @@
   var S = { info: null, rolPanel: null, asig: null, trimestres: [], trimestreId: null, plan: [], sesiones: [], cerrado: false, editando: null, lote: '', previa: null, hermanas: [], planHermanas: {}, aplicarA: {}, pdfs: {}, pdfDisponible: true };
   var barra = null;
 
+  var confirmacionesPlan = new Set();
+  async function accionConfirmada(llave, titulo, mensaje, textoBoton, fn, confirmar) {
+    if (confirmacionesPlan.has(llave)) { return; }
+    confirmacionesPlan.add(llave);
+    try {
+      if (confirmar !== false && !(await P.confirmar(titulo, mensaje, textoBoton))) { return; }
+      await fn();
+    } catch (e) {
+      aviso('No se guardó. ' + textoError(e), 'error');
+    } finally {
+      confirmacionesPlan.delete(llave);
+    }
+  }
+
   /* ---------- utilidades ---------- */
   async function consultar(q) {
     var r = await q;
@@ -100,28 +114,33 @@
       if (!/\.pdf$/i.test(archivo.name) || archivo.type && archivo.type !== 'application/pdf') { aviso('Seleccione un archivo PDF válido.', 'error'); return; }
       if (archivo.size > 15 * 1024 * 1024) { aviso('El PDF no debe superar 15 MB.', 'error'); return; }
       var anterior = S.pdfs[c.id];
-      if (anterior && !window.confirm('¿Reemplazar el PDF de la Clase ' + c.numero + '?')) return;
-      var ruta = c.id + '/' + crypto.randomUUID() + '.pdf';
-      aviso('Subiendo PDF de la Clase ' + c.numero + '…', 'info');
-      try {
-        var up = await db.storage.from('portal2027-planificaciones').upload(ruta, archivo, { contentType:'application/pdf', upsert:false });
-        if (up.error) throw up.error;
-        var saved = await db.from('portal2027_plan_pdf').upsert({ clase_id:c.id, ruta:ruta, nombre_archivo:archivo.name, actualizado_en:new Date().toISOString() }, {onConflict:'clase_id'});
-        if (saved.error) { await db.storage.from('portal2027-planificaciones').remove([ruta]); throw saved.error; }
-        if (anterior) await db.storage.from('portal2027-planificaciones').remove([anterior.ruta]);
-        await recargar('PDF guardado para Clase ' + c.numero + '.');
-      } catch(e) { aviso('Error al subir PDF. Revise que instaló la migración 0039. ' + textoError(e), 'error'); }
+      await accionConfirmada('pdf|' + c.id, 'Reemplazar PDF de planificación',
+        '¿Reemplazar el PDF de la Clase ' + c.numero + '?', 'Reemplazar PDF', async function() {
+        var ruta = c.id + '/' + crypto.randomUUID() + '.pdf';
+        aviso('Subiendo PDF de la Clase ' + c.numero + '…', 'info');
+        try {
+          var up = await db.storage.from('portal2027-planificaciones').upload(ruta, archivo, { contentType:'application/pdf', upsert:false });
+          if (up.error) throw up.error;
+          var saved = await db.from('portal2027_plan_pdf').upsert({ clase_id:c.id, ruta:ruta, nombre_archivo:archivo.name, actualizado_en:new Date().toISOString() }, {onConflict:'clase_id'});
+          if (saved.error) { await db.storage.from('portal2027-planificaciones').remove([ruta]); throw saved.error; }
+          if (anterior) await db.storage.from('portal2027-planificaciones').remove([anterior.ruta]);
+          await recargar('PDF guardado para Clase ' + c.numero + '.');
+        } catch(e) { aviso('Error al subir PDF. Revise que instaló la migración 0039. ' + textoError(e), 'error'); }
+      }, !!anterior);
     });
     input.click();
   }
   async function borrarPDF(c) {
-    var d = S.pdfs[c.id]; if (!d || !window.confirm('¿Eliminar el PDF adjunto a la Clase ' + c.numero + '?')) return;
-    try {
-      var r = await db.from('portal2027_plan_pdf').delete().eq('clase_id',c.id);
-      if (r.error) throw r.error;
-      await db.storage.from('portal2027-planificaciones').remove([d.ruta]);
-      await recargar('PDF eliminado.');
-    } catch(e) { aviso('No se pudo eliminar el PDF: ' + textoError(e), 'error'); }
+    var d = S.pdfs[c.id]; if (!d) return;
+    await accionConfirmada('pdf|' + c.id, 'Eliminar PDF de planificación',
+      '¿Eliminar el PDF adjunto a la Clase ' + c.numero + '?', 'Eliminar PDF', async function() {
+        try {
+          var r = await db.from('portal2027_plan_pdf').delete().eq('clase_id',c.id);
+          if (r.error) throw r.error;
+          await db.storage.from('portal2027-planificaciones').remove([d.ruta]);
+          await recargar('PDF eliminado.');
+        } catch(e) { aviso('No se pudo eliminar el PDF: ' + textoError(e), 'error'); }
+      });
   }
   function celdaPDF(c) {
     var d = S.pdfs[c.id];
@@ -129,7 +148,7 @@
     var botones = [];
     if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',texto:'Ver PDF',onclick:function(){abrirPDF(c);}}));
     botones.push(el('button',{clase:'boton boton-secundario boton-chico',type:'button',disabled:S.cerrado,texto:d?'Reemplazar':'Subir PDF',onclick:function(){subirPDF(c);}}));
-    if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico boton-peligro',type:'button',disabled:S.cerrado,texto:'Eliminar PDF',onclick:function(){borrarPDF(c);}}));
+    if (d) botones.push(el('button',{clase:'boton boton-secundario boton-chico boton-peligro',type:'button',disabled:S.cerrado,texto:'Eliminar PDF',onclick:function(){return borrarPDF(c);}}));
     return el('td',null,[el('div',{clase:'plan-pdf-celda'},[el('span',{texto:d?'📄 Guardado':'Sin PDF'}),...botones])]);
   }
 
@@ -195,33 +214,38 @@
   async function quitar(c) {
     var otros = S.hermanas.map(function (h) { return { h: h, p: planDeHermana(h, c.numero) }; }).filter(function (x) { return x.p; });
     var aviso2 = otros.length ? '\nTambién se quitará en: ' + otros.map(function (x) { return nombreGrupo(x.h); }).join(', ') + '.' : '';
-    if (!window.confirm('¿Quitar la Clase ' + c.numero + ' («' + c.tema + '») de la planificación?\nSu apreciación semanal irá a la papelera de la libreta: dejará de contar y podrá restaurarla si se equivocó.' + aviso2)) { return; }
-    aviso('Guardando…', 'info');
-    var d;
-    try { d = await rpc('portal2027_eliminar_plan_clase', { p_id: c.id, p_version: c.version }); }
-    catch (e) { aviso('No se quitó. ' + textoError(e), 'error'); return; }
-    await cargar(); dibujar();
-    aviso('Clase ' + c.numero + ' quitada. ' + (d && d.apreciacion_en_papelera ? 'Su apreciación semanal está en la papelera de la libreta (se puede restaurar).' : 'Su apreciación estaba bloqueada y se quedó en la libreta.') + textoGrupos(d), 'ok');
+    await accionConfirmada('clase|' + c.id, 'Quitar clase de la planificación',
+      '¿Quitar la Clase ' + c.numero + ' («' + c.tema + '») de la planificación?\nSu apreciación semanal irá a la papelera de la libreta: dejará de contar y podrá restaurarla si se equivocó.' + aviso2, 'Quitar clase', async function() {
+      aviso('Guardando…', 'info');
+      var d;
+      try { d = await rpc('portal2027_eliminar_plan_clase', { p_id: c.id, p_version: c.version }); }
+      catch (e) { aviso('No se quitó. ' + textoError(e), 'error'); return; }
+      await cargar(); dibujar();
+      aviso('Clase ' + c.numero + ' quitada. ' + (d && d.apreciacion_en_papelera ? 'Su apreciación semanal está en la papelera de la libreta (se puede restaurar).' : 'Su apreciación estaba bloqueada y se quedó en la libreta.') + textoGrupos(d), 'ok');
+    });
   }
 
   // Vuelve a aplicar las clases de este grupo a los grupos del mismo nivel (crea las que faltan y corrige las distintas).
   async function copiarAGrupos() {
     if (!S.hermanas.length) { return; }
     if (!S.plan.length) { aviso('Este grupo todavía no tiene clases que copiar.', 'error'); return; }
-    if (!window.confirm('Se copiarán las ' + S.plan.length + ' clases de ' + nombreGrupo({ salon: S.asig.salon }) + ' a: ' + S.hermanas.map(nombreGrupo).join(', ') + '.\nLas que ya existan con el mismo número se corregirán con estos datos. ¿Continuar?')) { return; }
-    aviso('Copiando…', 'info');
-    var hechas = 0, fallos = [];
-    for (var k = 0; k < S.plan.length; k++) {
-      var c = S.plan[k];
-      try {
-        var d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, c.id, null, c.tema, c.fecha_inicio, c.fecha_fin, c.version));
-        hechas += d.grupos_aplicados || 0;
-        c.version = d.version;
-      } catch (e) { fallos.push('Clase ' + c.numero + ': ' + textoError(e)); }
-    }
-    await cargar(); dibujar();
-    var base = 'Listo: ' + hechas + ' clase(s) creadas o corregidas en los otros grupos.';
-    aviso(fallos.length ? base + ' No se pudo: ' + fallos.join(' · ') : base, fallos.length ? 'error' : 'ok');
+    var clases = S.plan.slice();
+    await accionConfirmada('copiar|' + S.asig.id + '|' + S.trimestreId, 'Copiar clases a otros grupos',
+      'Se copiarán las ' + clases.length + ' clases de ' + nombreGrupo({ salon: S.asig.salon }) + ' a: ' + S.hermanas.map(nombreGrupo).join(', ') + '.\nLas que ya existan con el mismo número se corregirán con estos datos. ¿Continuar?', 'Copiar clases', async function() {
+      aviso('Copiando…', 'info');
+      var hechas = 0, fallos = [];
+      for (var k = 0; k < clases.length; k++) {
+        var c = clases[k];
+        try {
+          var d = await rpc('portal2027_guardar_plan_clase', argsGuardar(S.asig.id, c.id, null, c.tema, c.fecha_inicio, c.fecha_fin, c.version));
+          hechas += d.grupos_aplicados || 0;
+          c.version = d.version;
+        } catch (e) { fallos.push('Clase ' + c.numero + ': ' + textoError(e)); }
+      }
+      await cargar(); dibujar();
+      var base = 'Listo: ' + hechas + ' clase(s) creadas o corregidas en los otros grupos.';
+      aviso(fallos.length ? base + ' No se pudo: ' + fallos.join(' · ') : base, fallos.length ? 'error' : 'ok');
+    });
   }
 
   /* ---------- pegar varias clases ----------
@@ -426,7 +450,7 @@
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlAsistencia(c), texto: 'Asistencia' }),
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlApreciacion(c), texto: 'Apreciación' }),
           el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Editar', disabled: S.cerrado, onclick: function () { S.editando = c; dibujar(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }),
-          el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar', disabled: S.cerrado, onclick: function () { quitar(c); } })
+          el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar', disabled: S.cerrado, onclick: function () { return quitar(c); } })
         ])])
       ]);
     });
