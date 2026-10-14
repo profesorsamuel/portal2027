@@ -1,5 +1,7 @@
 # División de libreta — Paso 6: papelera e historial de notas
 
+La continuación de desglose y descuentos está en DIVISION_LIBRETA_PASO_7.md.
+
 ## Instalación
 
 Requiere las etapas 1 a 5 y el paso 5 de división de libreta. No necesita SQL.
