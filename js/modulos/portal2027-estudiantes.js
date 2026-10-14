@@ -207,10 +207,13 @@
       ocupado(false);
     });
 
+    var quitarPendiente = false;
     quitar.addEventListener('click', async function () {
-      if (!window.confirm('¿Quitar la foto de ' + nombreEst(est) + '?')) { return; }
-      ocupado(true);
+      if (quitarPendiente || quitar.disabled) { return; }
+      quitarPendiente = true;
       try {
+        if (!(await P.confirmar('Quitar foto del estudiante', '¿Quitar la foto de ' + nombreEst(est) + '?', 'Quitar foto'))) { return; }
+        ocupado(true);
         var d = await db.storage.from(BUCKET).remove([est.foto_ruta]);
         if (d.error) { throw d.error; }
         var g = await db.rpc('portal2027_guardar_foto_ruta', { p_estudiante: est.id, p_ruta: null });
@@ -223,8 +226,10 @@
         if (alCambiar) { alCambiar(); }
       } catch (e) {
         aviso.mostrar('No se quitó la foto. ' + P.traducirError(e), 'error');
+      } finally {
+        quitarPendiente = false;
+        ocupado(false);
       }
-      ocupado(false);
     });
 
     mostrarFoto().catch(function () { aviso.mostrar('No se pudo cargar la foto.', 'error'); });
@@ -447,6 +452,7 @@
       var vista = el('div', { clase: 'vista-previa' });
       var confirmar = el('button', { clase: 'boton', type: 'button', texto: 'Confirmar importación', hidden: true });
       var resultadoActual = null;
+      var importacionPendiente = false;
 
       entrada.addEventListener('change', async function () {
         vista.textContent = '';
@@ -474,18 +480,20 @@
       });
 
       confirmar.addEventListener('click', async function () {
-        if (!resultadoActual) { return; }
-        if (!window.confirm('¿Importar ' + resultadoActual.filas.length + ' filas?')) { return; }
-        confirmar.disabled = true;
+        if (!resultadoActual || importacionPendiente) { return; }
+        importacionPendiente = true;
+        var datosImportar = resultadoActual;
         entrada.disabled = true;
-        aviso.mostrar('Importando…', 'info');
         try {
-          var envio = resultadoActual.filas.map(function (f) {
+          if (!(await P.confirmar('Importar estudiantes', '¿Importar ' + datosImportar.filas.length + ' filas?', 'Importar estudiantes'))) { return; }
+          confirmar.disabled = true;
+          aviso.mostrar('Importando…', 'info');
+          var envio = datosImportar.filas.map(function (f) {
             var o = {};
             COLUMNAS_BD.forEach(function (c) { o[c] = f[c]; });
             return o;
           });
-          var conCedula = resultadoActual.filas.filter(function (f) { return normCedula(f.cedula); })
+          var conCedula = datosImportar.filas.filter(function (f) { return normCedula(f.cedula); })
             .map(function (f) { return { codigo: f.codigo_estudiante, cedula: f.cedula }; });
           var r = await db.rpc('portal2027_importar_estudiantes', { p_filas: envio });
           if (r.error) { throw r.error; }
@@ -522,8 +530,11 @@
           var m = (e && e.message) || '';
           aviso.mostrar(/^Fila \d+/.test(m) || /^(No hay filas|Máximo)/.test(m) ? 'No se importó nada. ' + m : 'No se importó nada. ' + P.traducirError(e), 'error');
         }
-        confirmar.disabled = false;
-        entrada.disabled = false;
+        finally {
+          importacionPendiente = false;
+          confirmar.disabled = false;
+          entrada.disabled = false;
+        }
       });
 
       /* ----- plantilla incrustada: ejemplo en pantalla y Excel generado en el navegador ----- */
@@ -629,14 +640,17 @@
         return filas;
       }
 
+      var accesosPendientes = false;
       entrada.addEventListener('change', async function () {
+        if (accesosPendientes) { return; }
         resumen.textContent = '';
         aviso2.mostrar('', 'info');
         var archivo = entrada.files && entrada.files[0];
         if (!archivo) { return; }
+        accesosPendientes = true;
         try {
           var filas = leer(await archivo.arrayBuffer());
-          if (!window.confirm('¿Crear o actualizar el acceso de ' + filas.length + ' estudiantes?')) { entrada.value = ''; return; }
+          if (!(await P.confirmar('Crear o actualizar accesos', '¿Crear o actualizar el acceso de ' + filas.length + ' estudiantes?', 'Procesar accesos'))) { entrada.value = ''; return; }
           entrada.disabled = true;
           var rr = await crearAccesosEnLotes(filas, function (n, t) { aviso2.mostrar('Procesando ' + n + ' de ' + t + '…', 'info'); });
           var creados = rr.creados, actualizados = rr.actualizados, errores = rr.errores;
@@ -651,8 +665,10 @@
           dibujarLista();
         } catch (e) {
           aviso2.mostrar(e.message || P.traducirError(e), 'error');
+        } finally {
+          accesosPendientes = false;
+          entrada.disabled = false;
         }
-        entrada.disabled = false;
       });
       return zona;
     }
@@ -724,11 +740,14 @@
           var e = m.estudiante;
           var cuenta = e.usuario_id ? 'Vinculada' : (e.correo_estudiante ? 'Sin cuenta' : 'Sin correo');
           var invitar = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Invitar', disabled: !!e.usuario_id || !e.correo_estudiante });
+          var invitacionPendiente = false;
           invitar.addEventListener('click', async function () {
-            if (!window.confirm('¿Enviar invitación a ' + e.correo_estudiante + '?')) { return; }
-            invitar.disabled = true;
-            aviso.mostrar('Enviando invitación…', 'info');
+            if (invitacionPendiente || invitar.disabled) { return; }
+            invitacionPendiente = true;
             try {
+              if (!(await P.confirmar('Invitar estudiante', '¿Enviar invitación a ' + e.correo_estudiante + '?', 'Enviar invitación'))) { return; }
+              invitar.disabled = true;
+              aviso.mostrar('Enviando invitación…', 'info');
               var r = await db.functions.invoke('portal2027-invitar-estudiante', { body: { estudiante_id: e.id, redirect_to: urlBase() } });
               if (r.error) {
                 var detalleError = '';
@@ -741,7 +760,7 @@
             } catch (err) {
               aviso.mostrar('No se pudo invitar. ' + (err.message || ''), 'error');
               invitar.disabled = false;
-            }
+            } finally { invitacionPendiente = false; }
           });
           var ver = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Foto', onclick: function () {
             detalle.textContent = '';
