@@ -110,6 +110,14 @@
     return sec;
   }
 
+  function habilitarArrastre(formulario, entrada, recibir) {
+    var zonaDrop = el('div', { clase: 'zona-soltar', role: 'note', texto: 'Arrastre y suelte aquí sus archivos, o selecciónelos arriba.' });
+    if (entrada.parentNode) entrada.parentNode.appendChild(zonaDrop); else formulario.appendChild(zonaDrop);
+    ['dragenter', 'dragover'].forEach(function(t) { zonaDrop.addEventListener(t, function(e) { e.preventDefault(); zonaDrop.classList.add('sobre'); }); });
+    ['dragleave', 'drop'].forEach(function(t) { zonaDrop.addEventListener(t, function(e) { e.preventDefault(); zonaDrop.classList.remove('sobre'); }); });
+    zonaDrop.addEventListener('drop', function(e) { if (e.dataTransfer && e.dataTransfer.files.length) recibir(e.dataTransfer.files); });
+  }
+
   /* ---------- materiales ---------- */
   // Una tanda conserva sus resultados y títulos para reintentar solo fallidas.
   function formImagenes() {
@@ -127,7 +135,7 @@
     reintentar.hidden = true;
     var f = el('form', { clase: 'formulario-clases' }, [
       campo('Título (opcional; se numerará si hay varias fotos)', titulo), campo('Descripción (opcional)', desc),
-      campo('Fotos JPG o PNG (máximo 15 por tanda)', archivo), lista,
+      campo('Fotos JPG o PNG (máximo 40 por tanda)', archivo), lista,
       el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']),
       enviar, progreso, textoProgreso, resumen, reintentar
     ]);
@@ -148,11 +156,10 @@
         ]), quitar]));
       });
     }
-    archivo.addEventListener('change', async function () {
+    archivo.addEventListener('change', function () { agregarFotos(Array.prototype.slice.call(archivo.files || [])); archivo.value = ''; });
+    async function agregarFotos(elegidas) {
       if (ocupado || preparando) { return; }
-      var elegidas = Array.prototype.slice.call(archivo.files || []);
-      archivo.value = '';
-      if (items.length + elegidas.length > 15) { aviso('Puede elegir hasta 15 fotos por tanda. Quite algunas antes de agregar más.', 'error'); return; }
+      if (items.length + elegidas.length > 40) { aviso('Puede elegir hasta 40 fotos por tanda. Quite algunas antes de agregar más.', 'error'); return; }
       preparando = true; archivo.disabled = true; enviar.disabled = true;
       // Empezar una nueva tanda después de terminar la anterior.
       contexto = null; resumen.textContent = ''; reintentar.hidden = true;
@@ -168,7 +175,7 @@
         dibujarPrevias();
       }
       preparando = false; archivo.disabled = false; enviar.disabled = false; dibujarPrevias();
-    });
+    }
     async function subir(esReintento) {
       if (ocupado || preparando) { return; }
       if (!items.length) { aviso('Elija al menos una foto.', 'error'); return; }
@@ -248,6 +255,7 @@
         }).map(filaMaterial)));
       } catch (e) { console.error('Actualizar materiales', e); aviso('La tanda terminó, pero no se pudo actualizar la lista. Pulse «Recargar».', 'error'); }
     }
+    habilitarArrastre(f, archivo, function(files) { agregarFotos(files); });
     f.addEventListener('submit', function (ev) { ev.preventDefault(); subir(false); });
     return f;
   }
@@ -265,6 +273,7 @@
       S.tipoMaterial === 'enlace' ? null : F.vincularPeso(archivo, 'materiales'),
       el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']), enviar
     ]);
+    if (S.tipoMaterial === 'pdf') habilitarArrastre(f, archivo, function(files) { if (files.length) { archivo.files = files; archivo.dispatchEvent(new Event('change')); } });
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       if (!titulo.value.trim()) { aviso('Escriba el título del material.', 'error'); return; }
@@ -303,6 +312,7 @@
     var enPapelera = !!m.eliminado_en;
     var acciones = [];
     if (m.archivo_ruta && !enPapelera) {
+      if (/\.(jpe?g|png)$/i.test(m.archivo_nombre || '')) acciones.push(boton('Presentar imágenes', function () { C.visorImagenes(S.materiales.filter(function(x){ return (x.clase_id || null) === (m.clase_id || null) && !x.eliminado_en; }), m); }));
       acciones.push(boton('Abrir archivo', async function () {
         try { await C.abrir(C.BUCKET_MATERIALES, m.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
       }));
@@ -337,7 +347,7 @@
 
   function seccionMateriales() {
     var lista = S.materiales.filter(function (m) { return (m.clase_id || null) === S.claseId && (S.verPapelera || !m.eliminado_en); });
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'PDF, imágenes y enlaces' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen', 'enlace'].map(function(tipo, i) { return boton(['Subir PDF de la clase', 'Agregar imagen', 'Agregar enlace de tarea'][i], function() { S.tipoMaterial = tipo; dibujar(); }); })), S.tipoMaterial ? formMaterial() : null]);
+    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'PDF e imágenes' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['Subir PDF de la clase', 'Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }); })), S.tipoMaterial ? formMaterial() : null]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en esta clase.' })); }
     else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(filaMaterial))); }
     return sec;

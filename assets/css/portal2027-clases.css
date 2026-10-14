@@ -27,3 +27,6 @@
 .fotos-previas li > div { flex:1; min-width:140px; overflow-wrap:anywhere; }
 .fotos-previas strong, .fotos-previas small { display:block; }
 .formulario-clases progress { width:100%; height:20px; }
+
+.zona-soltar{border:2px dashed #7b9ca5;border-radius:10px;padding:22px;text-align:center;margin:12px 0;background:#f3f9fa}.zona-soltar.sobre{background:#d4eff4;border-color:#136a80}
+.visor-clases{position:fixed;inset:0;background:#101820;color:white;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}.visor-clases[hidden]{display:none}.visor-clases img{max-width:95vw;max-height:78vh;object-fit:contain;transform-origin:center;touch-action:pan-x pan-y}.visor-clases .controles{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.visor-clases button{padding:10px;border-radius:8px;cursor:pointer}.visor-clases p{color:white}

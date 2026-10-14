@@ -220,6 +220,7 @@
             return el('li', { clase: 'tarjeta-clase' }, [
               el('div', null, [el('strong', { texto: x.titulo }), x.descripcion ? el('p', { clase: 'bloque-ayuda', texto: x.descripcion }) : null]),
               C.miniatura(x),
+              /\.(jpe?g|png)$/i.test(x.archivo_nombre || '') ? boton('Ver presentación', function(){ C.visorImagenes(materiales, x); }) : null,
               C.enlace(x.enlace, 'Abrir enlace de tarea o recurso'),
               x.archivo_ruta ? boton('Abrir ' + x.archivo_nombre, async function () {
                 try { await C.abrir(C.BUCKET_MATERIALES, x.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }

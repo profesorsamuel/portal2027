@@ -9,7 +9,7 @@
   F.LIMITES = Object.freeze({
     fotos: Object.freeze({ bucket: 'portal2027-fotos', maxBytes: 2 * MB }),
     documentos: Object.freeze({ bucket: 'portal2027-documentos', maxBytes: 5 * MB }),
-    materiales: Object.freeze({ bucket: 'portal2027-materiales', maxBytes: 15 * MB }),
+    materiales: Object.freeze({ bucket: 'portal2027-materiales', maxBytes: 50 * MB }),
     entregas: Object.freeze({ bucket: 'portal2027-entregas', maxBytes: 15 * MB }),
     planificacion: Object.freeze({ bucket: 'portal2027-planificaciones', maxBytes: 15 * MB })
   });

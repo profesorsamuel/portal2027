@@ -83,6 +83,32 @@
   C.urlSegura = function(valor) { try { var u = new URL(valor); return /^https?:$/.test(u.protocol) ? u.href : null; } catch(e) { return null; } };
   C.enlace = function(valor, titulo) { var url = C.urlSegura(valor); return url ? P.el('a', { clase: 'boton boton-secundario boton-chico', href: url, target: '_blank', rel: 'noopener noreferrer', texto: titulo || 'Abrir enlace' }) : null; };
 
+  C.visorImagenes = function(materiales, inicial) {
+    var fotos = materiales.filter(function(m) { return m.archivo_ruta && /\.(jpe?g|png)$/i.test(m.archivo_nombre || '') && !m.eliminado_en; });
+    var indice = fotos.findIndex(function(m) { return m.id === inicial.id; });
+    if (indice < 0) return;
+    var escala = 1, inicioX = null;
+    var capa = P.el('div', { clase: 'visor-clases', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Presentación de imágenes' });
+    var imagen = P.el('img', { alt: '' }), titulo = P.el('p'), contador = P.el('p');
+    var controles = P.el('div', { clase: 'controles' });
+    function btn(nombre, fn) { var b = P.el('button', { type:'button', texto:nombre }); b.addEventListener('click', fn); controles.appendChild(b); }
+    function cerrar() { document.removeEventListener('keydown', teclado); capa.remove(); }
+    function mostrar() {
+      var m = fotos[indice]; imagen.removeAttribute('src'); imagen.alt = m.titulo || 'Imagen de clase'; titulo.textContent = m.titulo || ''; contador.textContent = (indice + 1) + ' / ' + fotos.length;
+      escala = 1; imagen.style.transform = 'scale(1)';
+      db.storage.from(C.BUCKET_MATERIALES).createSignedUrl(m.archivo_ruta, 600).then(function(r) { if (!r.error && capa.isConnected && fotos[indice].id === m.id) imagen.src = r.data.signedUrl; });
+    }
+    function pasar(n) { indice = (indice + n + fotos.length) % fotos.length; mostrar(); }
+    function zoom(n) { escala = Math.max(1, Math.min(5, escala + n)); imagen.style.transform = 'scale(' + escala + ')'; }
+    function teclado(e) { if(e.key === 'Escape') cerrar(); if(e.key === 'ArrowRight') pasar(1); if(e.key === 'ArrowLeft') pasar(-1); if(e.key === '+') zoom(.25); if(e.key === '-') zoom(-.25); }
+    btn('Cerrar ✕', cerrar); btn('◀ Anterior', function(){ pasar(-1); }); btn('Siguiente ▶', function(){ pasar(1); }); btn('Zoom +', function(){ zoom(.25); }); btn('Zoom −', function(){ zoom(-.25); }); btn('Restablecer', function(){ escala=1; imagen.style.transform='scale(1)'; });
+    btn('Pantalla completa', function(){ if(capa.requestFullscreen) capa.requestFullscreen().catch(function(){}); });
+    btn('Descargar imagen', async function(){ try { var r = await db.storage.from(C.BUCKET_MATERIALES).download(fotos[indice].archivo_ruta); if(r.error) throw r.error; var url = URL.createObjectURL(r.data); var a=document.createElement('a'); a.href=url; a.download=fotos[indice].archivo_nombre || 'imagen.jpg'; a.click(); setTimeout(function(){ URL.revokeObjectURL(url); },1000); } catch(e){ contador.textContent='No se pudo descargar la imagen.'; } });
+    imagen.addEventListener('touchstart', function(e){ inicioX=e.touches[0].clientX; }, {passive:true});
+    imagen.addEventListener('touchend', function(e){ if(inicioX !== null && e.changedTouches.length){ var d=e.changedTouches[0].clientX-inicioX; if(Math.abs(d)>55) pasar(d<0?1:-1); } inicioX=null; }, {passive:true});
+    capa.appendChild(titulo); capa.appendChild(imagen); capa.appendChild(contador); capa.appendChild(controles); document.body.appendChild(capa); document.addEventListener('keydown', teclado); mostrar();
+  };
+
   C.miniatura = function(m) {
     if (!m.archivo_ruta || !/\.(jpe?g|png)$/i.test(m.archivo_nombre || '')) return null;
     var img = P.el('img', { alt: m.titulo, loading: 'lazy', clase: 'recurso-miniatura', hidden: true });

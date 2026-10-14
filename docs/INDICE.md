@@ -2,6 +2,9 @@
 
 ## Vigente
 
+| [DIVISION_LIBRETA_PASO_1.md](DIVISION_LIBRETA_PASO_1.md) | Documento vigente |
+| [MEJORA_MATERIALES_50MB.md](MEJORA_MATERIALES_50MB.md) | Instalación de materiales |
+
 | [AUDITORIA_ACCESO_PENDIENTE.md](AUDITORIA_ACCESO_PENDIENTE.md) | Documento vigente o comprobación pendiente |
 | [AUDITORIA_RLS_PENDIENTE.md](AUDITORIA_RLS_PENDIENTE.md) | Documento vigente o comprobación pendiente |
 | [COMO_CARGAR_HORARIO_2027.md](COMO_CARGAR_HORARIO_2027.md) | Documento vigente o comprobación pendiente |
@@ -80,3 +83,53 @@ Archivos conservados como referencia de etapas anteriores.
 | [portal2027-reportes-cierre-parteA.md](historico/portal2027-reportes-cierre-parteA.md) | Registro de una etapa anterior |
 | [portal2027-reportes-cierre-parteB.md](historico/portal2027-reportes-cierre-parteB.md) | Registro de una etapa anterior |
 | [portal2027-reportes-cierre-parteC-aprobados-reprobados.md](historico/portal2027-reportes-cierre-parteC-aprobados-reprobados.md) | Registro de una etapa anterior |
+
+
+
+| [DIVISION_LIBRETA_PASO_2.md](DIVISION_LIBRETA_PASO_2.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_3.md](DIVISION_LIBRETA_PASO_3.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_4.md](DIVISION_LIBRETA_PASO_4.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_5.md](DIVISION_LIBRETA_PASO_5.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_6.md](DIVISION_LIBRETA_PASO_6.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_7.md](DIVISION_LIBRETA_PASO_7.md) | Documento vigente |
+| [DIVISION_LIBRETA_PASO_8.md](DIVISION_LIBRETA_PASO_8.md) | Documento vigente |
+| [ETAPAS_2_Y_3_HORARIO.md](ETAPAS_2_Y_3_HORARIO.md) | Documento vigente |
+| [ETAPAS_ACCESO_PRUEBAS_PENDIENTES.md](ETAPAS_ACCESO_PRUEBAS_PENDIENTES.md) | Documento vigente |
+| [ETAPA_2_PARCIAL_LEER_ANTES_DE_INSTALAR.md](ETAPA_2_PARCIAL_LEER_ANTES_DE_INSTALAR.md) | Documento vigente |
+| [ETAPA_3_COMPORTAMIENTO_DIARIO_LEER_PRIMERO.md](ETAPA_3_COMPORTAMIENTO_DIARIO_LEER_PRIMERO.md) | Documento vigente |
+| [ETAPA_3_INSTALAR_ENTREGAS_MULTIPLES.md](ETAPA_3_INSTALAR_ENTREGAS_MULTIPLES.md) | Documento vigente |
+| [ETAPA_3_PROPUESTA_ENTREGAS_MULTIPLES.md](ETAPA_3_PROPUESTA_ENTREGAS_MULTIPLES.md) | Documento vigente |
+| [ETAPA_4_LIMITES_Y_PDF.md](ETAPA_4_LIMITES_Y_PDF.md) | Documento vigente |
+| [ETAPA_5_DIVISION_LIBRETA.md](ETAPA_5_DIVISION_LIBRETA.md) | Documento vigente |
+| [ETAPA_5_INSTALACION_Y_PRUEBAS.md](ETAPA_5_INSTALACION_Y_PRUEBAS.md) | Documento vigente |
+| [INSTALACION_ETAPAS_1_A_5.md](INSTALACION_ETAPAS_1_A_5.md) | Documento vigente |
+| [PROMPT_PLANIFICACION_MEDUCA_QUINCENAL_2027.md](PROMPT_PLANIFICACION_MEDUCA_QUINCENAL_2027.md) | Documento vigente |
+| [REVISION_HTML_Y_CSP.md](REVISION_HTML_Y_CSP.md) | Documento vigente |
+| [VALIDACIONES_ACCESO_ETAPAS_AGRUPADAS.md](VALIDACIONES_ACCESO_ETAPAS_AGRUPADAS.md) | Documento vigente |
+| [portal2027-auditoria-csp.md](portal2027-auditoria-csp.md) | Documento vigente |
+| [portal2027-cache-y-service-worker.md](portal2027-cache-y-service-worker.md) | Documento vigente |
+| [portal2027-clases-tareas-parteA.md](portal2027-clases-tareas-parteA.md) | Documento vigente |
+| [portal2027-clases-tareas-parteB.md](portal2027-clases-tareas-parteB.md) | Documento vigente |
+| [portal2027-ejercicios-parteA.md](portal2027-ejercicios-parteA.md) | Documento vigente |
+| [portal2027-ejercicios-parteB.md](portal2027-ejercicios-parteB.md) | Documento vigente |
+| [portal2027-etapa1-instalacion.md](portal2027-etapa1-instalacion.md) | Documento vigente |
+| [portal2027-etapa1-parteB.md](portal2027-etapa1-parteB.md) | Documento vigente |
+| [portal2027-etapa2-instalacion.md](portal2027-etapa2-instalacion.md) | Documento vigente |
+| [portal2027-etapa3-parteA.md](portal2027-etapa3-parteA.md) | Documento vigente |
+| [portal2027-etapa3-parteB.md](portal2027-etapa3-parteB.md) | Documento vigente |
+| [portal2027-etapa4-parteA.md](portal2027-etapa4-parteA.md) | Documento vigente |
+| [portal2027-etapa4-parteB.md](portal2027-etapa4-parteB.md) | Documento vigente |
+| [portal2027-etapa5.md](portal2027-etapa5.md) | Documento vigente |
+| [portal2027-etapa6.md](portal2027-etapa6.md) | Documento vigente |
+| [portal2027-etapa8-parteA.md](portal2027-etapa8-parteA.md) | Documento vigente |
+| [portal2027-etapa8-parteB.md](portal2027-etapa8-parteB.md) | Documento vigente |
+| [portal2027-etapa9-parteA.md](portal2027-etapa9-parteA.md) | Documento vigente |
+| [portal2027-etapa9-parteB.md](portal2027-etapa9-parteB.md) | Documento vigente |
+| [portal2027-instalacion-y-pruebas-paquete.md](portal2027-instalacion-y-pruebas-paquete.md) | Documento vigente |
+| [portal2027-integracion-ejercicios.md](portal2027-integracion-ejercicios.md) | Documento vigente |
+| [portal2027-plan-division-js.md](portal2027-plan-division-js.md) | Documento vigente |
+| [portal2027-pruebas-finales.md](portal2027-pruebas-finales.md) | Documento vigente |
+| [portal2027-recuperacion-individual.md](portal2027-recuperacion-individual.md) | Documento vigente |
+| [portal2027-reportes-cierre-parteA.md](portal2027-reportes-cierre-parteA.md) | Documento vigente |
+| [portal2027-reportes-cierre-parteB.md](portal2027-reportes-cierre-parteB.md) | Documento vigente |
+| [portal2027-reportes-cierre-parteC-aprobados-reprobados.md](portal2027-reportes-cierre-parteC-aprobados-reprobados.md) | Documento vigente |
