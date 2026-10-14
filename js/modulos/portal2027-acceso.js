@@ -3,7 +3,7 @@
   'use strict';
 
   var P = window.portal2027;
-  var VISTAS = ['cargando', 'login', 'recuperar', 'nueva', 'elegir', 'sinrol'];
+  var VISTAS = ['cargando', 'login', 'recuperar', 'nueva', 'elegir', 'sinrol', 'temporal'];
 
   function $(id) { return document.getElementById(id); }
 
@@ -96,12 +96,89 @@
   // Misma regla que en el servidor: solo letras y números, en mayúsculas ("8-123-456" = "8123456").
   function normalizarCedula(c) { return String(c || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
 
+  function credencialesIncorrectas(error) {
+    return error && (error.code === 'invalid_credentials' || /Invalid login credentials/i.test(error.message || ''));
+  }
+
+  async function autenticarEstudiante(correo, clave) {
+    var r = await P.db.auth.signInWithPassword({ email: correo, password: clave });
+    // Compatibilidad con cuentas antiguas: solo después de credenciales incorrectas.
+    var cedula = normalizarCedula(clave);
+    if (credencialesIncorrectas(r.error) && cedula && cedula !== clave) {
+      r = await P.db.auth.signInWithPassword({ email: correo, password: cedula });
+    }
+    return r;
+  }
+
+  async function requiereCambio() {
+    var r = await P.db.rpc('portal2027_requiere_cambio_clave');
+    if (r.error || typeof r.data !== 'boolean') {
+      console.error('No se pudo comprobar el estado de contraseña', r.error);
+      throw new Error('No se pudo comprobar su acceso. Inténtelo nuevamente o consulte al docente.');
+    }
+    return r.data;
+  }
+
+  function prepararCambioTemporal() {
+    var vista = document.createElement('div');
+    vista.id = 'vista-temporal'; vista.className = 'vista'; vista.hidden = true;
+    vista.appendChild(P.el('h2', { texto: 'Elija su contraseña personal' }));
+    vista.appendChild(P.el('p', { clase: 'texto-ayuda', texto: 'Debe cambiar la contraseña temporal antes de continuar. Use de 12 a 128 caracteres, con letras y números.' }));
+    var form = document.createElement('form'); form.id = 'form-temporal'; form.noValidate = true;
+    [['actual', 'Contraseña temporal', 'current-password'], ['clave', 'Contraseña nueva', 'new-password'], ['repetir', 'Repita la contraseña nueva', 'new-password']].forEach(function (campo) {
+      var id = 'temporal-' + campo[0];
+      var etiqueta = P.el('label', { texto: campo[1] }); etiqueta.htmlFor = id;
+      var entrada = document.createElement('input');
+      entrada.id = id; entrada.name = campo[0]; entrada.type = 'password';
+      entrada.autocomplete = campo[2]; entrada.required = true; entrada.maxLength = 128;
+      if (campo[0] === 'actual') { entrada.setAttribute('data-foco', ''); }
+      form.appendChild(etiqueta); form.appendChild(entrada);
+    });
+    var guardar = P.el('button', { clase: 'boton boton-principal', texto: 'Guardar contraseña' }); guardar.type = 'submit';
+    var cancelar = P.el('button', { clase: 'enlace-boton', texto: 'Cerrar sesión' }); cancelar.type = 'button';
+    cancelar.addEventListener('click', salir);
+    form.appendChild(guardar); form.appendChild(cancelar); vista.appendChild(form);
+    var aviso = P.el('p', { clase: 'mensaje' }); aviso.id = 'mensaje-temporal'; aviso.setAttribute('role', 'alert'); aviso.hidden = true;
+    vista.appendChild(aviso); $('vista-nueva').parentNode.appendChild(vista);
+    form.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      var actual = $('temporal-actual').value;
+      var nueva = $('temporal-clave').value;
+      if (!actual || nueva.length < 12 || nueva.length > 128 || !/[A-Za-z]/.test(nueva) || !/[0-9]/.test(nueva)) {
+        mensaje('temporal', 'Escriba la contraseña temporal y una nueva de 12 a 128 caracteres, con letras y números.', 'error'); return;
+      }
+      if (nueva !== $('temporal-repetir').value) { mensaje('temporal', 'Las contraseñas nuevas no coinciden.', 'error'); return; }
+      if (actual === nueva) { mensaje('temporal', 'Elija una contraseña diferente de la temporal.', 'error'); return; }
+      ocupado(form, true); cancelar.disabled = true; mensaje('temporal', '', 'info');
+      try {
+        var r = await P.db.functions.invoke('portal2027-cambiar-clave', { body: { claveActual: actual, claveNueva: nueva } });
+        if (r.error || !r.data || !r.data.ok) {
+          var texto = r.data && r.data.error;
+          if (!texto && r.error && r.error.context && typeof r.error.context.json === 'function') {
+            try { var detalle = await r.error.context.json(); texto = detalle.error; } catch (ignorar) { /* respuesta no JSON */ }
+          }
+          console.error('No se pudo cambiar la contraseña', r.error);
+          mensaje('temporal', texto || 'No se pudo cambiar la contraseña. Revise la clave temporal o consulte al docente.', 'error'); return;
+        }
+        form.reset();
+        await salir();
+        mensaje('login', 'Contraseña guardada. Entre con su nueva contraseña personal.', 'ok');
+      } catch (e) {
+        console.error('Cambio de contraseña interrumpido', e);
+        mensaje('temporal', 'No se pudo completar el cambio. Revise su internet e inténtelo nuevamente.', 'error');
+      } finally { ocupado(form, false); cancelar.disabled = false; }
+    });
+    var etiqueta = document.querySelector('label[for="est-cedula"]');
+    if (etiqueta) { etiqueta.textContent = 'Contraseña personal o temporal'; }
+    $('est-cedula').placeholder = 'Escriba su contraseña';
+  }
+
   async function entrarEstudiante(form) {
     var grupo = form.grupo.value;
     var nombre = form.nombre.value.trim();
-    var cedula = normalizarCedula(form.cedula.value);
-    var generico = 'No encontramos un estudiante con esos datos. Revise su grado, su nombre y apellido, y su cédula.';
-    if (!grupo || !nombre || !cedula) { mensaje('login', 'Elija su grado, seleccione su nombre y escriba su cédula.', 'error'); return; }
+    var clave = form.cedula.value;
+    var generico = 'No se pudo entrar. Revise su grado, su nombre y su contraseña.';
+    if (!grupo || !nombre || !clave) { mensaje('login', 'Elija su grado, seleccione su nombre y escriba su contraseña.', 'error'); return; }
     if (nombre.split(/\s+/).length < 2) { mensaje('login', 'Escriba su nombre y su apellido.', 'error'); return; }
 
     ocupado(form, true);
@@ -112,9 +189,9 @@
       var candidatos = (b.data && b.data.candidatos) || [];
       var entro = false;
       for (var i = 0; i < candidatos.length && !entro; i++) {
-        var r = await P.db.auth.signInWithPassword({ email: candidatos[i], password: cedula });
+        var r = await autenticarEstudiante(candidatos[i], clave);
         if (!r.error) { entro = true; }
-        else if (!/Invalid login credentials/i.test(r.error.message || '')) { throw r.error; }
+        else if (!credencialesIncorrectas(r.error)) { throw r.error; }
       }
       if (!entro) { mensaje('login', generico, 'error'); ocupado(form, false); return; }
       form.cedula.value = '';
@@ -127,6 +204,9 @@
 
   async function enrutar() {
     mostrar('cargando');
+    try {
+      if (await requiereCambio()) { mostrar('temporal'); return; }
+    } catch (e) { mostrar('login'); mensaje('login', e.message, 'error'); return; }
     var info;
     try { info = await P.cargarSesion(); }
     catch (e) { mostrar('login'); mensaje('login', P.traducirError(e), 'error'); return; }
@@ -152,6 +232,7 @@
 
   async function salir() {
     try { await P.db.auth.signOut(); } catch (e) { /* ignorar */ }
+    $('form-temporal').reset();
     $('form-login').reset();
     $('form-estudiante').reset();
     cargarEstudiantes();
@@ -211,6 +292,7 @@
       if (form.clave.value !== form.clave2.value) { mensaje('nueva', 'Las dos contraseñas no coinciden.', 'error'); return; }
       ocupado(form, true);
       try {
+        if (await requiereCambio()) { form.reset(); mostrar('temporal'); return; }
         var r = await P.db.auth.updateUser({ password: form.clave.value });
         if (r.error) { throw r.error; }
         form.reset();
@@ -224,6 +306,7 @@
   }
 
   async function iniciar() {
+    prepararCambioTemporal();
     conectarFormularios();
 
     if (!P.db) {
