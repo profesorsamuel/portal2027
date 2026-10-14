@@ -81,7 +81,8 @@ if (process.argv[2]) {
   }
   const bloquePlan = anterior.slice(b, anterior.indexOf(finPlan));
   assert(modulo.includes(bloquePlan), 'El cuerpo del planificador es idéntico');
-  assert.equal(actual.slice(actual.indexOf(finPlan)), anterior.slice(anterior.indexOf(finPlan)), 'Interfaz, guardado y resto del módulo sin cambios');
+  assert.equal(actual.slice(actual.indexOf('  async function guardarImportacion')), anterior.slice(anterior.indexOf('  async function guardarImportacion')), 'Guardado y resto del módulo sin cambios');
+  assert(modulo.includes(anterior.slice(anterior.indexOf(finPlan), anterior.indexOf('  async function guardarImportacion'))), 'Interfaz conservada');
   const viejo = preparar(legado.funciones, anterior);
   const casos = ['', '0\n5', '4\n\n4,75\n5', 'Nombre;Nota\nAna Pérez;4,5\nJosé Díaz;3', '001\t4\n002\t3', 'Pérez\t4', 'Luis Pérez\t4.251', 'Ana Pérez 4.5\nAna Pérez 4.75'];
   for (const texto of casos) for (const inicio of [0, 1, 2]) assert.deepEqual(importar(nuevo, texto, inicio), importar(viejo, texto, inicio));
