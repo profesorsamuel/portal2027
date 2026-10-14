@@ -119,6 +119,13 @@
     S.publicada = !!(r[3] && r[3].publicada);
     S.cerrado = !!(r[4] && r[4].cerrado);
     S.evals = r[0];
+    // Las apreciaciones semanales siempre en orden de semana (1, 2, 3, ...), sin mover las demás columnas.
+    {
+      var posiciones = [], semanales = [];
+      S.evals.forEach(function (e, i) { if (e.categoria === 'apreciacion' && e.semana !== null && e.semana !== undefined) { posiciones.push(i); semanales.push(e); } });
+      semanales.sort(function (a, b) { return (a.semana - b.semana) || (a.eliminada_en ? 1 : 0) - (b.eliminada_en ? 1 : 0); });
+      posiciones.forEach(function (pos, k) { S.evals[pos] = semanales[k]; });
+    }
     // Semanas ligadas a la planificación: sus columnas no se pueden eliminar desde la libreta.
     S.planEv = {};
     try {
