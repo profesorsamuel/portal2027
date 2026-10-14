@@ -22,9 +22,10 @@ assert(mover(t.input(2,1),-1,0));assert.equal(t.actual().id,'0:1');
 t=tabla();t.input(0,1).disabled=true;t.activar(t.input(0,0));assert(mover(t.input(0,0),0,1));assert.equal(t.actual().id,'0:2');assert(mover(t.input(0,2),0,-1));assert.equal(t.actual().id,'0:0');
 assert.equal(mover(t.input(0,0),-1,0),false);assert.equal(mover(t.input(0,0),0,-1),false);assert.equal(mover(t.input(3,2),1,0),false);assert.equal(mover(t.input(3,2),0,1),false);
 // Los eventos reales de celdaNota conservan sus reglas y usan el servicio extraído.
+const fuenteEventos=fs.readFileSync(path.join(raiz,'js/modulos/portal2027-libreta-tabla.js'),'utf8');
 const fuente=fs.readFileSync(path.join(raiz,'js/modulos/portal2027-libreta.js'),'utf8');
-const ini=fuente.indexOf("    input.addEventListener('keydown'");const fin=fuente.indexOf('\n    });',ini)+8;
-function evento(input,key,shiftKey=false){let listener,prevenido=false;input.addEventListener=(n,fn)=>{listener=fn;};const c={input,moverFoco:mover};vm.createContext(c);vm.runInContext(fuente.slice(ini,fin),c);listener({key,shiftKey,preventDefault(){prevenido=true;}});return prevenido;}
+const ini=fuenteEventos.indexOf("    input.addEventListener('keydown'");const fin=fuenteEventos.indexOf('\n    });',ini)+8;
+function evento(input,key,shiftKey=false){let listener,prevenido=false;input.addEventListener=(n,fn)=>{listener=fn;};const c={input,moverFoco:mover};vm.createContext(c);vm.runInContext(fuenteEventos.slice(ini,fin),c);listener({key,shiftKey,preventDefault(){prevenido=true;}});return prevenido;}
 t=tabla();t.activar(t.input(0,0));assert(evento(t.input(0,0),'Enter'));assert.equal(t.actual().id,'1:0');assert(evento(t.input(1,0),'Enter',true));assert.equal(t.actual().id,'0:0');
 assert(evento(t.input(0,0),'ArrowDown'));assert.equal(t.actual().id,'1:0');assert(evento(t.input(1,0),'ArrowUp'));assert.equal(t.actual().id,'0:0');
 const input=t.input(0,0);input.selectionEnd=1;assert.equal(evento(input,'ArrowRight'),false);input.selectionEnd=input.value.length;assert(evento(input,'ArrowRight'));assert.equal(t.actual().id,'0:1');

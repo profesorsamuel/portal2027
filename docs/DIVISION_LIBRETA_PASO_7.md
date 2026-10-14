@@ -1,5 +1,7 @@
 # División de libreta — Paso 7: desglose y descuentos
 
+La continuación de tabla principal está en DIVISION_LIBRETA_PASO_8.md.
+
 ## Instalación
 
 Requiere las etapas 1 a 5 y el paso 6 de división de libreta. No necesita SQL.
