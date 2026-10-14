@@ -46,13 +46,14 @@ async function entorno(entrega = null) {
   const C = {
     BUCKET_ENTREGAS: 'entregas', ACEPTAR: '.jpg,.jpeg,.png,.pdf',
     reducirImagen: async archivo => { registro.reducir.push(archivo.name); return archivo; },
-    validar: a => !a || a.size > 10485760 ? { error: 'Tamaño' } : { tipo: a.type },
+    validar: a => { const problema = contexto.window.portal2027.archivos.errorTamano(a, 'entregas'); return problema ? { error: problema } : { tipo: a.type }; },
     nombreSeguro: s => s, fechaHora: () => '', abrir: async () => {}
   };
   const contexto = { window: { portal2027: { el, db, clases: C }, crypto: { randomUUID: () => String(registro.uploads.length) } },
     URL: { createObjectURL: () => 'blob:mock', revokeObjectURL() {} },
     console: { error: (...x) => registro.errores.push(x) } };
   vm.createContext(contexto);
+  vm.runInContext(fs.readFileSync(path.join(raiz, 'js/core/portal2027-archivos.js'), 'utf8'), contexto);
   vm.runInContext(fs.readFileSync(path.join(raiz, 'js/modulos/portal2027-clases-estudiante.js'), 'utf8'), contexto);
   await contexto.window.portal2027.renderEstudianteClases(zona);
   const buscar = fn => zona.todos().find(fn);
@@ -82,16 +83,24 @@ const esperar = async () => { for (let i = 0; i < 25; i++) await new Promise(r =
   assert.equal(e.registro.reducir.length, 0, 'Rechaza 16 fotos antes de preparar');
   archivo.files = [foto('a.jpg'), { name: 'guia.pdf', type: 'application/pdf', size: 200 }]; await archivo.events.change();
   assert.equal(e.registro.reducir.length, 0, 'Rechaza mezcla de documento y fotos');
-  const pdf = { name: 'guia.pdf', type: 'application/pdf', size: 200 };
+  const pdf = { name: 'guia.pdf', type: 'application/pdf', size: 12 * 1024 * 1024 };
   archivo.files = [pdf]; await archivo.events.change();
   await e.buscar(x => x.tag === 'form').events.submit({ preventDefault() {} });
   assert.equal(e.registro.rpc[0].args.p_archivos[0].nombre, 'guia.pdf');
   assert.equal(e.registro.rpc[0].args.p_version, null);
 
+  e = await entorno(); archivo = e.buscar(x => x.type === 'file');
+  archivo.files = [{ name: 'grande.pdf', type: 'application/pdf', size: 18 * 1024 * 1024 }];
+  await archivo.events.change();
+  assert(e.zona.todos().some(x => /Pesa 18 MB, el máximo es 15 MB/.test(x.texto)), 'Aviso de PDF excesivo antes de entregar');
+  await e.buscar(x => x.tag === 'form').events.submit({ preventDefault() {} });
+  assert.equal(e.registro.uploads.length, 0, 'PDF excesivo no llega a Storage');
+  assert.equal(e.registro.rpc.length, 0);
+
   e = await entorno({ version: 2, estado: 'revisada', archivos: [{ ruta: 'uno', nombre: 'a.jpg' }, { ruta: 'dos', nombre: 'b.jpg' }] });
   assert.equal(e.buscar(x => x.tag === 'form'), undefined, 'No modifica una entrega revisada');
   assert.equal(e.zona.todos().filter(x => x.tag === 'button' && /^Abrir /.test(x.texto)).length, 2);
-  const profesor = { el, S: { notas: {} }, C: { fechaHora: () => '', abrir: async () => {} },
+  const profesor = { el, F: {}, S: { notas: {} }, C: { fechaHora: () => '', abrir: async () => {} },
     nombreEst: () => 'Alumno', campo: (texto, control) => el('label', {}, [control]),
     boton: (texto, onclick) => el('button', { texto, onclick }), console, aviso() {} };
   const fuenteProfesor = fs.readFileSync(path.join(raiz, 'js/modulos/portal2027-clases.js'), 'utf8');
