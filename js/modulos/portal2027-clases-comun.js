@@ -21,6 +21,16 @@
     ACEPTAR: '.pdf,.jpg,.jpeg,.png,.txt,.docx,.pptx,.xlsx'
   });
 
+  C.urlSegura = function(valor) { try { var u = new URL(valor); return /^https?:$/.test(u.protocol) ? u.href : null; } catch(e) { return null; } };
+  C.enlace = function(valor, titulo) { var url = C.urlSegura(valor); return url ? P.el('a', { clase: 'boton boton-secundario boton-chico', href: url, target: '_blank', rel: 'noopener noreferrer', texto: titulo || 'Abrir enlace' }) : null; };
+
+  C.miniatura = function(m) {
+    if (!m.archivo_ruta || !/\.(jpe?g|png)$/i.test(m.archivo_nombre || '')) return null;
+    var img = P.el('img', { alt: m.titulo, loading: 'lazy', clase: 'recurso-miniatura', hidden: true });
+    db.storage.from(C.BUCKET_MATERIALES).createSignedUrl(m.archivo_ruta, 600).then(function(r) { if (!r.error && r.data) { img.src = r.data.signedUrl; img.hidden = false; } }).catch(function() {});
+    return img;
+  };
+
   // Devuelve { tipo } si el archivo es válido, o { error }.
   C.validar = function (archivo) {
     if (!archivo) { return { error: 'Elija un archivo.' }; }

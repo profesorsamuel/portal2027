@@ -90,26 +90,38 @@
       cont.textContent = '';
       if (datos.materias.length === 0) { cont.appendChild(el('p', { clase: 'vacio-texto', texto: 'No hay materias asignadas a su grupo en este trimestre.' })); return; }
       datos.materias.forEach(function (m) {
-        var bloque = el('div', { clase: 'detalle-ficha' }, [el('h3', { texto: m.materia })]);
-        if (m.materiales.length === 0 && m.tareas.length === 0) {
+        var materia = el('div', { clase: 'detalle-ficha' }, [el('h3', { texto: m.materia })]);
+        cont.appendChild(materia);
+        var grupos = {};
+        m.materiales.concat(m.tareas).forEach(function(x) { var id = x.clase_id || 'sin'; if (!grupos[id]) grupos[id] = { id: id, numero: x.clase_numero, tema: x.clase_tema }; });
+        if (!Object.keys(grupos).length) grupos.sin = { id: 'sin' };
+        Object.keys(grupos).sort(function(a,b) { return (grupos[a].numero || 9999) - (grupos[b].numero || 9999); }).forEach(function(id) {
+        var g = grupos[id];
+        var materiales = m.materiales.filter(function(x) { return (x.clase_id || 'sin') === id; });
+        var tareas = m.tareas.filter(function(x) { return (x.clase_id || 'sin') === id; });
+        var bloque = el('details', { clase: 'detalle-ficha' }, [el('summary', { texto: g.numero ? 'Clase ' + g.numero + ' · ' + (g.tema || '') : 'Sin clase asignada' })]);
+        if (materiales.length === 0 && tareas.length === 0) {
           bloque.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales ni tareas.' }));
         }
-        if (m.materiales.length) {
+        if (materiales.length) {
           bloque.appendChild(el('h4', { texto: 'Materiales' }));
-          bloque.appendChild(el('ul', { clase: 'lista-clases' }, m.materiales.map(function (x) {
+          bloque.appendChild(el('ul', { clase: 'lista-clases' }, materiales.map(function (x) {
             return el('li', { clase: 'tarjeta-clase' }, [
               el('div', null, [el('strong', { texto: x.titulo }), x.descripcion ? el('p', { clase: 'bloque-ayuda', texto: x.descripcion }) : null]),
+              C.miniatura(x),
+              C.enlace(x.enlace, 'Abrir enlace de tarea o recurso'),
               x.archivo_ruta ? boton('Abrir ' + x.archivo_nombre, async function () {
                 try { await C.abrir(C.BUCKET_MATERIALES, x.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
               }) : null
             ]);
           })));
         }
-        if (m.tareas.length) {
+        if (tareas.length) {
           bloque.appendChild(el('h4', { texto: 'Tareas' }));
-          bloque.appendChild(el('ul', { clase: 'lista-clases' }, m.tareas.map(function (t) { return tarjetaTarea(t, datos.matricula_id); })));
+          bloque.appendChild(el('ul', { clase: 'lista-clases' }, tareas.map(function (t) { return tarjetaTarea(t, datos.matricula_id); })));
         }
-        cont.appendChild(bloque);
+        materia.appendChild(bloque);
+        });
       });
     }
 

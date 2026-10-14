@@ -12,7 +12,7 @@
   var contenido = document.getElementById('contenido');
 
   var S = {
-    asig: null, trimestres: [], trimestreId: null,
+    plan: [], claseId: null, tipoMaterial: null, asig: null, trimestres: [], trimestreId: null,
     materiales: [], tareas: [], evals: [], mats: [], entregas: [], notas: {},   // notas: evalId|matId -> {valor}
     verPapelera: false, editando: null, abierta: null, revisando: null           // abierta = tareaId; revisando = matriculaId
   };
@@ -70,6 +70,8 @@
       consultar(db.from('portal2027_evaluaciones').select('id,categoria,tema,orden').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('orden')),
       consultar(db.from('portal2027_matriculas').select('id,estudiante:portal2027_estudiantes(codigo,nombres,apellidos)').eq('salon_id', S.asig.salon.id))
     ]);
+    S.plan = await consultar(db.from('portal2027_plan_clases').select('id,numero,tema,fecha_inicio,fecha_fin').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('numero'));
+    if (S.claseId && !S.plan.some(function(c) { return c.id === S.claseId; })) S.claseId = null;
     S.materiales = r[0]; S.tareas = r[1]; S.evals = r[2];
     S.mats = r[3].sort(function (x, y) { return nombreEst(x).localeCompare(nombreEst(y), 'es'); });
     S.entregas = []; S.notas = {};
@@ -82,21 +84,49 @@
     }
   }
 
+  function selectorMover(item, tipo) {
+    var sel = el('select', { 'aria-label': 'Mover a clase' }, [el('option', { value: '', texto: 'Sin clase asignada', selected: !item.clase_id })].concat(S.plan.map(function(c) { return el('option', { value: c.id, texto: 'Clase ' + c.numero + ' · ' + c.tema, selected: item.clase_id === c.id }); })));
+    sel.addEventListener('change', function() {
+      accion('Moviendo…', 'Recurso ubicado en la clase.', async function() {
+        var r = await db.rpc('portal2027_ubicar_recurso_clase', { p_id: item.id, p_tipo: tipo, p_clase: sel.value || null, p_version: tipo === 'tarea' ? item.version : null });
+        if (r.error) throw r.error;
+      });
+    });
+    return sel;
+  }
+  function navegacionClases() {
+    var sec = el('section', { clase: 'bloque clases-navegacion' }, [el('h2', { texto: 'Clases del trimestre' }), el('p', { clase: 'bloque-ayuda', texto: 'Seleccione una clase para agregar su PDF, imágenes, enlaces y tareas.' })]);
+    var opciones = S.plan.concat([{ id: null, numero: null, tema: 'Sin clase asignada' }]);
+    sec.appendChild(el('div', { clase: 'clases-cuadricula' }, opciones.map(function(c) {
+      var nm = S.materiales.filter(function(m) { return (m.clase_id || null) === c.id && !m.eliminado_en; }).length;
+      var nt = S.tareas.filter(function(t) { return (t.clase_id || null) === c.id && !t.eliminada_en; }).length;
+      return el('button', { type: 'button', clase: 'clase-selector' + (S.claseId === c.id ? ' activa' : ''), 'aria-pressed': S.claseId === c.id ? 'true' : 'false', onclick: function() { S.claseId = c.id; S.tipoMaterial = null; S.editando = null; S.abierta = null; S.revisando = null; dibujar(); } }, [el('strong', { texto: c.numero === null ? c.tema : 'Clase ' + c.numero }), c.numero === null ? null : el('span', { texto: c.tema }), c.fecha_inicio ? el('small', { texto: c.fecha_inicio + ' → ' + c.fecha_fin }) : null, el('small', { texto: nm + ' materiales · ' + nt + ' tareas' })]);
+    })));
+    if (!S.plan.length) sec.appendChild(el('p', { clase: 'mensaje info', texto: 'Agregue las clases en Planificación para organizar sus recursos.' }));
+    sec.appendChild(el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a Planificación' }));
+    var actual = S.plan.filter(function(c) { return c.id === S.claseId; })[0];
+    sec.appendChild(el('h3', { texto: actual ? 'Clase ' + actual.numero + ' · ' + actual.tema : 'Sin clase asignada' }));
+    return sec;
+  }
+
   /* ---------- materiales ---------- */
   function formMaterial() {
     var titulo = el('input', { type: 'text', maxlength: '120', required: true });
     var desc = el('textarea', { rows: '2', maxlength: '2000' });
-    var archivo = el('input', { type: 'file', accept: C.ACEPTAR });
+    var archivo = el('input', { type: 'file', accept: S.tipoMaterial === 'pdf' ? '.pdf' : S.tipoMaterial === 'imagen' ? '.jpg,.jpeg,.png' : C.ACEPTAR, required: S.tipoMaterial === 'pdf' || S.tipoMaterial === 'imagen' });
+    var enlace = el('input', { type: 'url', placeholder: 'https://…', required: S.tipoMaterial === 'enlace' });
     var pub = el('input', { type: 'checkbox', checked: true });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Agregar material' });
     var f = el('form', { clase: 'formulario-clases' }, [
-      campo('Título', titulo), campo('Descripción (opcional)', desc), campo('Archivo (opcional, hasta 10 MB)', archivo),
+      campo('Título', titulo), campo('Descripción (opcional)', desc), S.tipoMaterial === 'enlace' ? campo('Enlace de tarea o recurso', enlace) : campo('Archivo (hasta 10 MB)', archivo),
       el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']), enviar
     ]);
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       if (!titulo.value.trim()) { aviso('Escriba el título del material.', 'error'); return; }
-      var arch = archivo.files[0] || null, ruta = null, nombre = null;
+      var arch = S.tipoMaterial === 'enlace' ? null : archivo.files[0] || null, ruta = null, nombre = null;
+      if (enlace.value && !C.urlSegura(enlace.value)) { aviso('Use un enlace que empiece con https:// o http://.', 'error'); return; }
+      if (arch && S.tipoMaterial === 'pdf' && !/\.pdf$/i.test(arch.name) || arch && S.tipoMaterial === 'imagen' && !/\.(png|jpe?g)$/i.test(arch.name)) { aviso('El archivo no corresponde al tipo elegido.', 'error'); return; }
       if (arch) {
         var v = C.validar(arch);
         if (v.error) { aviso(v.error, 'error'); return; }
@@ -111,9 +141,9 @@
           if (s.error) { throw s.error; }
           subido = true;
         }
-        var g = await db.rpc('portal2027_crear_material', {
+        var g = await db.rpc('portal2027_crear_material_clase', {
           p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_titulo: titulo.value, p_descripcion: desc.value,
-          p_ruta: ruta, p_nombre: nombre, p_publicado: pub.checked
+          p_ruta: ruta, p_nombre: nombre, p_publicado: pub.checked, p_clase: S.claseId, p_enlace: enlace.value || null
         });
         if (g.error) {
           if (subido) { await db.storage.from(C.BUCKET_MATERIALES).remove([ruta]); }   // no deja archivos sueltos
@@ -133,6 +163,8 @@
         try { await C.abrir(C.BUCKET_MATERIALES, m.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
       }));
     }
+    if (C.urlSegura(m.enlace)) acciones.push(C.enlace(m.enlace, 'Abrir enlace'));
+    acciones.push(selectorMover(m, 'material'));
     if (!enPapelera) {
       acciones.push(boton(m.publicado ? 'Ocultar a estudiantes' : 'Mostrar a estudiantes', function () {
         accion('Guardando…', m.publicado ? 'Material oculto.' : 'Material visible.', async function () {
@@ -152,6 +184,7 @@
         el('strong', { texto: m.titulo }), ' ',
         el('span', { clase: 'etiqueta-chica', texto: enPapelera ? 'En papelera' : (m.publicado ? 'Visible' : 'Oculto') }),
         m.descripcion ? el('p', { clase: 'bloque-ayuda', texto: m.descripcion }) : null,
+        C.miniatura(m),
         m.archivo_nombre ? el('p', { clase: 'bloque-ayuda', texto: 'Archivo: ' + m.archivo_nombre }) : null
       ]),
       el('div', { clase: 'cabecera-acciones' }, acciones)
@@ -159,9 +192,9 @@
   }
 
   function seccionMateriales() {
-    var lista = S.materiales.filter(function (m) { return S.verPapelera ? true : !m.eliminado_en; });
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Materiales' }), formMaterial()]);
-    if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en este trimestre.' })); }
+    var lista = S.materiales.filter(function (m) { return (m.clase_id || null) === S.claseId && (S.verPapelera || !m.eliminado_en); });
+    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'PDF, imágenes y enlaces' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen', 'enlace'].map(function(tipo, i) { return boton(['Subir PDF de la clase', 'Agregar imagen', 'Agregar enlace de tarea'][i], function() { S.tipoMaterial = tipo; dibujar(); }); })), S.tipoMaterial ? formMaterial() : null]);
+    if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en esta clase.' })); }
     else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(filaMaterial))); }
     return sec;
   }
@@ -208,9 +241,9 @@
             p_publicada: pub.checked, p_a_papelera: null
           });
         } else {
-          g = await db.rpc('portal2027_crear_tarea', {
+          g = await db.rpc('portal2027_crear_tarea_clase', {
             p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_titulo: titulo.value, p_instrucciones: instr.value,
-            p_fecha_limite: iso, p_evaluacion: vinculo.value || null, p_publicada: pub.checked
+            p_fecha_limite: iso, p_evaluacion: vinculo.value || null, p_publicada: pub.checked, p_clase: S.claseId
           });
         }
         if (g.error) { throw g.error; }
@@ -245,7 +278,7 @@
       t.fecha_limite ? el('span', { clase: 'etiqueta-chica', texto: 'Plazo: ' + C.fechaHora(t.fecha_limite) }) : el('span', { clase: 'etiqueta-chica', texto: 'Sin plazo' }),
       t.evaluacion_id ? el('span', { clase: 'etiqueta-chica', texto: 'Nota: ' + (ev ? etiquetaEval(ev) : 'columna en papelera') }) : null
     ];
-    var acciones = [];
+    var acciones = [selectorMover(t, 'tarea')];
     if (!enPapelera) {
       acciones.push(boton(S.abierta === t.id ? 'Cerrar entregas' : 'Ver entregas', function () {
         S.abierta = S.abierta === t.id ? null : t.id; S.revisando = null; dibujar();
@@ -271,9 +304,9 @@
   }
 
   function seccionTareas() {
-    var lista = S.tareas.filter(function (t) { return S.verPapelera ? true : !t.eliminada_en; });
+    var lista = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId && (S.verPapelera || !t.eliminada_en); });
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'Tareas' }), formTarea(null)]);
-    if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay tareas en este trimestre.' })); }
+    if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay tareas en esta clase.' })); }
     else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(tarjetaTarea))); }
     return sec;
   }
@@ -371,7 +404,7 @@
       return el('option', { value: t.id, texto: 'Trimestre ' + t.numero, selected: t.id === S.trimestreId });
     }));
     selTr.addEventListener('change', async function () {
-      S.trimestreId = selTr.value; S.abierta = null; S.revisando = null; S.editando = null;
+      S.trimestreId = selTr.value; S.claseId = null; S.tipoMaterial = null; S.abierta = null; S.revisando = null; S.editando = null;
       aviso('Cargando…', 'info');
       try { await cargar(); dibujar(); aviso('', 'info'); } catch (e) { aviso('No se pudo cargar. ' + C.textoError(e), 'error'); }
     });
@@ -385,6 +418,7 @@
         try { await cargar(); dibujar(); aviso('Datos al día.', 'ok'); } catch (e) { aviso('No se pudo recargar. ' + C.textoError(e), 'error'); }
       })
     ]));
+    zona.appendChild(navegacionClases());
     zona.appendChild(seccionMateriales());
     zona.appendChild(seccionTareas());
   }
@@ -426,6 +460,7 @@
       zona = el('div', { clase: 'secciones' });
       contenido.appendChild(zona);
       await cargar();
+      S.claseId = S.plan[0] ? S.plan[0].id : null;
       dibujar();
     } catch (e) {
       errorPantalla('No se pudo abrir la pantalla. ' + C.textoError(e));
