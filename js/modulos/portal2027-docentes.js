@@ -39,7 +39,7 @@
       var lista = visibles();
       cuerpo.textContent = '';
       lista.forEach(function (d) {
-        cuerpo.appendChild(el('tr', null, fila(d).map(function (v) { return el('td', { texto: String(v) }); })));
+        cuerpo.appendChild(el('tr', null, fila(d).map(function (v, i) { return el('td', { texto: String(v), 'data-etiqueta': CAB[i] }); })));
       });
       if (lista.length === 0) { cuerpo.appendChild(el('tr', null, [el('td', { colspan: String(CAB.length), clase: 'vacio-texto', texto: 'No hay docentes con ese filtro.' })])); }
       var cuenta = {};
@@ -119,7 +119,7 @@
     var bCuentas = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Plantilla para crear cuentas (Premedia)' });
     bCuentas.addEventListener('click', descargarPlantillaCuentas);
 
-    var tabla = el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+    var tabla = el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos tabla-tarjetas', role: 'table' }, [
       el('thead', null, [el('tr', null, CAB.map(function (c) { return el('th', { scope: 'col', texto: c }); }))]),
       cuerpo
     ])]);

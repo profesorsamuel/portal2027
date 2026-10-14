@@ -1162,7 +1162,7 @@
     } });
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Libreta recargada.'); } });
 
-    zonaTabla = el('div');
+    zonaTabla = el('div', { clase: 'libreta-tabla-zona' });
     var zonaExtra = el('div');
     var zonaCierre = el('div');
     S.abrirImport = function (pre) { abrirImportacion(zonaExtra, pre || {}); };

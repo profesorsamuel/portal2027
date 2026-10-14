@@ -87,9 +87,10 @@
 
   function urlBase() { return new URL(P.raiz, window.location.href).href; }
 
-  function textoTabla(cabeceras, filas, vacio) {
+  function textoTabla(cabeceras, filas, vacio, tarjetas) {
     if (filas.length === 0) { return el('p', { clase: 'vacio-texto', texto: vacio }); }
-    return el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
+    if (tarjetas) filas.forEach(function (fila) { Array.from(fila.children).forEach(function (celda, i) { celda.setAttribute('data-etiqueta', cabeceras[i] || 'Acciones'); }); });
+    return el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' + (tarjetas ? ' tabla-tarjetas' : ''), role: 'table' }, [
       el('thead', null, [el('tr', null, cabeceras.map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
       el('tbody', null, filas)
     ])]);
@@ -548,7 +549,7 @@
       ];
 
       function tablaSimple(cabecera, filas) {
-        return el('div', { clase: 'tabla-scroll', style: 'overflow-x:auto' }, [el('table', null, [
+        return el('div', { clase: 'tabla-contenedor' }, [el('table', null, [
           el('thead', null, [el('tr', null, cabecera.map(function (c) { return el('th', { texto: c }); }))]),
           el('tbody', null, filas.map(function (f) { return el('tr', null, f.map(function (v) { return el('td', { texto: v }); })); }))
         ])]);
@@ -758,7 +759,7 @@
           ]);
         });
         cuerpo.appendChild(textoTabla(['Código', 'Nombre', 'Sexo', 'Grupo', 'Estado', 'Contacto del estudiante', 'Acudiente y teléfonos', 'Cuenta', ''], filas,
-          anios.length ? (q ? 'No hay coincidencias en este salón.' : 'No hay estudiantes matriculados en el salón ' + salonElegido + ' para este año.') : 'Primero cree un año lectivo.'));
+          anios.length ? (q ? 'No hay coincidencias en este salón.' : 'No hay estudiantes matriculados en el salón ' + salonElegido + ' para este año.') : 'Primero cree un año lectivo.', true));
         if (lista.length > 200) { cuerpo.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Se muestran 200 de ' + lista.length + '. Use el buscador.' })); }
       }
       pintar();
@@ -818,7 +819,7 @@
         } })])
       ]);
     });
-    interior.appendChild(textoTabla(['Año', 'Grupo', 'Código', 'Nombre', ''], filas, ''));
+    interior.appendChild(textoTabla(['Año', 'Grupo', 'Código', 'Nombre', ''], filas, '', true));
     interior.appendChild(detalle);
   }
 
@@ -838,7 +839,7 @@
     sec.appendChild(el('p', null, [el('strong', { texto: nombreEst(f) }), ' · Código ' + f.codigo]));
     sec.appendChild(textoTabla(['Año', 'Grupo', 'Estado'], mats.map(function (m) {
       return el('tr', null, [el('td', { texto: m.anio ? String(m.anio.anio) : '' }), el('td', { texto: m.salon ? m.salon.nombre : '' }), el('td', { texto: m.estado })]);
-    }), 'Aún no tiene matrícula registrada.'));
+    }), 'Aún no tiene matrícula registrada.', true));
     sec.appendChild(el('h3', { texto: 'Completar mis datos de contacto' }));
     sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Complete los datos pendientes o actualice sus contactos. El correo de contacto no cambia su contraseña ni su forma de entrar. El nombre, código y grupo los administra la escuela.' }));
     var campos = [
