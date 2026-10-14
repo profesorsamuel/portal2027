@@ -2,6 +2,18 @@
 
 Portal escolar en HTML, CSS y JavaScript, con Supabase para autenticación, base de datos y archivos privados. Publicación: https://profesorsamuel.github.io/portal2027/.
 
+## Cambios de las etapas 1 a 5 (14 de octubre de 2026)
+
+- Imágenes: compresión compartida y tandas de hasta 15 fotos; entregas con múltiples adjuntos.
+- Archivos: configuración común en `js/core/portal2027-archivos.js`; límites de 2 MB para foto, 5 MB para documentos administrativos y 15 MB para materiales, entregas y planificación. Instalar 0045 y 0046 antes de publicar los módulos de esas etapas.
+- Horario: todos los datos se muestran con nodos de texto y atributos del DOM; el módulo ya no usa innerHTML.
+- Excel: cargador compartido `js/core/portal2027-excel.js`, SheetJS 0.20.3 del CDN oficial con SRI SHA-384, y copia local de los mismos bytes en `js/vendor/` con licencia Apache 2.0. Administración espera la carga; libreta la solicita al importar. Si falla CDN/SRI o transcurren 10 segundos, se intenta la copia local, también con SRI. No se usa la antigua carga dinámica 0.18.5 sin integridad.
+- La libreta conserva sus funciones y cálculos. Su división gradual está propuesta en [ETAPA_5_DIVISION_LIBRETA.md](docs/ETAPA_5_DIVISION_LIBRETA.md), todavía sin ejecutar.
+
+La etapa 5 no añade SQL para ejecutar. Para instalar el ZIP incremental, ver [ETAPA_5_INSTALACION_Y_PRUEBAS.md](docs/ETAPA_5_INSTALACION_Y_PRUEBAS.md). Es necesario quitar las cuatro copias antiguas de `supabase/migrations/` después de verificar sus copias nuevas; un ZIP por sí solo no elimina archivos de GitHub.
+
+Pruebas locales específicas sin dependencias: `node tests/portal2027-seguridad-horario.test.cjs`, `node tests/portal2027-excel.test.cjs`, `node tests/portal2027-archivos.test.cjs` y `node tests/portal2027-entregas.test.cjs`. No sustituyen la validación de Supabase ni la revisión visual del sitio publicado.
+
 ## Requisitos
 
 - Un proyecto Supabase y acceso a SQL Editor, Authentication, Storage y Edge Functions.
@@ -12,7 +24,7 @@ Portal escolar en HTML, CSS y JavaScript, con Supabase para autenticación, base
 
 ## Instalación de la base de datos
 
-La carpeta `supabase/migrations/` contiene 44 archivos numerados. En una base nueva, aplíquelos por número ascendente, uno por uno. Verifique el resultado antes de continuar. En una base existente, identifique primero los que ya se aplicaron; no vuelva a ejecutar indiscriminadamente los scripts de datos y reparación.
+La carpeta `supabase/migrations/` contiene 42 archivos de estructura y funciones numerados hasta 0046. Los scripts específicos 0003, 0034, 0035 y 0043 están en `supabase/especificas/` y quedan fuera de las migraciones generales. En una base nueva, aplique las migraciones generales por número ascendente, uno por uno, sin exigir números consecutivos. Verifique el resultado antes de continuar. En una base existente, identifique primero los que ya se aplicaron; no vuelva a ejecutar indiscriminadamente los scripts de datos y reparación.
 
 Casos que requieren atención:
 
@@ -25,13 +37,12 @@ Casos que requieren atención:
 | 0043 | Restauración específica de la clase 3 de 9B; opcional, solo para el caso que corrige. |
 | 0044 | Relaciona materiales y tareas con cada clase; necesaria para la pantalla de recursos por clase incorporada a este proyecto. |
 
-Estas indicaciones no modifican los SQL. La ejecución integral en una base de prueba y las pruebas de permisos quedan para la etapa 7.
+El traslado conserva los SQL originales sin cambios. No ejecute `supabase/especificas/` en lote: revise cada caso y sus requisitos. Si los cuatro archivos todavía están en `supabase/migrations/` en su repositorio, elimine solo esas copias antiguas después de subirlos a `supabase/especificas/`. Moverlos no ejecuta SQL ni cambia la base ya instalada. La ejecución integral en una base de prueba y las pruebas de permisos siguen pendientes.
 
 Orden de archivos disponibles:
 
 - `supabase/migrations/0001_portal2027_tablas.sql`
 - `supabase/migrations/0002_portal2027_permisos.sql`
-- `supabase/migrations/0003_portal2027_datos_ficticios.sql`
 - `supabase/migrations/0004_portal2027_admin_inicial.sql`
 - `supabase/migrations/0005_portal2027_estudiantes.sql`
 - `supabase/migrations/0006_portal2027_libreta.sql`
@@ -62,8 +73,6 @@ Orden de archivos disponibles:
 - `supabase/migrations/0031_portal2027_plan_grupos_hermanos.sql`
 - `supabase/migrations/0032_portal2027_horario.sql`
 - `supabase/migrations/0033_portal2027_calendario.sql`
-- `supabase/migrations/0034_portal2027_corregir_horario_existente.sql`
-- `supabase/migrations/0035_portal2027_asignaciones_samuel_2027.sql`
 - `supabase/migrations/0036_portal2027_evitar_personal_duplicado.sql`
 - `supabase/migrations/0037_portal2027_guardar_registro_semana_produccion.sql`
 - `supabase/migrations/0038_portal2027_consolidacion_sin_ambiguedad.sql`
@@ -71,8 +80,16 @@ Orden de archivos disponibles:
 - `supabase/migrations/0040_portal2027_datos_boletin.sql`
 - `supabase/migrations/0041_portal2027_proteger_semanas_plan.sql`
 - `supabase/migrations/0042_portal2027_asegurar_semanas_plan.sql`
-- `supabase/migrations/0043_portal2027_restaurar_clase3_9B.sql`
 - `supabase/migrations/0044_portal2027_recursos_por_clase.sql`
+- `supabase/migrations/0045_portal2027_entregas_multiples.sql`
+- `supabase/migrations/0046_portal2027_limites_archivos.sql`
+
+Scripts específicos, fuera del orden general:
+
+- `supabase/especificas/0003_portal2027_datos_ficticios.sql`
+- `supabase/especificas/0034_portal2027_corregir_horario_existente.sql`
+- `supabase/especificas/0035_portal2027_asignaciones_samuel_2027.sql`
+- `supabase/especificas/0043_portal2027_restaurar_clase3_9B.sql`
 
 ## Autenticación y configuración de la web
 
@@ -80,7 +97,7 @@ Orden de archivos disponibles:
 2. Configure Site URL y Redirect URLs para `https://profesorsamuel.github.io/portal2027/`.
 3. Configure la URL del proyecto y la clave pública/publicable en `js/core/portal2027-conexion.js`. Nunca coloque claves secretas o `service_role` en la interfaz o el repositorio.
 4. Publique las carpetas y archivos conservando rutas. `manifest.webmanifest` va en la raíz, junto a `index.html`.
-5. Recargue con Ctrl+F5 tras publicar. Las referencias locales de scripts y CSS utilizan una única versión: `?v=2027-01`. Al preparar una nueva entrega, cambie esa versión de forma uniforme en todos los HTML.
+5. Recargue con Ctrl+F5 tras publicar. Los scripts modificados en estas etapas usan `?v=20261014`, con `&etapa=N` cuando se publican varias versiones el mismo día. Actualice todas las páginas que cargan un módulo modificado; las referencias de otros archivos conservan su versión previa.
 
 ## Funciones de servidor que se deben desplegar
 
@@ -220,7 +237,7 @@ Usa jsPDF 2.5.2 desde jsDelivr (con verificación de integridad), igual que el p
 
 # Horario Samuel Ortega 2027 — instalación
 
-1. En Supabase SQL Editor ejecute `supabase/migrations/0035_portal2027_asignaciones_samuel_2027.sql`. Deben existir los grupos 9A, 8A y 8B del año 2027. El SQL no elimina notas ni asignaciones existentes. Compruebe que aparecen las seis asignaciones del profesor.
+1. En Supabase SQL Editor ejecute `supabase/especificas/0035_portal2027_asignaciones_samuel_2027.sql`. Deben existir los grupos 9A, 8A y 8B del año 2027. El SQL no elimina notas ni asignaciones existentes. Compruebe que aparecen las seis asignaciones del profesor.
 2. En GitHub suba las carpetas `js/modulos/`, `data/horarios/` y `supabase/migrations/` conservando las rutas. El SQL no se ejecuta por subirlo a GitHub: hay que ejecutarlo en Supabase.
 3. Actualice la página del horario con Ctrl+Shift+R, elija 2027 y Samuel Ortega, y pulse **Cargar horario de Samuel 2027 (editable)**. También puede arrastrar el archivo JSON.
 4. Revise las 30 franjas y pulse **Validar y reemplazar horario**. El sistema identifica las asignaciones por grupo y materia; si falta alguna, impedirá guardar.
@@ -513,7 +530,7 @@ Etapa 6: el estudiante no lee las tablas de notas ni de asistencia; recibe solo 
 
 ## Migraciones
 
-`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias · `0011` clases y tareas (materiales, tareas, entregas y buckets privados) · `0012` cierre trimestral (copia versionada y bloqueo en la base). · `0013` consejería: notas del grupo (solo materias publicadas) · `0014` documentos privados · `0015` respaldos y recuperación de notas. Todas viven en `supabase/migrations/`.
+`0001` tablas y disparadores · `0002` funciones y RLS · `0003` datos ficticios de configuración (año 2027, 3 materias, grupo 9C) · `0004` administrador inicial (manual) · `0005` estudiantes, matrículas, importación, fotos y permisos · `0006` libreta (base) · `0007` asistencia por sesión (incluye el permiso de lectura de las tablas de la libreta) · `0008` configuración: pesos, estados de nota y validación de fechas de trimestres · `0009` consejería · `0010` estudiante: publicación de notas y vistas propias · `0011` clases y tareas (materiales, tareas, entregas y buckets privados) · `0012` cierre trimestral (copia versionada y bloqueo en la base). · `0013` consejería: notas del grupo (solo materias publicadas) · `0014` documentos privados · `0015` respaldos y recuperación de notas. Las migraciones generales viven en `supabase/migrations/`; 0003 y las reparaciones específicas 0034, 0035 y 0043 viven en `supabase/especificas/`.
 
 Etapa 3A: las tablas de la libreta se leen directamente (administración y profesor de la asignación) y se escriben solo con `portal2027_crear_evaluacion`, `_actualizar_evaluacion`, `_papelera_evaluacion` y `_guardar_nota`. Ver `portal2027-etapa3-parteA.md`.
 
@@ -832,7 +849,7 @@ Portal del C.E.B.G. El Jiral. HTML/CSS/JS modular, publicado con GitHub Pages de
 
 ## 1. Aplicar la base de datos
 
-En Supabase (proyecto meduca2027) abra **SQL Editor** y ejecute, uno por uno y en orden, los archivos de `supabase/migrations/`: `0001`, `0002` y `0003`. Cada uno debe terminar con «Success». Si alguno falla, no siga: copie el error completo.
+En Supabase (proyecto meduca2027) abra **SQL Editor** y ejecute, uno por uno y en orden, los archivos de `supabase/migrations/`: `0001` y `0002`. `0003` es opcional y está en `supabase/especificas/`. Cada uno debe terminar con «Success». Si alguno falla, no siga: copie el error completo.
 
 ## 2. Configurar Auth
 
@@ -924,7 +941,7 @@ Las pruebas de cerrar sesión y de recuperación de contraseña se hacen en la i
 
 ## Revisión de la etapa 1 (parte A)
 
-- [ ] 0001, 0002 y 0003 sin errores.
+- [ ] 0001 y 0002 sin errores; 0003 solo si se necesitan datos ficticios.
 - [ ] Administrador inicial creado y verificado.
 - [ ] Alumno: solo su perfil, sin grupos ni asignaciones; no puede darse un rol.
 - [ ] Profesor: solo su grupo y su asignación.
@@ -1033,7 +1050,7 @@ rollback;
 - Si el grupo (grado+sección) no existe en ese año, la importación lo crea; la vista previa lo avisa.
 - Reimportar actualiza nombres, correo y datos del acudiente, y cambia el grupo/estado de la matrícula del año si difieren.
 - Fichas no se borran desde el portal en esta etapa.
-- La biblioteca de Excel (`xlsx` 0.18.5, jsDelivr, versión fija) se usa solo en el navegador de la administración con sus propios archivos.
+- Excel usa SheetJS 0.20.3 desde su CDN oficial, con SRI SHA-384 verificado y respaldo local de los mismos bytes en `js/vendor/`. El cargador `js/core/portal2027-excel.js` lo comparten administración y libreta.
 
 ---
 
@@ -1610,7 +1627,7 @@ Todas las etapas de la guía (0 a 9) tienen su implementación. Antes de usar **
 - **Lo que esta revisión NO prueba:** ninguna migración se ha ejecutado aquí ni se ha abierto ninguna pantalla en un navegador. Eso lo cubren las casillas siguientes.
 
 ## Orden de instalación en un proyecto nuevo (o de prueba)
-Ejecutar en el SQL Editor, en orden: `0001` a `0017` de `supabase/migrations/` (la 0004 crea el administrador inicial). Luego publicar el repositorio en GitHub Pages desde `main`/root.
+Ejecutar en el SQL Editor, en orden: las migraciones generales de `0001` a `0017` de `supabase/migrations/` (0003 está separado y es opcional) (la 0004 crea el administrador inicial). Luego publicar el repositorio en GitHub Pages desde `main`/root.
 
 ## Casillas por etapa (resumen de las revisiones de la guía)
 - [ ] **0 Primera vista:** abre en computadora y celular; el CSS carga.
