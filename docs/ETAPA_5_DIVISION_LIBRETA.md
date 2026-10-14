@@ -1,6 +1,6 @@
 # División gradual propuesta para portal2027-libreta.js
 
-Esta etapa solo reemplaza el cargador de Excel por P.cargarExcel. No divide aún la libreta ni cambia sus cálculos, guardados, estados, teclado o presentación.
+La etapa 5 reemplazó el cargador de Excel por P.cargarExcel. Después se realizó un primer paso acotado: las siete funciones puras de lectura y normalización de importaciones se movieron a portal2027-libreta-importacion.js sin cambiar sus cuerpos. Véase DIVISION_LIBRETA_PASO_1.md. La vista previa, el guardado y el resto de la división siguen pendientes; los cálculos, estados, teclado y presentación no se cambiaron.
 
 ## Estrategia
 

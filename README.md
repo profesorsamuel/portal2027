@@ -8,9 +8,11 @@ Portal escolar en HTML, CSS y JavaScript, con Supabase para autenticación, base
 - Archivos: configuración común en `js/core/portal2027-archivos.js`; límites de 2 MB para foto, 5 MB para documentos administrativos y 15 MB para materiales, entregas y planificación. Instalar 0045 y 0046 antes de publicar los módulos de esas etapas.
 - Horario: todos los datos se muestran con nodos de texto y atributos del DOM; el módulo ya no usa innerHTML.
 - Excel: cargador compartido `js/core/portal2027-excel.js`, SheetJS 0.20.3 del CDN oficial con SRI SHA-384, y copia local de los mismos bytes en `js/vendor/` con licencia Apache 2.0. Administración espera la carga; libreta la solicita al importar. Si falla CDN/SRI o transcurren 10 segundos, se intenta la copia local, también con SRI. No se usa la antigua carga dinámica 0.18.5 sin integridad.
-- La libreta conserva sus funciones y cálculos. Su división gradual está propuesta en [ETAPA_5_DIVISION_LIBRETA.md](docs/ETAPA_5_DIVISION_LIBRETA.md), todavía sin ejecutar.
+- La libreta conserva sus funciones y cálculos. La división gradual está descrita en [ETAPA_5_DIVISION_LIBRETA.md](docs/ETAPA_5_DIVISION_LIBRETA.md). Ya se realizó el primer paso de lectura/normalización de importaciones: [DIVISION_LIBRETA_PASO_1.md](docs/DIVISION_LIBRETA_PASO_1.md). El flujo de vista previa y guardado aún permanece en la libreta.
 
 La etapa 5 no añade SQL para ejecutar. Para instalar el ZIP incremental, ver [ETAPA_5_INSTALACION_Y_PRUEBAS.md](docs/ETAPA_5_INSTALACION_Y_PRUEBAS.md). Es necesario quitar las cuatro copias antiguas de `supabase/migrations/` después de verificar sus copias nuevas; un ZIP por sí solo no elimina archivos de GitHub.
+
+Prueba del primer paso de división: `node tests/portal2027-libreta-importacion.test.cjs`.
 
 Pruebas locales específicas sin dependencias: `node tests/portal2027-seguridad-horario.test.cjs`, `node tests/portal2027-excel.test.cjs`, `node tests/portal2027-archivos.test.cjs` y `node tests/portal2027-entregas.test.cjs`. No sustituyen la validación de Supabase ni la revisión visual del sitio publicado.
 
