@@ -114,6 +114,12 @@
     S.publicada = !!(r[3] && r[3].publicada);
     S.cerrado = !!(r[4] && r[4].cerrado);
     S.evals = r[0];
+    // Semanas ligadas a la planificación: sus columnas no se pueden eliminar desde la libreta.
+    S.planEv = {};
+    try {
+      var pl = await todas(function () { return db.from('portal2027_plan_clases').select('evaluacion_id,numero').eq('asignacion_id', asigId).eq('trimestre_id', trId).is('eliminada_en', null).order('id'); });
+      pl.forEach(function (p) { if (p.evaluacion_id) { S.planEv[p.evaluacion_id] = p.numero; } });
+    } catch (e) { /* si la planificación no está instalada, no hay columnas ligadas */ }
     S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.notas = {};
     r[2].forEach(function (n) { S.notas[clave(n.evaluacion_id, n.matricula_id)] = { valor: n.valor === null ? null : Number(n.valor), version: n.version, nota_manual: !!n.nota_manual }; });
@@ -235,7 +241,9 @@
     llamar('portal2027_actualizar_evaluacion', { p_id: ev.id, p_version: ev.version, p_tema: null, p_oculta: !ev.oculta, p_bloqueada: null },
       ev.oculta ? 'Columna visible otra vez. El cálculo no cambia.' : 'Columna oculta. Sigue contando en el cálculo.');
   }
+  function textoPlan(ev) { return 'Esta columna pertenece a la Clase ' + S.planEv[ev.id] + ' de la planificación y no se puede eliminar desde la libreta. Para quitarla, quite la clase en Planificación.'; }
   function aPapelera(ev, si) {
+    if (si && S.planEv && S.planEv[ev.id]) { aviso(textoPlan(ev), 'info'); return; }
     if (si && !window.confirm('¿Enviar esta columna a la papelera? Dejará de contar en el cálculo y podrá restaurarla.')) { return; }
     llamar('portal2027_papelera_evaluacion', { p_id: ev.id, p_version: ev.version, p_a_papelera: si }, si ? 'Columna enviada a la papelera.' : 'Columna restaurada.');
   }
@@ -885,7 +893,9 @@
       el('div', { clase: 'col-acciones' }, [
         ev.semana ? boton('Desglose', 'Ver registros de la semana', function () { abrirDesglose(ev); }) : null,
         boton(ev.bloqueada ? '🔒' : '🔓', ev.bloqueada ? 'Desbloquear columna' : 'Bloquear columna', function () { alternarBloqueo(ev); }),
-        boton('🗑', 'Enviar a la papelera', function () { aPapelera(ev, true); })
+        (S.planEv && S.planEv[ev.id])
+          ? boton('🔗', 'Ligada a la planificación (Clase ' + S.planEv[ev.id] + '): no se puede eliminar aquí', function () { aviso(textoPlan(ev), 'info'); })
+          : boton('🗑', 'Enviar a la papelera', function () { aPapelera(ev, true); })
       ])
     ]);
   }
