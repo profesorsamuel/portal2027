@@ -14,7 +14,7 @@
 .grupo-cat { white-space: nowrap; }
 .nota-input { width: 3.6rem; text-align: center; padding: 0.3rem; font: inherit; border: 1px solid #aebdba; border-radius: 6px; }
 .nota-input:disabled { background: #eceeed; color: var(--texto-suave); }
-.tema-input { width: 100%; min-width: 6.5rem; padding: 0.25rem 0.35rem; font: inherit; font-size: 0.85rem; border: 1px solid #aebdba; border-radius: 6px; }
+.tema-input { width: 100%; min-width: 6.5rem; padding: 0.25rem 0.35rem; font: inherit; font-size: 16px; border: 1px solid #aebdba; border-radius: 6px; }
 .col-acciones { display: flex; justify-content: center; gap: 0.2rem; margin-top: 0.25rem; }
 .mini { border: 1px solid var(--linea); background: var(--blanco); border-radius: 6px; padding: 0.1rem 0.4rem; font: inherit; font-size: 0.85rem; cursor: pointer; min-height: 1.8rem; min-width: 1.8rem; }
 .mini.mas { font-weight: 700; background: var(--acento); border-color: var(--acento-oscuro); }
@@ -24,8 +24,8 @@
 .etiqueta-check { display: flex !important; flex-direction: row; align-items: center; gap: 0.4rem; }
 @media (max-width: 640px) { .tabla-libreta { font-size: 0.85rem; } .tabla-libreta .col-nombre { min-width: 6.5rem; max-width: 7.5rem; white-space: normal; font-size: 0.8rem; padding: 0.3rem; } }
 .col-rotulo { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--tinta); }
-.tipo-select { width: 100%; min-width: 6.5rem; margin-bottom: 0.25rem; padding: 0.2rem 0.3rem; font: inherit; font-size: 0.8rem; font-weight: 700; border: 1px solid #aebdba; border-radius: 6px; background: #fff; }
-.importar-texto { width: 100%; margin: .6rem 0; padding: .5rem; font: inherit; font-size: .9rem; border: 1px solid #aebdba; border-radius: 8px; }
+.tipo-select { width: 100%; min-width: 6.5rem; margin-bottom: 0.25rem; padding: 0.2rem 0.3rem; font: inherit; font-size: 16px; font-weight: 700; border: 1px solid #aebdba; border-radius: 6px; background: #fff; }
+.importar-texto { width: 100%; margin: .6rem 0; padding: .5rem; font: inherit; font-size: 16px; border: 1px solid #aebdba; border-radius: 8px; }
 .importar .fila-problema td { background: #fdecea; }
 .importar .fila-cambia td { background: #fff6d6; }
 
@@ -191,3 +191,28 @@
 .libreta-ajuste-barra{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 10px;margin:5px 0 9px;border:1px solid #d9e4ec;border-radius:8px;background:#fff;font-size:12px}
 .libreta-ajuste-barra select{padding:5px;border:1px solid #b7c9d9;border-radius:5px}
 .libreta-ajuste-barra small{color:#536b7b}
+
+/* Etapa 3: el ancho de la libreta pertenece al scroll de la tabla. */
+.portal-ancho, .portal-ancho .secciones, .portal-ancho .secciones > *,
+.portal-ancho .bloque, .libreta-tabla-zona { min-width: 0; max-width: 100%; }
+.libreta-scroll { width: 100%; max-width: 100%; min-width: 0; contain: inline-size; }
+.nota-input, .portal2027-desglose .nota-input { min-height: 44px; min-width: 44px; font-size: 16px; }
+.tema-input, .tipo-select, .importar-texto { font-size: 16px; }
+
+@media (max-width: 700px) {
+  .tabla-libreta colgroup > col:first-child { width: 120px !important; }
+  .tabla-libreta .col-nombre { position: sticky; left: 0; width: 120px; max-width: 120px; white-space: normal; overflow-wrap: anywhere; background: var(--blanco); }
+  .tabla-libreta thead .col-nombre { background: #eef4f3; }
+  .portal-ancho .bloque { padding: 1rem .6rem; }
+  .portal-ancho .formulario-fila > *, .portal-ancho .cabecera-acciones > * { min-width: 0; max-width: 100%; }
+  .portal-ancho .formulario-fila label { flex: 1 1 130px; }
+  .portal-ancho .formulario-fila input, .portal-ancho .formulario-fila select { min-width: 0; width: 100%; }
+  .libreta-panel-grupos { grid-template-columns: minmax(0, 1fr); }
+  .libreta-estudiantes-rejilla { grid-template-columns: minmax(0, 1fr); }
+  .libreta-ajuste-barra > *, .libreta-panel-barra > * { min-width: 0; max-width: 100%; }
+  .libreta-ganchos-grupo { min-width: 0; max-width: 100%; }
+  .libreta-gancho { max-width: 100%; white-space: normal; }
+  .libreta-gancho span { min-width: 0; overflow-wrap: anywhere; }
+  .mini { min-height: 44px; min-width: 44px; }
+  .tabla-desglose .col-prom-sem { position: static; }
+}

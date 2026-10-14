@@ -200,3 +200,19 @@ input, select, textarea {
     top: auto;
   }
 }
+
+/* Etapa 3: solo las listas de consulta optan por tarjetas. */
+.tabla-contenedor { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 700px) {
+  .tabla-tarjetas { display: block; width: 100%; }
+  .tabla-tarjetas thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .tabla-tarjetas tbody { display: grid; width: 100%; gap: .75rem; }
+  .tabla-tarjetas tr { display: block; min-width: 0; border: 1px solid var(--linea); border-radius: 8px; padding: .3rem .6rem; }
+  .tabla-tarjetas tbody td { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: .25rem .6rem; width: 100%; max-width: none; min-width: 0; padding: .5rem 0; white-space: normal; overflow-wrap: anywhere; }
+  .tabla-tarjetas td::before { content: attr(data-etiqueta); color: var(--texto-suave); font-weight: 600; }
+  .tabla-tarjetas td > * { grid-column: 2; min-width: 0; max-width: 100%; }
+  .tabla-tarjetas td[colspan] { display: block; }
+  .tabla-tarjetas td[colspan]::before { content: none; }
+  .tabla-tarjetas tr:last-child td:last-child { border-bottom: 0; }
+  .tabla-tarjetas .cabecera-acciones { display: flex; flex-wrap: wrap; }
+}

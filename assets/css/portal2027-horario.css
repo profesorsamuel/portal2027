@@ -155,3 +155,23 @@ label.check input { width: 1.1rem; height: 1.1rem; }
 .instruccion-panel { padding:.8rem 1rem; background:#edf5f4; border-radius:10px; color:#274e54; font-weight:600; }
 @media(max-width:850px){.panel-acciones {grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:520px){.panel-acciones {grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.accion-horario {min-height:98px;padding:.7rem .3rem}.accion-horario strong{font-size:.88rem}}
+
+/* Etapa 3: contenedores que pueden reducirse sin ensanchar el documento. */
+main.portal, .bloque, .tarjeta, .tarjeta-cuerpo,
+.cabecera-horario > *, .dos-columnas > *, .form-grid > *,
+.selectores, .selectores > *, .semana-grid, .panel-acciones,
+.barra-filtro > *, .fila-select > * { min-width: 0; max-width: 100%; }
+.tabla-contenedor { width: 100%; min-width: 0; max-width: 100%; contain: inline-size; overflow-x: auto; }
+.accion-horario { min-width: 0; overflow-wrap: anywhere; }
+.franja-tarjeta .materia, .barra-estado, .ayuda { overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+  .selectores label, .barra-filtro label { flex: 1 1 100%; }
+  .selectores select, .barra-filtro select, .fila-select select { width: 100%; min-width: 0; }
+  .acciones-form .boton, .tarjeta-cuerpo > .boton, .tarjeta-cuerpo p > .boton { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .tabla-franjas td:last-child { white-space: normal; min-width: 110px; }
+  .tabla-franjas td:last-child .boton { display: block; width: 100%; margin: .25rem 0; }
+  .exclusion { max-width: 100%; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .exclusion > * { min-width: 0; }
+  .zona-archivo { padding: .8rem; overflow-wrap: anywhere; }
+}
