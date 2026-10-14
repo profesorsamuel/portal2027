@@ -21,6 +21,64 @@
     ACEPTAR: '.pdf,.jpg,.jpeg,.png,.txt,.docx,.pptx,.xlsx'
   });
 
+  // Conserva archivos pequeños, documentos y PNG transparentes. El decodificador
+  // del navegador aplica EXIF antes de dibujar; no se aplica una segunda rotación.
+  C.reducirImagen = async function (archivo, opciones) {
+    var o = opciones || {};
+    var umbral = o.umbralBytes == null ? 1024 * 1024 : o.umbralBytes;
+    if (!archivo || !/^image\//i.test(archivo.type || '') || archivo.size <= umbral) { return archivo; }
+    var origen;
+    try {
+      if (window.createImageBitmap) {
+        try { origen = await window.createImageBitmap(archivo, { imageOrientation: 'from-image' }); } catch (e) { /* alternativa abajo */ }
+      }
+      if (!origen) {
+        origen = await new Promise(function (ok, mal) {
+          var url = URL.createObjectURL(archivo), img = new Image();
+          img.onload = function () { URL.revokeObjectURL(url); ok(img); };
+          img.onerror = function () { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la imagen.')); };
+          img.src = url;
+        });
+      }
+      var ancho = origen.width || origen.naturalWidth, alto = origen.height || origen.naturalHeight;
+      if (Math.max(ancho, alto) <= 320 && !o.pasos) { return archivo; }
+      var canvas = document.createElement('canvas'), cx = canvas.getContext('2d');
+      if (!cx) { throw new Error('No se pudo preparar la imagen.'); }
+      if (archivo.type === 'image/png') {
+        canvas.width = ancho; canvas.height = alto;
+        cx.drawImage(origen, 0, 0);
+        var datos = cx.getImageData(0, 0, ancho, alto).data;
+        for (var a = 3; a < datos.length; a += 4) {
+          if (datos[a] < 255) { return archivo; }
+        }
+      }
+      var limite = o.maxBytes || 1.5 * 1024 * 1024;
+      var lado = Math.min(o.maxLado || 1600, Math.max(ancho, alto));
+      var pasos = o.pasos || [];
+      if (!o.pasos) {
+        while (true) {
+          [0.85, 0.7, 0.6].forEach(function (q) { pasos.push([lado, q]); });
+          if (lado <= 160) { break; }
+          lado = Math.max(160, Math.floor(lado * 0.8));
+        }
+      }
+      for (var i = 0; i < pasos.length; i++) {
+        var k = Math.min(1, pasos[i][0] / Math.max(ancho, alto));
+        canvas.width = Math.max(1, Math.round(ancho * k));
+        canvas.height = Math.max(1, Math.round(alto * k));
+        cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, canvas.width, canvas.height);
+        cx.drawImage(origen, 0, 0, canvas.width, canvas.height);
+        var blob = await new Promise(function (ok) { canvas.toBlob(ok, 'image/jpeg', pasos[i][1]); });
+        if (blob && blob.size < limite) {
+          return new File([blob], (archivo.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: archivo.lastModified });
+        }
+      }
+      throw new Error('No se pudo reducir la imagen al tamaño permitido.');
+    } finally {
+      if (origen && origen.close) { origen.close(); }
+    }
+  };
+
   C.urlSegura = function(valor) { try { var u = new URL(valor); return /^https?:$/.test(u.protocol) ? u.href : null; } catch(e) { return null; } };
   C.enlace = function(valor, titulo) { var url = C.urlSegura(valor); return url ? P.el('a', { clase: 'boton boton-secundario boton-chico', href: url, target: '_blank', rel: 'noopener noreferrer', texto: titulo || 'Abrir enlace' }) : null; };
 

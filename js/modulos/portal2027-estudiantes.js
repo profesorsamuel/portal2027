@@ -105,35 +105,6 @@
     return null;
   }
 
-  // Reduce una foto (de la cámara o la galería) a JPG de máximo 2 MB; devuelve null si no se puede leer.
-  async function reducirImagen(archivo) {
-    var origen = null;
-    if (window.createImageBitmap) { try { origen = await window.createImageBitmap(archivo); } catch (e) { origen = null; } }
-    if (!origen) {
-      origen = await new Promise(function (ok, mal) {
-        var url = URL.createObjectURL(archivo), img = new Image();
-        img.onload = function () { URL.revokeObjectURL(url); ok(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); mal(new Error('imagen')); };
-        img.src = url;
-      });
-    }
-    var ancho = origen.width || origen.naturalWidth, alto = origen.height || origen.naturalHeight;
-    var pasos = [[1280, 0.85], [1280, 0.7], [1024, 0.7], [800, 0.65], [640, 0.6]];
-    for (var i = 0; i < pasos.length; i++) {
-      var k = Math.min(1, pasos[i][0] / Math.max(ancho, alto));
-      var lienzo = document.createElement('canvas');
-      lienzo.width = Math.max(1, Math.round(ancho * k));
-      lienzo.height = Math.max(1, Math.round(alto * k));
-      var cx = lienzo.getContext('2d');
-      cx.fillStyle = '#ffffff';
-      cx.fillRect(0, 0, lienzo.width, lienzo.height);
-      cx.drawImage(origen, 0, 0, lienzo.width, lienzo.height);
-      var blob = await new Promise(function (ok) { lienzo.toBlob(ok, 'image/jpeg', pasos[i][1]); });
-      if (blob && blob.size <= MAX_FOTO) { return blob; }
-    }
-    return null;
-  }
-
   // Tarjeta con la foto del estudiante y, si se permite, botones para subir o quitar.
   // alCambiar(): se llama tras un cambio real y guardado.
   function tarjetaFoto(est, alCambiar) {
@@ -183,7 +154,7 @@
         var tipo = tipoImagen(bytes);
         var envio = archivo;
         if (!tipo || archivo.size > MAX_FOTO) {
-          try { envio = await reducirImagen(archivo); } catch (e) { envio = null; }
+          try { envio = await P.clases.reducirImagen(archivo, { umbralBytes: tipo ? MAX_FOTO : 1024 * 1024, maxBytes: MAX_FOTO, pasos: [[1280, 0.85], [1280, 0.7], [1024, 0.7], [800, 0.65], [640, 0.6]] }); } catch (e) { envio = null; }
           if (!envio) { aviso.mostrar('No se pudo preparar esa foto. Pruebe con otra imagen JPG o PNG.', 'error'); ocupado(false); return; }
           tipo = tipoImagen(new Uint8Array(await envio.slice(0, 8).arrayBuffer()));
           if (!tipo) { aviso.mostrar('El archivo no es una imagen válida.', 'error'); ocupado(false); return; }
