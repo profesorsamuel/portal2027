@@ -119,10 +119,13 @@
 
   P.aviso = function (mensaje, tipo) {
     tipo = ['ok', 'error', 'info'].indexOf(tipo) !== -1 ? tipo : 'info';
+    var abiertos = document.querySelectorAll('dialog[open]');
+    var destino = abiertos.length ? abiertos[abiertos.length - 1] : document.body;
     if (!zonaAvisos || !zonaAvisos.isConnected) {
       zonaAvisos = el('div', { clase: 'portal-avisos', 'aria-label': 'Avisos del portal' });
-      document.body.appendChild(zonaAvisos);
+      destino.appendChild(zonaAvisos);
     }
+    if (zonaAvisos.parentElement !== destino) destino.appendChild(zonaAvisos);
     var focoAnterior = document.activeElement;
     var temporizador = null;
     var cerrado = false;

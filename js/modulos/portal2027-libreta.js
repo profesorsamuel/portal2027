@@ -19,6 +19,15 @@
   var zonaTabla = null;
   var filasEst = {};                            // matId -> { celdasFinal(), }
 
+  var dialogosPendientes = new Set();
+  async function conDialogo(llave, fn) {
+    if (dialogosPendientes.has(llave)) { return; }
+    dialogosPendientes.add(llave);
+    try { return await fn(); }
+    catch (e) { aviso('No se guardó. ' + textoError(e), 'error'); }
+    finally { dialogosPendientes.delete(llave); }
+  }
+
   /* ---------- utilidades ---------- */
   async function consultar(q) {
     var r = await q;
@@ -212,29 +221,31 @@
     });
   }
 
-  function agregarColumna(cat) {
-    if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
-    var tipo = '';
-    if (cat === 'apreciacion' && window.confirm('¿Crear apreciación SEMANAL? Aceptar = semanal; Cancelar = suelta.')) {
-      var siguiente = 1 + Math.max(0, ...S.evals.filter(function(e){return e.categoria==='apreciacion' && e.semana;}).map(function(e){return e.semana;}));
-      pedirSemana(siguiente).then(function (f) {
+  async function agregarColumna(cat, suelta) {
+    return conDialogo('agregar|' + cat, async function () {
+      if (S.cerrado) { aviso('El trimestre está cerrado: no se pueden agregar columnas.', 'error'); return; }
+      var tipo = '';
+      if (cat === 'apreciacion' && !suelta) {
+        if (!(await P.confirmar('Crear apreciación semanal', 'Se elegirán las fechas de la semana. Para una apreciación individual use el botón «Suelta».', 'Crear semanal'))) { return; }
+        var siguiente = 1 + Math.max(0, ...S.evals.filter(function(e){return e.categoria==='apreciacion' && e.semana;}).map(function(e){return e.semana;}));
+        var f = await pedirSemana(siguiente);
         if (!f) { return; }
-        llamar('portal2027_crear_apreciacion_semanal', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_inicio: f.inicio, p_fin: f.fin }, 'Apreciación semanal creada.');
-      });
-      return;
-    }
-    if (cat === 'apreciacion') {
-      var lista = TIPOS_APRECIACION.map(function (t, i) { return (i + 1) + ' = ' + t; }).join('\n');
-      var r = window.prompt('¿De qué se trata esta nota de apreciación? Escriba el número:\n' + lista, '1');
-      if (r === null) { return; }
-      var idx = parseInt(r, 10);
-      if (!(idx >= 1 && idx <= TIPOS_APRECIACION.length)) { aviso('Escriba un número de la lista (1 a ' + TIPOS_APRECIACION.length + ').', 'error'); return; }
-      tipo = TIPOS_APRECIACION[idx - 1];
-    }
-    var pista = cat === 'ejercicio_escrito' ? 'Tema del ejercicio escrito (por ejemplo: Tema 1):' : 'Tema o detalle de la nueva columna de ' + M.ETIQUETAS[cat].toLowerCase() + ' (puede dejarlo vacío):';
-    var tema = window.prompt(pista, '');
-    if (tema === null) { return; }
-    llamar('portal2027_crear_evaluacion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_categoria: cat, p_tema: tema, p_tipo: tipo }, 'Columna agregada.');
+        await llamar('portal2027_crear_apreciacion_semanal', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_inicio: f.inicio, p_fin: f.fin }, 'Apreciación semanal creada.');
+        return;
+      }
+      if (cat === 'apreciacion') {
+        var lista = TIPOS_APRECIACION.map(function (t, i) { return (i + 1) + ' = ' + t; }).join('\n');
+        var r = await P.pedirTexto('Tipo de apreciación', 'Escriba el número:\n' + lista, '1');
+        if (r === null) { return; }
+        var idx = parseInt(r, 10);
+        if (!(idx >= 1 && idx <= TIPOS_APRECIACION.length)) { aviso('Escriba un número de la lista (1 a ' + TIPOS_APRECIACION.length + ').', 'error'); return; }
+        tipo = TIPOS_APRECIACION[idx - 1];
+      }
+      var pista = cat === 'ejercicio_escrito' ? 'Tema del ejercicio escrito (por ejemplo: Tema 1):' : 'Tema o detalle de la nueva columna de ' + M.ETIQUETAS[cat].toLowerCase() + ' (puede dejarlo vacío):';
+      var tema = await P.pedirTexto('Nueva columna de notas', pista, '');
+      if (tema === null) { return; }
+      await llamar('portal2027_crear_evaluacion', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_categoria: cat, p_tema: tema, p_tipo: tipo }, 'Columna agregada.');
+    });
   }
   function cambiarTipo(ev, select) {
     if (select.value === (ev.tipo || '')) { return; }
@@ -254,53 +265,54 @@
       ev.oculta ? 'Columna visible otra vez. El cálculo no cambia.' : 'Columna oculta. Sigue contando en el cálculo.');
   }
   function textoPlan(ev) { return 'Esta columna pertenece a la Clase ' + S.planEv[ev.id] + ' de la planificación y no se puede eliminar desde la libreta. Para quitarla, quite la clase en Planificación.'; }
-  function aPapelera(ev, si) {
-    if (si && S.planEv && S.planEv[ev.id]) { aviso(textoPlan(ev), 'info'); return; }
-    if (si && !window.confirm('¿Enviar esta columna a la papelera? Dejará de contar en el cálculo y podrá restaurarla.')) { return; }
-    llamar('portal2027_papelera_evaluacion', { p_id: ev.id, p_version: ev.version, p_a_papelera: si }, si ? 'Columna enviada a la papelera.' : 'Columna restaurada.');
+  async function aPapelera(ev, si) {
+    return conDialogo('papelera|' + ev.id, async function () {
+      if (si && S.planEv && S.planEv[ev.id]) { aviso(textoPlan(ev), 'info'); return; }
+      if (si && !(await P.confirmar('Enviar columna a la papelera', '¿Enviar esta columna a la papelera? Dejará de contar en el cálculo y podrá restaurarla.', 'Enviar a la papelera'))) { return; }
+      await llamar('portal2027_papelera_evaluacion', { p_id: ev.id, p_version: ev.version, p_a_papelera: si }, si ? 'Columna enviada a la papelera.' : 'Columna restaurada.');
+    });
   }
 
   /* ---------- guardar una nota ---------- */
   async function guardarCelda(ev, mat, input, marca) {
-    var k = clave(ev.id, mat.id);
-    var previa = S.notas[k] || { valor: null, version: 0 };
-    var crudo = input.value.trim().replace(',', '.');
-    var valor = crudo === '' ? null : Number(crudo);
-
-    if (valor !== null && (!isFinite(valor) || valor < 0 || valor > 5 || Math.round(valor * 100) / 100 !== valor)) {
-      aviso('La nota debe ser un número de 0 a 5 (hasta 2 decimales).', 'error');
-      input.value = previa.valor === null ? '' : String(previa.valor);
-      return;
-    }
-    if (valor === previa.valor) { return; }
-
-    var motivo = null;
-    if (previa.valor !== null) {
-      motivo = window.prompt('Esta nota ya estaba escrita (' + previa.valor + '). Motivo del cambio:', '');
-      if (motivo === null || motivo.trim() === '') {
-        aviso('No se cambió la nota: falta el motivo.', 'info');
-        input.value = String(previa.valor);
+    return conDialogo('nota|' + ev.id + '|' + mat.id, async function () {
+      var k = clave(ev.id, mat.id);
+      var previa = S.notas[k] || { valor: null, version: 0 };
+      var crudo = input.value.trim().replace(',', '.');
+      var valor = crudo === '' ? null : Number(crudo);
+      if (valor !== null && (!isFinite(valor) || valor < 0 || valor > 5 || Math.round(valor * 100) / 100 !== valor)) {
+        aviso('La nota debe ser un número de 0 a 5 (hasta 2 decimales).', 'error');
+        input.value = previa.valor === null ? '' : String(previa.valor);
         return;
       }
-    }
-
-    marca('guardando');
-    aviso('Guardando…', 'info');
-    try {
-      var r = await db.rpc(ev.semana ? 'portal2027_guardar_nota_semanal_manual' : 'portal2027_guardar_nota', {
-        p_evaluacion: ev.id, p_matricula: mat.id, p_valor: valor, p_version: previa.version, p_motivo: motivo || (ev.semana ? 'Corrección manual de la semana' : null)
-      });
-      if (r.error) { throw r.error; }
-      var d = r.data;
-      S.notas[k] = { valor: d.valor === null ? null : Number(d.valor), version: d.version, nota_manual: !!ev.semana };
-      S.historial = null;
-      marca('ok');
-      actualizarFila(mat.id);
-      aviso('Nota guardada.', 'ok');
-    } catch (e) {
-      marca('error');
-      aviso('NO se guardó la nota de ' + nombreEst(mat.estudiante) + '. ' + textoError(e), 'error');
-    }
+      if (valor === previa.valor) { return; }
+      var motivo = null;
+      if (previa.valor !== null) {
+        motivo = await P.pedirTexto('Cambiar nota existente', 'Esta nota ya estaba escrita (' + previa.valor + '). Motivo del cambio:', '');
+        if (motivo === null || motivo.trim() === '') {
+          aviso('No se cambió la nota: falta el motivo.', 'info');
+          input.value = String(previa.valor);
+          return;
+        }
+      }
+      marca('guardando');
+      aviso('Guardando…', 'info');
+      try {
+        var r = await db.rpc(ev.semana ? 'portal2027_guardar_nota_semanal_manual' : 'portal2027_guardar_nota', {
+          p_evaluacion: ev.id, p_matricula: mat.id, p_valor: valor, p_version: previa.version, p_motivo: motivo || (ev.semana ? 'Corrección manual de la semana' : null)
+        });
+        if (r.error) { throw r.error; }
+        var d = r.data;
+        S.notas[k] = { valor: d.valor === null ? null : Number(d.valor), version: d.version, nota_manual: !!ev.semana };
+        S.historial = null;
+        marca('ok');
+        actualizarFila(mat.id);
+        aviso('Nota guardada.', 'ok');
+      } catch (e) {
+        marca('error');
+        aviso('NO se guardó la nota de ' + nombreEst(mat.estudiante) + '. ' + textoError(e), 'error');
+      }
+    });
   }
 
   /* ---------- dibujo ---------- */
@@ -432,7 +444,7 @@
       var c = await db.from('portal2027_config_conducta_semanal').select('*').eq('asignacion_id', S.asig.id).maybeSingle();
       if (c.error) { throw c.error; }
       if (c.data) { Object.keys(POR_DEFECTO).forEach(function (k) { actual[k] = Number(c.data[k]); }); }
-    } catch (e) { window.alert('No se pudieron cargar los descuentos. ' + textoError(e)); return; }
+    } catch (e) { P.aviso('No se pudieron cargar los descuentos. ' + textoError(e), 'error'); return; }
 
     // Cada campo: [clave, título, explicación corta, grupo]
     var GRUPOS = [
@@ -623,19 +635,22 @@
         var botonAgregar = document.createElement('button');
         botonAgregar.type = 'button'; botonAgregar.className = 'desglose-agregar-btn'; botonAgregar.textContent = '+ Agregar registro'; botonAgregar.disabled = bloqueado;
         botonAgregar.onclick = async function () {
-          var tipo = window.prompt('Tipo de registro (ejemplo: Tarea, Laboratorio):', 'Tarea');
-          if (tipo === null || tipo.trim() === '') { return; }
-          var descripcion = window.prompt('Descripción del registro (puede dejarla vacía):', '') || '';
-          tipo = tipo.trim();
-          if (tipo.length > 40 || descripcion.length > 120) { window.alert('Texto demasiado largo (tipo: máx. 40; descripción: máx. 120).'); return; }
-          botonAgregar.disabled = true;
-          var grupoId = nuevoGrupoId();
-          // Una sola llamada: la base crea la columna completa (una celda vacía por estudiante) o no crea nada.
-          var g = await db.rpc('portal2027_crear_columna_registro_semana', {
-            p_evaluacion: ev.id, p_tipo: tipo, p_descripcion: descripcion, p_grupo: grupoId
+          return conDialogo('registro-nuevo|' + ev.id, async function () {
+            var tipo = await P.pedirTexto('Agregar registro semanal', 'Tipo de registro (ejemplo: Tarea, Laboratorio):', 'Tarea');
+            if (tipo === null || tipo.trim() === '') { return; }
+            var descripcion = await P.pedirTexto('Descripción del registro', 'Descripción del registro (puede dejarla vacía):', '');
+            if (descripcion === null) { return; }
+            tipo = tipo.trim();
+            if (tipo.length > 40 || descripcion.length > 120) { P.aviso('Texto demasiado largo (tipo: máx. 40; descripción: máx. 120).', 'error'); return; }
+            botonAgregar.disabled = true;
+            var grupoId = nuevoGrupoId();
+            // Una sola llamada: la base crea la columna completa (una celda vacía por estudiante) o no crea nada.
+            var g = await db.rpc('portal2027_crear_columna_registro_semana', {
+              p_evaluacion: ev.id, p_tipo: tipo, p_descripcion: descripcion, p_grupo: grupoId
+            });
+            if (g.error) { P.aviso(P.traducirError(g.error), 'error'); }
+            pintar();
           });
-          if (g.error) { window.alert(P.traducirError(g.error)); }
-          pintar();
         };
         zonaAgregar.appendChild(botonAgregar);
 
@@ -652,10 +667,10 @@
             var q = await db.rpc('portal2027_aplicar_conducta_semana', { p_evaluacion: ev.id });
             if (q.error) { throw q.error; }
             var d = q.data || {};
-            window.alert('Conducta actualizada. Nuevos: ' + (d.creados || 0) + ' · Cambiados: ' + (d.actualizados || 0) + ' · Sin cambio: ' + (d.sin_cambio || 0) + '.');
+            P.aviso('Conducta actualizada. Nuevos: ' + (d.creados || 0) + ' · Cambiados: ' + (d.actualizados || 0) + ' · Sin cambio: ' + (d.sin_cambio || 0) + '.', 'ok');
             await recargar();
           } catch (e) {
-            window.alert(P.traducirError(e));
+            P.aviso(P.traducirError(e), 'error');
           }
           pintar();
         };
@@ -690,18 +705,20 @@
           btnCol.setAttribute('aria-label', 'Eliminar la columna ' + nombreCol);
           btnCol.disabled = bloqueado;
           btnCol.onclick = async function () {
-            var regs = Object.keys(g.porMat).map(function (k) { return g.porMat[k]; }).filter(Boolean);
-            if (regs.length === 0) { window.alert('Esta columna no tiene registros.'); return; }
-            if (!window.confirm('¿Eliminar la columna «' + nombreCol + '» completa?\n\nSe borrarán ' + regs.length + ' registro(s) de todos los estudiantes y el promedio semanal se recalculará.')) { return; }
-            btnCol.disabled = true; btnCol.textContent = 'Eliminando…';
-            await cola; // primero terminan las notas que aún se estén guardando
-            var fallos = 0, ultimoError = null;
-            for (var i = 0; i < regs.length; i++) {
-              var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: regs[i].id, p_version: regs[i].version });
-              if (q.error) { fallos++; ultimoError = q.error; }
-            }
-            if (fallos > 0) { window.alert('No se pudieron eliminar ' + fallos + ' de ' + regs.length + ' registros. ' + P.traducirError(ultimoError)); }
-            await recargar(); pintar();
+            return conDialogo('borrar-columna|' + ev.id + '|' + g.grupo, async function () {
+              var regs = Object.keys(g.porMat).map(function (k) { return g.porMat[k]; }).filter(Boolean);
+              if (regs.length === 0) { P.aviso('Esta columna no tiene registros.', 'info'); return; }
+              if (!(await P.confirmar('Eliminar columna semanal', '¿Eliminar la columna «' + nombreCol + '» completa?\n\nSe borrarán ' + regs.length + ' registro(s) de todos los estudiantes y el promedio semanal se recalculará.', 'Eliminar columna'))) { return; }
+              btnCol.disabled = true; btnCol.textContent = 'Eliminando…';
+              await cola; // primero terminan las notas que aún se estén guardando
+              var fallos = 0, ultimoError = null;
+              for (var i = 0; i < regs.length; i++) {
+                var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: regs[i].id, p_version: regs[i].version });
+                if (q.error) { fallos++; ultimoError = q.error; }
+              }
+              if (fallos > 0) { P.aviso('No se pudieron eliminar ' + fallos + ' de ' + regs.length + ' registros. ' + P.traducirError(ultimoError), 'error'); }
+              await recargar(); pintar();
+            });
           };
           th.append(rotulo, btnCol);
           fila.appendChild(th);
@@ -748,9 +765,11 @@
         borrar = document.createElement('button');
         borrar.type = 'button'; borrar.className = 'desglose-borrar'; borrar.setAttribute('aria-label', 'Eliminar registro'); borrar.textContent = '×'; borrar.title = 'Eliminar este registro'; borrar.disabled = bloqueado;
         borrar.onclick = async function () {
-          if (!window.confirm('¿Eliminar este registro de ' + nombreEst(mat.estudiante) + '?')) { return; }
-          var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: reg.id, p_version: reg.version });
-          if (q.error) { window.alert(P.traducirError(q.error)); } else { await recargar(); pintar(); }
+          return conDialogo('borrar-registro|' + reg.id, async function () {
+            if (!(await P.confirmar('Eliminar registro semanal', '¿Eliminar este registro de ' + nombreEst(mat.estudiante) + '?', 'Eliminar registro'))) { return; }
+            var q = await db.rpc('portal2027_eliminar_registro_semana', { p_id: reg.id, p_version: reg.version });
+            if (q.error) { P.aviso(P.traducirError(q.error), 'error'); } else { await recargar(); pintar(); }
+          });
         };
         return borrar;
       }
@@ -764,7 +783,7 @@
         var texto = inp.value.trim();
         var v = texto === '' ? null : Number(texto.replace(',', '.'));
         if (v !== null && (!Number.isFinite(v) || v < 0 || v > 5)) {
-          window.alert('La nota debe estar entre 0 y 5.');
+          P.aviso('La nota debe estar entre 0 y 5.', 'error');
           var ant = valorActual(); inp.value = ant === null ? '' : ant;
           return { ok: false };
         }
@@ -786,7 +805,7 @@
             p_valor: v, p_version: reg ? reg.version : 0, p_grupo: g.grupo
           });
           td.classList.remove('celda-guardando');
-          if (q.error) { window.alert(P.traducirError(q.error)); inp.value = anterior === null ? '' : anterior; enviado = anterior; return; }
+          if (q.error) { P.aviso(P.traducirError(q.error), 'error'); inp.value = anterior === null ? '' : anterior; enviado = anterior; return; }
           if (reg) { reg.version = q.data.version; reg.valor = v; }
           else {
             reg = { id: q.data.id, version: q.data.version, valor: v };
@@ -821,37 +840,39 @@
       });
 
       // Pegar notas copiadas de Excel: una columna (o varias) hacia abajo desde esta casilla; cada nota se guarda como si se hubiera escrito a mano.
-      inp.addEventListener('paste', function (k) {
+      inp.addEventListener('paste', async function (k) {
         var txt = ((k.clipboardData && k.clipboardData.getData('text')) || '').replace(/[\r\n]+$/, '');
         if (!/[\r\n\t]/.test(txt)) { return; } // una sola nota: se pega normal
         k.preventDefault();
-        if (bloqueado) { return; }
-        var f0 = Number(inp.dataset.fila), c0 = Number(inp.dataset.col);
-        var destinos = [], invalidas = [], sinCasilla = 0;
-        txt.split(/\r?\n/).forEach(function (linea, a) {
-          linea.split('\t').forEach(function (t, b) {
-            t = t.trim();
-            if (t === '') { return; } // celda vacía: no se toca
-            var v = Number(t.replace(',', '.'));
-            var est = S.mats[f0 + a];
-            if (!Number.isFinite(v) || v < 0 || v > 5) { invalidas.push('«' + t + '»' + (est ? ' (' + nombreEst(est.estudiante) + ')' : '')); return; }
-            var dest = contenido.querySelector('input[data-fila="' + (f0 + a) + '"][data-col="' + (c0 + b) + '"]');
-            if (!dest || dest.disabled) { sinCasilla++; return; }
-            destinos.push({ dest: dest, v: Math.round(v * 100) / 100, est: est });
+        return conDialogo('pegar|' + ev.id, async function () {
+          if (bloqueado) { return; }
+          var f0 = Number(inp.dataset.fila), c0 = Number(inp.dataset.col);
+          var destinos = [], invalidas = [], sinCasilla = 0;
+          txt.split(/\r?\n/).forEach(function (linea, a) {
+            linea.split('\t').forEach(function (t, b) {
+              t = t.trim();
+              if (t === '') { return; } // celda vacía: no se toca
+              var v = Number(t.replace(',', '.'));
+              var est = S.mats[f0 + a];
+              if (!Number.isFinite(v) || v < 0 || v > 5) { invalidas.push('«' + t + '»' + (est ? ' (' + nombreEst(est.estudiante) + ')' : '')); return; }
+              var dest = contenido.querySelector('input[data-fila="' + (f0 + a) + '"][data-col="' + (c0 + b) + '"]');
+              if (!dest || dest.disabled) { sinCasilla++; return; }
+              destinos.push({ dest: dest, v: Math.round(v * 100) / 100, est: est });
+            });
           });
-        });
-        if (invalidas.length > 0) {
-          window.alert('No se pegó nada. Estos valores no son notas de 0 a 5:\n\n' + invalidas.slice(0, 8).join('\n') + (invalidas.length > 8 ? '\n…' : ''));
-          return;
-        }
-        if (destinos.length === 0) { window.alert('No hay notas para pegar en esta posición.'); return; }
-        var primero = destinos[0].est, ultimo = destinos[destinos.length - 1].est;
-        var msg = 'Se pegarán ' + destinos.length + ' nota(s)' + (primero && ultimo ? ', de ' + nombreEst(primero.estudiante) + ' a ' + nombreEst(ultimo.estudiante) : '') + '.';
-        if (sinCasilla > 0) { msg += '\n\n' + sinCasilla + ' valor(es) sobraban (no hay más estudiantes o columnas) y se omitirán.'; }
-        if (!window.confirm(msg + '\n\n¿Continuar?')) { return; }
-        destinos.forEach(function (d) {
-          d.dest.value = String(d.v);
-          d.dest.dispatchEvent(new Event('change')); // usa el mismo guardado de una nota escrita a mano
+          if (invalidas.length > 0) {
+            P.aviso('No se pegó nada. Estos valores no son notas de 0 a 5:\n\n' + invalidas.slice(0, 8).join('\n') + (invalidas.length > 8 ? '\n…' : ''), 'error');
+            return;
+          }
+          if (destinos.length === 0) { P.aviso('No hay notas para pegar en esta posición.', 'info'); return; }
+          var primero = destinos[0].est, ultimo = destinos[destinos.length - 1].est;
+          var msg = 'Se pegarán ' + destinos.length + ' nota(s)' + (primero && ultimo ? ', de ' + nombreEst(primero.estudiante) + ' a ' + nombreEst(ultimo.estudiante) : '') + '.';
+          if (sinCasilla > 0) { msg += '\n\n' + sinCasilla + ' valor(es) sobraban (no hay más estudiantes o columnas) y se omitirán.'; }
+          if (!(await P.confirmar('Pegar notas desde Excel', msg + '\n\n¿Continuar?', 'Pegar notas'))) { return; }
+          destinos.forEach(function (d) {
+            d.dest.value = String(d.v);
+            d.dest.dispatchEvent(new Event('change')); // usa el mismo guardado de una nota escrita a mano
+          });
         });
       });
       return td;
@@ -992,7 +1013,9 @@
     cats.forEach(function (c) {
       var delCat = cols.filter(function (e) { return e.categoria === c; });
       var mas = el('button', { clase: 'mini mas', type: 'button', disabled: S.cerrado, texto: '+', title: 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), 'aria-label': 'Agregar columna de ' + M.ETIQUETAS[c].toLowerCase(), onclick: function () { agregarColumna(c); } });
-      fila1.push(el('th', { scope: 'colgroup', colspan: String(delCat.length + 1), clase: 'grupo-cat' }, [M.ETIQUETAS[c] + ' ', mas]));
+      var accionesCat = [M.ETIQUETAS[c] + ' ', mas];
+      if (c === 'apreciacion') { accionesCat.push(el('button', { clase: 'mini', type: 'button', texto: 'Suelta', disabled: S.cerrado, title: 'Agregar apreciación suelta: tarea, laboratorio u otro tipo', onclick: function () { return agregarColumna(c, true); } })); }
+      fila1.push(el('th', { scope: 'colgroup', colspan: String(delCat.length + 1), clase: 'grupo-cat' }, accionesCat));
       delCat.forEach(function (e) { fila2.push(cabeceraColumna(e)); });
       fila2.push(el('th', { scope: 'col', clase: 'col-prom', texto: 'Prom.' }));
     });
@@ -1071,12 +1094,14 @@
             : (!actual ? 'La nota ya no existe.' : ''))));
     var b = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recuperar', disabled: !!motivoNoPosible,
       title: motivoNoPosible || 'Volver al valor anterior a este cambio' });
-    b.addEventListener('click', function () {
-      var antes = x.valor_anterior === null ? '(vacía)' : String(Number(x.valor_anterior));
-      var motivo = window.prompt('La nota volverá a ' + antes + '. Escriba el motivo de la recuperación:', '');
-      if (motivo === null) { return; }
-      if (!motivo.trim()) { aviso('No se guardó. Escriba el motivo de la recuperación.', 'error'); return; }
-      recuperar(x, actual.version, motivo.trim());
+    b.addEventListener('click', async function () {
+      return conDialogo('recuperar|' + x.id, async function () {
+        var antes = x.valor_anterior === null ? '(vacía)' : String(Number(x.valor_anterior));
+        var motivo = await P.pedirTexto('Recuperar nota del historial', 'La nota volverá a ' + antes + '. Escriba el motivo de la recuperación:', '');
+        if (motivo === null) { return; }
+        if (!motivo.trim()) { aviso('No se guardó. Escriba el motivo de la recuperación.', 'error'); return; }
+        await recuperar(x, actual.version, motivo.trim());
+      });
     });
     return b;
   }
@@ -1153,12 +1178,14 @@
 
     var btnHist = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Historial de notas' });
     var btnPap = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Papelera' });
-    var btnPub = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: S.publicada ? 'Retirar publicación' : 'Publicar a estudiantes', onclick: function () {
-      var txt = S.publicada ? '¿Retirar la publicación? Los estudiantes dejarán de ver las notas de esta materia en este trimestre.'
-        : '¿Publicar las notas de este trimestre? Cada estudiante verá solo sus propias notas, y los cambios que haga después también se verán.';
-      if (!window.confirm(txt)) { return; }
-      llamar('portal2027_publicar_notas', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_publicar: !S.publicada },
-        S.publicada ? 'Publicación retirada.' : 'Notas publicadas a los estudiantes.');
+    var btnPub = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: S.publicada ? 'Retirar publicación' : 'Publicar a estudiantes', onclick: async function () {
+      return conDialogo('publicar|' + S.asig.id + '|' + S.trimestreId, async function () {
+        var txt = S.publicada ? '¿Retirar la publicación? Los estudiantes dejarán de ver las notas de esta materia en este trimestre.'
+          : '¿Publicar las notas de este trimestre? Cada estudiante verá solo sus propias notas, y los cambios que haga después también se verán.';
+        if (!(await P.confirmar('Publicación de notas', txt, S.publicada ? 'Retirar publicación' : 'Publicar notas'))) { return; }
+        await llamar('portal2027_publicar_notas', { p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_publicar: !S.publicada },
+          S.publicada ? 'Publicación retirada.' : 'Notas publicadas a los estudiantes.');
+      });
     } });
     var btnRec = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Libreta recargada.'); } });
 
@@ -1434,31 +1461,33 @@
   }
 
   async function guardarImportacion(lista, ev, boton, mensaje, alTerminar) {
-    var motivo = null;
-    if (lista.some(function (it) { return it.estado === 'cambia'; })) {
-      motivo = window.prompt('Algunas notas ya estaban escritas y van a cambiar. Motivo del cambio:', 'Corrección desde Excel');
-      if (motivo === null || motivo.trim() === '') { mensaje('No se guardó: falta el motivo del cambio.', 'info'); return; }
-    }
-    boton.disabled = true;
-    var ok = 0, fallas = [];
-    for (var i = 0; i < lista.length; i++) {
-      var it = lista[i], k = clave(ev.id, it.mat.id);
-      var previa = S.notas[k] || { valor: null, version: 0 };
-      mensaje('Guardando ' + (i + 1) + ' de ' + lista.length + '…', 'info');
-      try {
-        var r = await db.rpc('portal2027_guardar_nota', {
-          p_evaluacion: ev.id, p_matricula: it.mat.id, p_valor: it.valor, p_version: previa.version, p_motivo: previa.valor !== null ? motivo : null
-        });
-        if (r.error) { throw r.error; }
-        S.notas[k] = { valor: r.data.valor === null ? null : Number(r.data.valor), version: r.data.version };
-        ok++;
-      } catch (e) { fallas.push(it.etiqueta + ' (' + textoError(e) + ')'); }
-    }
-    S.historial = null;
-    dibujarTabla();
-    alTerminar();
-    if (fallas.length === 0) { mensaje('Se guardaron ' + ok + ' nota(s).', 'ok'); }
-    else { mensaje('Se guardaron ' + ok + ' nota(s). NO se guardaron ' + fallas.length + ': ' + fallas.join('; ') + '.', 'error'); }
+    return conDialogo('importar|' + ev.id, async function () {
+      var motivo = null;
+      if (lista.some(function (it) { return it.estado === 'cambia'; })) {
+        motivo = await P.pedirTexto('Importar cambios de notas', 'Algunas notas ya estaban escritas y van a cambiar. Motivo del cambio:', 'Corrección desde Excel');
+        if (motivo === null || motivo.trim() === '') { mensaje('No se guardó: falta el motivo del cambio.', 'info'); return; }
+      }
+      boton.disabled = true;
+      var ok = 0, fallas = [];
+      for (var i = 0; i < lista.length; i++) {
+        var it = lista[i], k = clave(ev.id, it.mat.id);
+        var previa = S.notas[k] || { valor: null, version: 0 };
+        mensaje('Guardando ' + (i + 1) + ' de ' + lista.length + '…', 'info');
+        try {
+          var r = await db.rpc('portal2027_guardar_nota', {
+            p_evaluacion: ev.id, p_matricula: it.mat.id, p_valor: it.valor, p_version: previa.version, p_motivo: previa.valor !== null ? motivo : null
+          });
+          if (r.error) { throw r.error; }
+          S.notas[k] = { valor: r.data.valor === null ? null : Number(r.data.valor), version: r.data.version };
+          ok++;
+        } catch (e) { fallas.push(it.etiqueta + ' (' + textoError(e) + ')'); }
+      }
+      S.historial = null;
+      dibujarTabla();
+      alTerminar();
+      if (fallas.length === 0) { mensaje('Se guardaron ' + ok + ' nota(s).', 'ok'); }
+      else { mensaje('Se guardaron ' + ok + ' nota(s). NO se guardaron ' + fallas.length + ': ' + fallas.join('; ') + '.', 'error'); }
+    });
   }
 
   /* ---------- inicio ---------- */
