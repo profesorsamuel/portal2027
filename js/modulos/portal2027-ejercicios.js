@@ -64,6 +64,19 @@
     try { var r = await fn(); await cargar(); dibujar(); aviso(typeof ok === 'function' ? ok(r) : ok, 'ok'); }
     catch (e) { aviso('No se guardó. ' + textoError(e), 'error'); }
   }
+  var confirmacionesEjercicio = new Set();
+  async function confirmarAccion(llave, titulo, mensaje, textoBoton, ocupado, ok, fn) {
+    if (confirmacionesEjercicio.has(llave)) { return; }
+    confirmacionesEjercicio.add(llave);
+    try {
+      if (!(await P.confirmar(titulo, mensaje, textoBoton))) { return; }
+      await accion(ocupado, ok, fn);
+    } catch (e) {
+      aviso('No se guardó. ' + textoError(e), 'error');
+    } finally {
+      confirmacionesEjercicio.delete(llave);
+    }
+  }
   async function rpc(nombre, args) {
     var r = await db.rpc(nombre, args);
     if (r.error) { throw r.error; }
@@ -188,9 +201,10 @@
       cont.appendChild(el('div', { clase: 'tarjeta-cabecera' }, [
         el('div', null, [el('strong', { texto: 'Equipo ' + (n + 1) + ' ' }), chip(completo ? 'Confirmado' : 'Faltan confirmaciones (' + conf + ' de ' + ej.tamano_equipo + ')'),
           el('p', { clase: 'bloque-ayuda', texto: nombres })]),
-        boton('Disolver', function () {
-          if (!window.confirm('¿Disolver este equipo? Solo es posible si todavía no tiene intentos.')) { return; }
-          accion('Guardando…', 'Equipo disuelto.', function () { return rpc('portal2027_disolver_equipo', { p_equipo: q.id }); });
+        boton('Disolver', async function () {
+          await confirmarAccion('equipo|' + q.id, 'Disolver equipo',
+            '¿Disolver este equipo? Solo es posible si todavía no tiene intentos.', 'Disolver equipo',
+            'Guardando…', 'Equipo disuelto.', function () { return rpc('portal2027_disolver_equipo', { p_equipo: q.id }); });
         })
       ]));
     });
@@ -248,19 +262,20 @@
           chip(cerrado ? 'Cerrado: no recibe intentos' : 'Abierto')
         ]),
         el('div', { clase: 'cabecera-acciones' }, [
-          boton(cerrado ? 'Reabrir' : 'Cerrar periodo', function () {
+          boton(cerrado ? 'Reabrir' : 'Cerrar periodo', async function () {
             var txt = cerrado ? '¿Reabrir el periodo? Los estudiantes podrán guardar intentos otra vez.'
               : '¿Cerrar el periodo? Los estudiantes ya no podrán guardar intentos nuevos.';
-            if (!window.confirm(txt)) { return; }
-            accion('Guardando…', cerrado ? 'Periodo reabierto.' : 'Periodo cerrado.', function () {
+            await confirmarAccion('periodo|' + p.id, cerrado ? 'Reabrir periodo' : 'Cerrar periodo', txt,
+              cerrado ? 'Reabrir periodo' : 'Cerrar periodo', 'Guardando…', cerrado ? 'Periodo reabierto.' : 'Periodo cerrado.', function () {
               return rpc('portal2027_cerrar_periodo_ejercicio', { p_periodo: p.id, p_cerrar: !cerrado });
             });
           }),
           el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', disabled: bloqueada || S.cerrado,
             title: bloqueada ? 'Administración debe definir cómo se combinan los ejercicios' : 'Escribir las notas en la columna',
-            texto: 'Consolidar a la libreta', onclick: function () {
-              if (!window.confirm('Se escribirá en la columna «' + etiquetaCol(col) + '» la nota de cada estudiante calculada con sus mejores intentos. Si ya había una nota, se reemplaza y queda en el historial con motivo. ¿Continuar?')) { return; }
-              accion('Consolidando…', function (r) {
+            texto: 'Consolidar a la libreta', onclick: async function () {
+              await confirmarAccion('consolidar|' + p.id, 'Consolidar a la libreta',
+                'Se escribirá en la columna «' + etiquetaCol(col) + '» la nota de cada estudiante calculada con sus mejores intentos. Si ya había una nota, se reemplaza y queda en el historial con motivo. ¿Continuar?',
+                'Consolidar notas', 'Consolidando…', function (r) {
                 return 'Consolidado: ' + r.notas_escritas + ' notas escritas, ' + r.sin_cambio + ' sin cambio, ' + r.sin_ejercicios_con_nota + ' estudiantes sin ejercicios con nota.';
               }, function () { return rpc('portal2027_consolidar_periodo', { p_periodo: p.id }); });
             } })
