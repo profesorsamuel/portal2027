@@ -5,8 +5,12 @@
 // La contraseña (la cédula) NUNCA pasa por aquí: el navegador la verifica directamente con Supabase Auth.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
+// Ponga aquí el origen del dominio final, sin ruta ni barra final.
+// GitHub Pages usa este origen aunque el portal esté en /portal2027/.
+const ALLOWED_ORIGIN = 'https://profesorsamuel.github.io';
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
