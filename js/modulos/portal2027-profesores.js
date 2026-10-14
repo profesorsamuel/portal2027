@@ -132,6 +132,7 @@
     var recargar = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Recargar para ver los profesores', hidden: true });
     recargar.addEventListener('click', function () { window.location.reload(); });
     var actual = null;
+    var importacionPendiente = false;
 
     var botonPlantilla = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Descargar plantilla de Excel' });
     botonPlantilla.addEventListener('click', function () {
@@ -189,13 +190,17 @@
     });
 
     confirmar.addEventListener('click', async function () {
-      if (!actual || !window.confirm('¿Importar ' + actual.length + ' profesor(es)?')) { return; }
-      confirmar.disabled = true; entrada.disabled = true;
-      aviso.mostrar('Importando…', 'info');
+      if (!actual || importacionPendiente) { return; }
+      importacionPendiente = true;
+      var filasImportar = actual;
+      entrada.disabled = true;
       try {
+        if (!(await P.confirmar('Importar profesores', '¿Importar ' + filasImportar.length + ' profesor(es)?', 'Importar profesores'))) { return; }
+        confirmar.disabled = true;
+        aviso.mostrar('Importando…', 'info');
         var todos = [];
-        for (var d = 0; d < actual.length; d += LOTE) {
-          var envio = actual.slice(d, d + LOTE).map(function (f) {
+        for (var d = 0; d < filasImportar.length; d += LOTE) {
+          var envio = filasImportar.slice(d, d + LOTE).map(function (f) {
             return { nombres: f.nombres, apellidos: f.apellidos, telefono: f.telefono, correo: f.correo, clave: f.contrasena, materias: f.materias, grupos: f.listaGrupos, es_consejero: f.esConsejero, consejeria: f.listaConsejeria };
           });
           var r = await db.functions.invoke('portal2027-importar-profesores', { body: { profesores: envio } });
@@ -223,7 +228,10 @@
       } catch (e) {
         aviso.mostrar('No se importó nada. ' + (e.message || P.traducirError(e)), 'error');
       }
-      confirmar.disabled = false; entrada.disabled = false;
+      finally {
+        importacionPendiente = false;
+        confirmar.disabled = false; entrada.disabled = false;
+      }
     });
 
     function paso(n, titulo, hijos) {
