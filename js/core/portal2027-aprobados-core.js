@@ -6,7 +6,7 @@
   var P = (raiz.portal2027 = raiz.portal2027 || {}), M = P.evaluacion;
   var MIN = 3.0, TOPE = 5.0;
 
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function llave(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
   function sexo(v) { var k = llave(v); return (k === 'm' || k === 'masculino') ? 'M' : (k === 'f' || k === 'femenino') ? 'F' : 'X'; }
   function esRetirado(estado) { return /retir|traslad|baja/.test(llave(estado)); }

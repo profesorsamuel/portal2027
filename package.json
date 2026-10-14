@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Comprobaciones locales de Portal 2027",
   "scripts": {
-    "test": "node tests/portal2027.test.mjs"
+    "test": "node --test tests/*.test.cjs && node tests/portal2027.test.mjs"
   },
   "type": "commonjs",
   "devDependencies": {
