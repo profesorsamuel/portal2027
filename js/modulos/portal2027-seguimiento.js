@@ -170,8 +170,9 @@
   function vistaPlanilla(filas, trims, ctx) {
     var zona = el('div');
     var estadoPdf = el('p', { clase: 'bloque-ayuda no-imprimir', role: 'status', 'aria-live': 'polite', hidden: true });
-    var botonPdf = el('button', { clase: 'boton', type: 'button', texto: 'Descargar boletín en PDF', onclick: function () { descargarBoletin(botonPdf, estadoPdf, filas, trims, ctx); } });
-    zona.appendChild(el('div', { clase: 'cabecera-acciones no-imprimir' }, [botonPdf, el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } })]));
+    var botonPdf = el('button', { clase: 'boton', type: 'button', texto: 'Descargar boletín en PDF', onclick: function () { descargarBoletin(botonPdf, estadoPdf, filas, trims, ctx, false); } });
+    var botonImp = el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir boletín', onclick: function () { descargarBoletin(botonImp, estadoPdf, filas, trims, ctx, true); } });
+    zona.appendChild(el('div', { clase: 'cabecera-acciones no-imprimir' }, [botonPdf, botonImp]));
     zona.appendChild(estadoPdf);
     zona.appendChild(el('p', { clase: 'bloque-ayuda no-imprimir', texto: 'Cada trimestre sale del motor único. La nota final es el promedio de los trimestres con nota; en rojo, lo menor a ' + MIN.toFixed(1) + '. Ausencias (A) y tardanzas (T) vienen de la asistencia; la ausencia justificada no cuenta.' }));
     zona.appendChild(el('div', { clase: 'solo-impresion', style: 'text-align:center;font-weight:700' }, [el('div', { texto: 'MINISTERIO DE EDUCACIÓN' }), el('div', { texto: 'NOTAS TRIMESTRALES, AUSENCIAS Y TARDANZAS' })]));
@@ -214,19 +215,21 @@
         aus: f.tri.map(function (x) { return x.aus; }), tar: f.tri.map(function (x) { return x.tar; }) };
     });   // «filas» ya viene en orden alfabético
   }
-  async function descargarBoletin(boton, estado, filas, trims, ctx) {
+  async function descargarBoletin(boton, estado, filas, trims, ctx, imprimir) {
     function msg(t, tipo) { estado.hidden = false; estado.className = 'bloque-ayuda no-imprimir' + (tipo === 'error' ? ' mensaje error' : ''); estado.textContent = t; }
     boton.disabled = true; msg('Generando el PDF…');
+    var ventana = imprimir ? window.open('', '_blank') : null;   // se abre con el clic para que no la bloquee el navegador
     try {
       if (!P.boletinPdf) { throw new Error('No se cargó el generador de PDF. Recargue la página (Ctrl+F5).'); }
       var extra = await datosBoletin(ctx);
-      var nombre = await P.boletinPdf.descargar({
+      var nombre = await (imprimir ? function (d, o) { return P.boletinPdf.abrir(d, o, ventana); } : P.boletinPdf.descargar)({
         plantel: 'C.E.B.G. EL JIRAL', materia: ctx.materia.toUpperCase(), anio: String(ctx.anio), grupo: ctx.grupo,
         consejero: extra.consejero, profesor: extra.profesor, minimo: MIN,
         trimestres: trims.map(function (t) { return t.numero; }), estudiantes: filasBoletin(filas, trims)
       }, { rutaLogo: P.raiz + 'assets/img/meduca-logo.png' });
-      msg('Listo: se descargó «' + nombre + '».' + (extra.consejero ? '' : ' El profesor consejero quedó en blanco (falta instalar el SQL 0040 o el grupo no tiene consejero asignado).'));
+      msg((imprimir && ventana ? 'Listo: el boletín se abrió en otra pestaña para imprimir (Ctrl+P). ' : 'Listo: se descargó «' + nombre + '». ') + (extra.consejero ? '' : ' El profesor consejero quedó en blanco (falta instalar el SQL 0040 o el grupo no tiene consejero asignado).'));
     } catch (e) {
+      if (ventana) { ventana.close(); }
       msg('No se pudo generar el PDF. ' + ((e && e.message) || ''), 'error');
     } finally { boton.disabled = false; }
   }

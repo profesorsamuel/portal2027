@@ -295,5 +295,18 @@
     });
   }
 
-  return { construir: construir, descargar: descargar, cargarLogo: cargarLogo, nombreArchivo: nombreArchivo, reprobada: reprobada, seguro: seguro };
+  // Abre el boletín en la pestaña «ventana» (abierta por el clic) para imprimirlo desde el visor de PDF; si no hay ventana, lo descarga.
+  function abrir(datos, opciones, ventana) {
+    opciones = opciones || {};
+    return cargarLogo(opciones.rutaLogo).then(function (logo) {
+      var d = Object.assign({}, datos, { logo: logo });
+      var doc = construir(d), nombre = nombreArchivo(d);
+      if (ventana && !ventana.closed) {
+        ventana.location.href = URL.createObjectURL(doc.output('blob'));
+      } else { doc.save(nombre); }
+      return nombre;
+    });
+  }
+
+  return { construir: construir, descargar: descargar, abrir: abrir, cargarLogo: cargarLogo, nombreArchivo: nombreArchivo, reprobada: reprobada, seguro: seguro };
 });
