@@ -2,20 +2,10 @@
 // La pantalla de entrada no puede leer la lista de estudiantes (RLS), así que pregunta aquí:
 //   { accion: 'grupos' }                     -> grupos del año activo (ej. 7A, 9C)
 //   { grupo: '9C', nombre: 'Ana Pérez' }      -> correos de acceso de los estudiantes que coinciden
-// La contraseña (la cédula) NUNCA pasa por aquí: el navegador la verifica directamente con Supabase Auth.
+// La contraseña NUNCA pasa por aquí: el navegador la verifica directamente con Supabase Auth.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-// Ponga aquí el origen del dominio final, sin ruta ni barra final.
-// GitHub Pages usa este origen aunque el portal esté en /portal2027/.
-const ALLOWED_ORIGIN = 'https://profesorsamuel.github.io';
-
-const CORS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-const responder = (cuerpo: unknown, estado = 200) =>
-  new Response(JSON.stringify(cuerpo), { status: estado, headers: { ...CORS, 'Content-Type': 'application/json' } });
+import { comprobarSolicitudPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
 // Minúsculas, sin tildes ni signos: "María  José" -> ["maria", "jose"]
 const palabras = (t: string) =>
@@ -23,10 +13,12 @@ const palabras = (t: string) =>
     .replace(/[^a-z0-9ñ\s]/g, ' ').split(/\s+/).filter(Boolean);
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return responder({ error: 'Método no permitido' }, 405);
+  const rechazo = comprobarSolicitudPortal(req);
+  if (rechazo) return rechazo;
 
-  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   let cuerpo: { accion?: string; grupo?: string; nombre?: string };
   try { cuerpo = await req.json(); } catch { return responder({ error: 'Solicitud no válida' }, 400); }
