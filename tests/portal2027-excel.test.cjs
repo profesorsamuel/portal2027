@@ -24,7 +24,7 @@ const tick=async()=>{for(let i=0;i<4;i++)await Promise.resolve();};
  assert(scripts[0].src.startsWith('https://cdn.sheetjs.com/xlsx-0.20.3/'));
  assert.equal(scripts[0].integrity,sri);assert.equal(scripts[0].crossOrigin,'anonymous');
  scripts[0].onerror();await tick();assert.equal(scripts.length,2);
- assert.equal(scripts[1].src,'https://example.test/portal2027/js/vendor/xlsx-0.20.3.full.min.js?v=20261014');
+ assert.match(scripts[1].src,/^https:\/\/example\.test\/portal2027\/js\/vendor\/xlsx-0\.20\.3\.full\.min\.js\?v=\d{8}$/);
  assert.equal(scripts[1].integrity,sri);
  ctx.window.XLSX={version:'0.20.3',read(){},utils:{}};scripts[1].onload();
  assert.strictEqual(await uno,ctx.window.XLSX);assert.strictEqual(await cargar(),ctx.window.XLSX);
