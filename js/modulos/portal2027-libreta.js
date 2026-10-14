@@ -93,7 +93,10 @@
       if (sync.error) { throw sync.error; }
     }
     // Cada clase de la planificación debe tener su columna de apreciación (la restaura o la crea si falta).
-    await db.rpc('portal2027_asegurar_semanas_plan', { p_asignacion: asigId, p_trimestre: trId });
+    {
+      var asg = await db.rpc('portal2027_asegurar_semanas_plan', { p_asignacion: asigId, p_trimestre: trId });
+      if (asg.error) { console.warn('No se pudieron asegurar las semanas de la planificación (¿falta ejecutar 0041/0042?):', asg.error.message); }
+    }
     var r = await Promise.all([
       todas(function () {
         return db.from('portal2027_evaluaciones')
