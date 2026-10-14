@@ -1,6 +1,6 @@
 # Boletín de notas en PDF — Portal2027
 
-Botón **«Descargar boletín en PDF»** en Seguimiento académico → pestaña **Notas trimestrales**.
+Botones **«Descargar boletín en PDF»** e **«Imprimir boletín»** (abre el mismo PDF en otra pestaña) en Seguimiento académico → pestaña **Notas trimestrales**.
 Genera una sola página carta vertical, con texto seleccionable y el logo integrado. Solo lee datos: no guarda ni modifica nada.
 
 ## Dónde colocar los archivos (respetando carpetas)
