@@ -72,15 +72,20 @@
       sec.appendChild(zonaRev);
     } else if (ctx.esAdmin) {
       var motivo = el('input', { type: 'text', maxlength: '300', placeholder: 'Motivo de la reapertura (obligatorio)', 'aria-label': 'Motivo de la reapertura' });
+      var reaperturaPendiente = false;
       var btnReab = el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Reabrir trimestre', onclick: async function () {
+        if (reaperturaPendiente) { return; }
         if (motivo.value.trim() === '') { aviso('Escriba el motivo de la reapertura.', 'error'); return; }
-        if (!window.confirm('¿Reabrir este trimestre? Quedará registrado quién, cuándo y por qué. Al cerrarlo de nuevo se guardará una copia nueva (la anterior se conserva).')) { return; }
-        aviso('Reabriendo…', 'info');
+        reaperturaPendiente = true;
         try {
+          if (!(await P.confirmar('Reabrir trimestre', '¿Reabrir este trimestre? Quedará registrado quién, cuándo y por qué. Al cerrarlo de nuevo se guardará una copia nueva (la anterior se conserva).', 'Reabrir trimestre'))) { return; }
+          btnReab.disabled = true;
+          aviso('Reabriendo…', 'info');
           var rr = await db.rpc('portal2027_reabrir_trimestre', { p_asignacion: ctx.asignacionId, p_trimestre: ctx.trimestreId, p_motivo: motivo.value });
           if (rr.error) { throw rr.error; }
           ctx.alCambiar('Trimestre reabierto. Quedó registrado en el historial.', 'ok');
         } catch (e) { aviso('NO se reabrió. ' + textoError(e), 'error'); }
+        finally { reaperturaPendiente = false; btnReab.disabled = false; }
       } });
       sec.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Reapertura (solo administración)', motivo]), btnReab]));
     } else {
@@ -128,16 +133,19 @@
     var chk = el('input', { type: 'checkbox', id: 'cierre-confirmar' });
     var btn = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Cerrar trimestre ' + ctx.trimestreNumero, disabled: true });
     chk.addEventListener('change', function () { btn.disabled = !chk.checked; });
+    var cierrePendiente = false;
     btn.addEventListener('click', async function () {
-      if (!chk.checked) { return; }
-      if (!window.confirm('¿Cerrar el trimestre ' + ctx.trimestreNumero + ' de esta materia y grupo? Se guardará una copia y se bloquearán columnas, notas y asistencia. Solo la administración podrá reabrirlo.')) { return; }
-      btn.disabled = true;
-      aviso('Cerrando…', 'info');
+      if (!chk.checked || cierrePendiente) { return; }
+      cierrePendiente = true;
       try {
+        if (!(await P.confirmar('Cerrar trimestre ' + ctx.trimestreNumero, '¿Cerrar el trimestre ' + ctx.trimestreNumero + ' de esta materia y grupo? Se guardará una copia y se bloquearán columnas, notas y asistencia. Solo la administración podrá reabrirlo.', 'Cerrar trimestre'))) { return; }
+        btn.disabled = true;
+        aviso('Cerrando…', 'info');
         var r = await db.rpc('portal2027_cerrar_trimestre', { p_asignacion: ctx.asignacionId, p_trimestre: ctx.trimestreId, p_confirmar: true });
         if (r.error) { throw r.error; }
         ctx.alCambiar('Trimestre cerrado. Copia guardada: versión ' + r.data.version + '.', 'ok');
-      } catch (e) { btn.disabled = !chk.checked; aviso('NO se cerró. ' + textoError(e), 'error'); }
+      } catch (e) { aviso('NO se cerró. ' + textoError(e), 'error'); }
+      finally { cierrePendiente = false; btn.disabled = !chk.checked; }
     });
     zona.appendChild(el('label', { clase: 'etiqueta-check' }, [chk, ' Entiendo que se guardará una copia y el trimestre quedará bloqueado.']));
     zona.appendChild(btn);
