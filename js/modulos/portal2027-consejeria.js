@@ -47,17 +47,23 @@
       var consejeros = r[3].filter(function (p) { return ids[p.id] && p.activo !== false; });
 
       var filas = asign.map(function (a) {
+        var quitando = false;
         return el('tr', null, [
           el('td', { texto: a.salon ? a.salon.nombre + (a.salon.anio ? ' (' + a.salon.anio.anio + ')' : '') : '' }),
           el('td', { texto: P.nombreCompleto(a.consejero) }),
-          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar', onclick: async function () {
-            if (!window.confirm('¿Quitar este consejero del grupo?')) { return; }
-            aviso('Guardando…', 'info');
+          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar', onclick: async function (ev) {
+            if (quitando) { return; }
+            quitando = true;
+            var botonQuitar = ev.currentTarget;
             try {
+              if (!(await P.confirmar('Quitar consejero', '¿Quitar este consejero del grupo?', 'Quitar consejero'))) { return; }
+              botonQuitar.disabled = true;
+              aviso('Guardando…', 'info');
               var d = await db.from('portal2027_consejeros_salon').delete().eq('salon_id', a.salon_id).eq('consejero_id', a.consejero_id);
               if (d.error) { throw d.error; }
               await dibujar(); aviso('Consejero quitado del grupo.', 'ok');
             } catch (e) { aviso('No se guardó. ' + textoError(e), 'error'); }
+            finally { quitando = false; botonQuitar.disabled = false; }
           } })])
         ]);
       });
