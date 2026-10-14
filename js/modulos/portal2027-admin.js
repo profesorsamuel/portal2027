@@ -48,6 +48,29 @@
     }
   }
 
+  // Mantiene una sola confirmación por botón y espera también el guardado y la recarga.
+  var confirmacionesPendientes = new WeakSet();
+  async function confirmarCambio(boton, titulo, mensaje, textoBoton, accion, textoOk, revisar) {
+    if (boton.disabled || confirmacionesPendientes.has(boton)) { return; }
+    confirmacionesPendientes.add(boton);
+    try {
+      if (revisar) {
+        var resultado = await revisar();
+        if (resultado === false) { return; }
+        if (typeof resultado === 'string') { mensaje = resultado; }
+      }
+      // Sigue habilitado al cerrar el diálogo para poder recuperar el foco.
+      if (!(await P.confirmar(titulo, mensaje, textoBoton))) { return; }
+      boton.disabled = true;
+      await ejecutar(accion, textoOk);
+    } catch (e) {
+      aviso(P.traducirError(e), 'error');
+    } finally {
+      confirmacionesPendientes.delete(boton);
+      boton.disabled = false;
+    }
+  }
+
   function tabla(cabeceras, filas, vacio) {
     if (filas.length === 0) { return el('p', { clase: 'vacio-texto', texto: vacio }); }
     return el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
@@ -132,13 +155,10 @@
           disabled: p.activo === false || p.id === yo.sesion.user.id,
           onclick: async function () {
             if (p.id === yo.sesion.user.id || p.activo === false) { return; }
-            if (!window.confirm('¿Dar de baja a ' + P.nombreCompleto(p) + '?\n\nNo podrá acceder al portal ni recibir nuevas asignaciones. Se conservan sus notas, grupos e historial. Puede reactivarlo marcando «Activa» en las cuentas dadas de baja.')) { return; }
-            retirar.disabled = true;
-            await ejecutar(async function () {
+            await confirmarCambio(retirar, 'Retirar profesor', '¿Dar de baja a ' + P.nombreCompleto(p) + '?\n\nNo podrá acceder al portal ni recibir nuevas asignaciones. Se conservan sus notas, grupos e historial. Puede reactivarlo marcando «Activa» en las cuentas dadas de baja.', 'Retirar profesor', async function () {
               var r = await db.from('portal2027_perfiles').update({ activo: false }).eq('id', p.id);
               if (r.error) { throw r.error; }
             }, 'Profesor dado de baja. Sus notas e historial se conservan.');
-            retirar.disabled = p.activo === false;
           }
         });
         accionesBaja.push(retirar);
@@ -393,27 +413,19 @@
       var eliminar = el('button', {
         clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Eliminar',
         onclick: async function () {
-          eliminar.disabled = true;
-          try {
-            // Una materia que ya está asignada a un profesor en algún grupo no se borra: primero se quita esa asignación.
+          await confirmarCambio(eliminar, 'Eliminar materia', '¿Eliminar la materia «' + m.nombre + '»? Esta acción no se puede deshacer.', 'Eliminar materia', async function () {
+            var r = await db.from('portal2027_materias').delete().eq('id', m.id);
+            if (r.error) { throw r.error; }
+          }, 'Materia eliminada.', async function () {
+            // Se conserva la comprobación previa: las materias asignadas no se eliminan.
             var asig = await db.from('portal2027_asignaciones').select('id', { count: 'exact', head: true }).eq('materia_id', m.id);
             if (asig.error) { throw asig.error; }
             if (asig.count > 0) {
               aviso('La materia «' + m.nombre + '» está asignada en ' + asig.count + ' grupo(s) con profesor, por eso no se puede eliminar. '
                 + 'Quite primero esas asignaciones en «Profesores por grupo» y vuelva a intentarlo.', 'error');
-              eliminar.disabled = false;
-              return;
+              return false;
             }
-            if (!window.confirm('¿Eliminar la materia «' + m.nombre + '»? Esta acción no se puede deshacer.')) { eliminar.disabled = false; return; }
-          } catch (e) {
-            aviso(P.traducirError(e), 'error');
-            eliminar.disabled = false;
-            return;
-          }
-          ejecutar(async function () {
-            var r = await db.from('portal2027_materias').delete().eq('id', m.id);
-            if (r.error) { throw r.error; }
-          }, 'Materia eliminada.');
+          });
         }
       });
       return el('li', { clase: 'materia-compacta' }, [el('span', { texto: m.nombre }), eliminar]);
@@ -442,32 +454,24 @@
         clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Eliminar',
         onclick: async function () {
           var etiqueta = s.nombre + (s.anio ? ' (' + s.anio.anio + ')' : '');
-          eliminar.disabled = true;
-          try {
-            // Un grupo con estudiantes matriculados no se puede borrar: primero hay que moverlos o eliminarlos.
+          await confirmarCambio(eliminar, 'Eliminar grupo', '', 'Eliminar grupo', async function () {
+            var r = await db.from('portal2027_salones').delete().eq('id', s.id);
+            if (r.error) { throw r.error; }
+          }, 'Grupo eliminado.', async function () {
+            // Se conserva la comprobación previa: un grupo con matrícula no se elimina.
             var m = await db.from('portal2027_matriculas').select('id', { count: 'exact', head: true }).eq('salon_id', s.id);
             if (m.error) { throw m.error; }
             if (m.count > 0) {
               aviso('El grupo ' + etiqueta + ' tiene ' + m.count + ' estudiante(s) matriculado(s), por eso no se puede eliminar. '
                 + 'Cambie a esos estudiantes de grupo (reimporte el Excel con el grupo correcto) y vuelva a intentarlo.', 'error');
-              eliminar.disabled = false;
-              return;
+              return false;
             }
-            // Las asignaciones (materia + profesor) del grupo se borran con él, junto con lo que cuelga de ellas.
             var asig = await db.from('portal2027_asignaciones').select('id', { count: 'exact', head: true }).eq('salon_id', s.id);
             if (asig.error) { throw asig.error; }
             var aviso2 = asig.count > 0
               ? '\n\nOJO: este grupo tiene ' + asig.count + ' asignación(es) de materia y profesor. También se borrarán, con sus notas, asistencia y tareas.' : '';
-            if (!window.confirm('¿Eliminar el grupo ' + etiqueta + '? Esta acción no se puede deshacer.' + aviso2)) { eliminar.disabled = false; return; }
-          } catch (e) {
-            aviso(P.traducirError(e), 'error');
-            eliminar.disabled = false;
-            return;
-          }
-          ejecutar(async function () {
-            var r = await db.from('portal2027_salones').delete().eq('id', s.id);
-            if (r.error) { throw r.error; }
-          }, 'Grupo eliminado.');
+            return '¿Eliminar el grupo ' + etiqueta + '? Esta acción no se puede deshacer.' + aviso2;
+          });
         }
       });
       return el('tr', null, [
@@ -571,9 +575,8 @@
       var materias = f.asigs.map(function (a) {
         var quitar = el('button', {
           clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar',
-          onclick: function () {
-            if (!window.confirm('¿Quitar la materia «' + (a.materia ? a.materia.nombre : '') + '» de este profesor en este grupo?')) { return; }
-            ejecutar(async function () {
+          onclick: async function () {
+            await confirmarCambio(quitar, 'Quitar materia del profesor', '¿Quitar la materia «' + (a.materia ? a.materia.nombre : '') + '» de este profesor en este grupo?', 'Quitar materia', async function () {
               var r = await db.from('portal2027_asignaciones').delete().eq('id', a.id);
               if (r.error) { throw r.error; }
             }, 'Materia quitada.');
@@ -593,9 +596,8 @@
       var celdaCons = f.consejero
         ? el('div', { clase: 'cabecera-acciones' }, [el('strong', { texto: 'Sí' }), el('button', {
             clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar consejería',
-            onclick: function () {
-              if (!window.confirm('¿Quitar a este profesor como consejero de este grupo?')) { return; }
-              ejecutar(async function () {
+            onclick: async function (ev) {
+              await confirmarCambio(ev.currentTarget, 'Quitar consejería', '¿Quitar a este profesor como consejero de este grupo?', 'Quitar consejería', async function () {
                 var r = await db.from('portal2027_consejeros_salon').delete().eq('salon_id', f.salonId).eq('consejero_id', f.profId);
                 if (r.error) { throw r.error; }
               }, 'Consejería quitada.');
