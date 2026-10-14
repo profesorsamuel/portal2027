@@ -1,2 +1,25 @@
-.aprobados-grupos,.aprobados-acciones{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}.aprobados-grupos label{border:1px solid #6054dd;border-radius:12px;padding:9px 14px}.aprobados-hoja{background:#fff;color:#172033;padding:22px;margin:16px auto;max-width:1300px;font:12px Arial,sans-serif}.aprobados-hoja h2,.aprobados-hoja h3{text-align:center}.aprobados-hoja h3{font-size:13px;border:1px solid #333;padding:9px}.aprobados-hoja h2{font-size:14px}.aprobados-scroll{overflow-x:auto}.aprobados-tabla{width:100%;border-collapse:collapse;min-width:900px;text-align:center;font-size:11px}.aprobados-tabla th{background:#493ddd;color:white}.aprobados-tabla td,.aprobados-tabla th{border:1px solid #333;padding:6px 3px}.aprobados-total{background:#e9edf6;font-weight:bold}.aprobados-aviso{font-weight:bold;color:#7b4b00}.aprobados-notas{width:100%;border:0;border-bottom:1px solid #bbb;background:#fff;min-height:35px}.aprobados-pie{margin-top:18px;border-top:1px dashed #bbb;padding-top:12px}.aprobados-firmas{display:flex;justify-content:space-around;white-space:pre-line;text-align:center;margin-top:40px;padding-bottom:10px}
-@media print{@page{size:A4 landscape;margin:9mm}body{background:white!important}.no-imprimir,.pie{display:none!important}.portal{padding:0!important;max-width:none!important}.aprobados-hoja{padding:0;margin:0;max-width:none;box-shadow:none}.aprobados-scroll{overflow:visible}.aprobados-tabla{min-width:0;font-size:9px}.aprobados-tabla th,.aprobados-tabla td{padding:4px 2px}.aprobados-tabla th{print-color-adjust:exact;-webkit-print-color-adjust:exact}.aprobados-tabla tr{break-inside:avoid}.aprobados-hoja h2,.aprobados-hoja h3{break-after:avoid}}
+.aprobados-cab{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 22px;border-radius:16px;color:#fff;background:linear-gradient(135deg,#493ddd,#7b5cf0 60%,#2f8fe0)}
+.aprobados-cab h1{margin:2px 0 0;font:700 1.5rem 'Baloo 2',Inter,sans-serif;color:#fff}.aprobados-cab small{opacity:.9}
+.aprobados-panel{background:#fff;border-radius:16px;padding:18px 22px;margin:14px 0;box-shadow:0 1px 6px rgba(20,30,60,.08)}
+.aprobados-sub{font-weight:700;margin:14px 0 4px}
+.aprobados-grupos,.aprobados-acciones{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.aprobados-grupos label{border:1px solid #6054dd;border-radius:999px;padding:6px 14px;background:#f3f1ff;cursor:pointer}
+.aprobados-aviso-sexo{background:#fff6cc;border:1px solid #e6c200;color:#6b5400;border-radius:12px;padding:10px 14px;margin:10px 0}.aprobados-aviso-sexo p{margin:4px 0 0}
+.aprobados-hoja{background:#fff;color:#172033;padding:20px;margin:14px auto;max-width:1300px;font:12px Inter,Arial,sans-serif;box-shadow:0 1px 6px rgba(20,30,60,.08)}
+.aprobados-hoja.capturando{width:1200px;max-width:none;box-shadow:none}
+.aprobados-inst{border:1.5px solid #222;padding:9px;text-align:center;font-weight:700;font-size:13px}
+.aprobados-hoja h2{text-align:center;font-size:15px;margin:12px 0 4px}.aprobados-hoja h4{margin:12px 0 4px;font-size:12px}
+.aprobados-prof{text-align:center;margin:0 0 8px}
+.aprobados-datos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 16px;margin-bottom:10px}
+.aprobados-tabla{width:100%;border-collapse:collapse;text-align:center;font-size:11px}
+.aprobados-tabla th{background:#493ddd;color:#fff}.aprobados-tabla td,.aprobados-tabla th{border:1px solid #333;padding:5px 3px}
+.aprobados-total{background:#e9edf6;font-weight:700}
+.aprobados-tabla td.ed{background:#ffe8cc;min-width:34px}.aprobados-tabla .aprobados-total td.tot-ret{background:#ffe8cc}
+.aprobados-pend span{white-space:nowrap}.aprobados-pend{line-height:1.6;margin:0}
+.aprobados-causas{border-bottom:1px solid #333;min-height:22px}
+.aprobados-pie{margin-top:10px;border:1px dashed #888;padding:8px;font-size:11px}
+.aprobados-firmas{display:flex;justify-content:space-around;text-align:center;margin-top:34px}
+@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff!important}body *{visibility:hidden}.aprobados-hoja,.aprobados-hoja *{visibility:visible}
+.aprobados-hoja{position:absolute;left:0;top:0;width:100%;max-width:none;margin:0;padding:0;box-shadow:none}
+.aprobados-tabla{font-size:9px}.aprobados-tabla th,.aprobados-tabla td{padding:3px 2px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.aprobados-tabla td.ed,.aprobados-total{print-color-adjust:exact;-webkit-print-color-adjust:exact}.aprobados-hoja{font-size:10px}}
