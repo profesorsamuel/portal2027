@@ -315,9 +315,28 @@
     llamar('portal2027_actualizar_sesion', { p_id: s.id, p_version: s.version, p_descripcion: null, p_bloqueada: !s.bloqueada },
       s.bloqueada ? 'Sesión desbloqueada.' : 'Sesión bloqueada: ya no se puede cambiar la asistencia.');
   }
-  function aPapelera(s, si) {
-    if (si && !window.confirm('¿Enviar esta sesión a la papelera? Sus marcas se conservan y podrá restaurarla.')) { return; }
-    llamar('portal2027_papelera_sesion', { p_id: s.id, p_version: s.version, p_a_papelera: si }, si ? 'Sesión enviada a la papelera.' : 'Sesión restaurada.');
+  var confirmacionesSesion = new Set();
+  async function confirmarAccionSesion(llave, titulo, mensaje, textoBoton, nombre, args, textoOk) {
+    if (confirmacionesSesion.has(llave)) { return; }
+    confirmacionesSesion.add(llave);
+    try {
+      if (!(await P.confirmar(titulo, mensaje, textoBoton))) { return; }
+      await llamar(nombre, args, textoOk);
+    } catch (e) {
+      aviso('No se guardó. ' + textoError(e), 'error');
+    } finally {
+      confirmacionesSesion.delete(llave);
+    }
+  }
+  async function aPapelera(s, si) {
+    var args = { p_id: s.id, p_version: s.version, p_a_papelera: si };
+    if (si) {
+      await confirmarAccionSesion('papelera|' + s.id, 'Enviar sesión a la papelera',
+        '¿Enviar esta sesión a la papelera? Sus marcas se conservan y podrá restaurarla.', 'Enviar a la papelera',
+        'portal2027_papelera_sesion', args, 'Sesión enviada a la papelera.');
+    } else {
+      await llamar('portal2027_papelera_sesion', args, 'Sesión restaurada.');
+    }
   }
   // Al abrir una fecha nueva se asume que todos llegaron: quedan en «Presente» y el profesor solo toca a quien faltó.
   async function crearSesionConPresentes(args) {
@@ -343,14 +362,15 @@
     }
   }
 
-  function marcarPendientes(sesionId, codigo) {
+  async function marcarPendientes(sesionId, codigo) {
     var s = sesionPorId(sesionId), e = estadoPorCodigo(codigo);
     if (!s || !e) { aviso('Elija la sesión y el estado.', 'error'); return; }
-    if (!window.confirm('Se marcará «' + e.etiqueta + '» a todos los estudiantes sin registro de la sesión del ' + fechaTexto(s.fecha) +
-      '. Los ya marcados no cambian. ¿Continuar?')) { return; }
-    llamar('portal2027_marcar_pendientes', { p_sesion: sesionId, p_estado: codigo }, function (n) {
-      return n + (n === 1 ? ' estudiante marcado.' : ' estudiantes marcados.');
-    });
+    await confirmarAccionSesion('asistencia|' + sesionId, 'Marcar asistencia sin registro',
+      'Se marcará «' + e.etiqueta + '» a todos los estudiantes sin registro de la sesión del ' + fechaTexto(s.fecha) +
+      '. Los ya marcados no cambian. ¿Continuar?', 'Marcar sin registro',
+      'portal2027_marcar_pendientes', { p_sesion: sesionId, p_estado: codigo }, function (n) {
+        return n + (n === 1 ? ' estudiante marcado.' : ' estudiantes marcados.');
+      });
   }
 
   /* ---------- guardar una marca ---------- */
@@ -460,9 +480,9 @@
       S.compError ? null : resumenC,
       S.compError ? null : el('div', { clase: 'sub-doble' }, [el('span', { texto: 'Asistencia' }), el('span', { texto: 'Conducta' })]),
       el('div', { clase: 'col-acciones' }, [
-        ses.bloqueada ? null : boton('✓', 'Todos presentes (a quienes no tienen marca)', function () { marcarPendientes(ses.id, 'presente'); }),
+        ses.bloqueada ? null : boton('✓', 'Todos presentes (a quienes no tienen marca)', function () { return marcarPendientes(ses.id, 'presente'); }),
         boton(ses.bloqueada ? '🔒' : '🔓', ses.bloqueada ? 'Desbloquear sesión' : 'Bloquear sesión', function () { alternarBloqueo(ses); }),
-        boton('🗑', 'Enviar a la papelera', function () { aPapelera(ses, true); })
+        boton('🗑', 'Enviar a la papelera', function () { return aPapelera(ses, true); })
       ])
     ]);
   }
@@ -533,7 +553,7 @@
       el('thead', null, [el('tr', null, ['Fecha', 'Bloque', 'Descripción', ''].map(function (t) { return el('th', { scope: 'col', texto: t }); }))]),
       el('tbody', null, lista.map(function (s) {
         return el('tr', null, [el('td', { texto: fechaTexto(s.fecha) }), el('td', { texto: String(s.bloque) }), el('td', { texto: s.descripcion || '(sin descripción)' }),
-          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Restaurar', onclick: function () { aPapelera(s, false); } })])]);
+          el('td', null, [el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Restaurar', onclick: function () { return aPapelera(s, false); } })])]);
       }))
     ])]));
     return sec;
@@ -646,17 +666,18 @@
       return el('option', { value: e.codigo, texto: e.etiqueta });
     }));
     var btnMarcar = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Marcar sin registro', disabled: abiertas.length === 0 || S.estados.length === 0,
-      onclick: function () { marcarPendientes(selSes.value, selEst.value); } });
+      onclick: function () { return marcarPendientes(selSes.value, selEst.value); } });
 
     var btnBien = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Bien a los sin evaluar', disabled: abiertas.length === 0,
       title: 'Pone «Bien» en el comportamiento de quienes aún no tienen Bien ni Mal en la sesión elegida',
-      onclick: function () {
+      onclick: async function () {
         var s = sesionPorId(selSes.value);
         if (!s) { aviso('Elija la sesión.', 'error'); return; }
-        if (!window.confirm('Se pondrá «Bien» a quienes no tienen comportamiento en la sesión del ' + fechaTexto(s.fecha) + '. Los que ya tienen Bien o Mal no cambian. ¿Continuar?')) { return; }
-        llamar('portal2027_marcar_bien_pendientes', { p_sesion: selSes.value }, function (n) {
-          return n + (n === 1 ? ' estudiante quedó en «Bien».' : ' estudiantes quedaron en «Bien».');
-        });
+        await confirmarAccionSesion('conducta|' + s.id, 'Marcar comportamiento pendiente',
+          'Se pondrá «Bien» a quienes no tienen comportamiento en la sesión del ' + fechaTexto(s.fecha) + '. Los que ya tienen Bien o Mal no cambian. ¿Continuar?', 'Marcar Bien',
+          'portal2027_marcar_bien_pendientes', { p_sesion: s.id }, function (n) {
+            return n + (n === 1 ? ' estudiante quedó en «Bien».' : ' estudiantes quedaron en «Bien».');
+          });
       } });
 
     var btnHist = el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Historial' });
