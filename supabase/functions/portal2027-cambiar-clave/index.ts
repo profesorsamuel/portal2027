@@ -4,6 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 import { comprobarSolicitudPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
+import { consumirIntentoPortal } from '../_shared/portal2027-intentos.ts';
+
 Deno.serve(async (req) => {
   const rechazo = comprobarSolicitudPortal(req);
   if (rechazo) return rechazo;
@@ -31,6 +33,10 @@ Deno.serve(async (req) => {
     if (usuario.app_metadata?.portal2027_requiere_cambio_clave !== true) {
       return responder({ error: 'Esta cuenta no tiene un cambio de contraseña temporal pendiente.' }, 409);
     }
+
+    // Cuenta verificada por Auth: no acepta IDs de control del navegador.
+    const limite = await consumirIntentoPortal(servicio, 'cambiar_clave', usuario.id);
+    if (limite) return limite;
 
     let cuerpo;
     try { cuerpo = await req.json(); } catch { return responder({ error: 'Solicitud no válida.' }, 400); }
