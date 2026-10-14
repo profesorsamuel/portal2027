@@ -1,5 +1,7 @@
 # División de libreta — Paso 3: interfaz de importación
 
+La continuación de navegación por teclado está en DIVISION_LIBRETA_PASO_4.md.
+
 ## Instalación
 
 Requiere las cinco etapas principales. Incluye el módulo de importación completo con los pasos 1 y 2 anteriores. Si ya aplicó esos pasos, sustituir los mismos archivos.
