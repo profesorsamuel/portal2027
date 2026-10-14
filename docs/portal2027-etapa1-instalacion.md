@@ -2,7 +2,7 @@
 
 ## 1. Aplicar la base de datos
 
-En Supabase (proyecto meduca2027) abra **SQL Editor** y ejecute, uno por uno y en orden, los archivos de `supabase/migrations/`: `0001`, `0002` y `0003`. Cada uno debe terminar con «Success». Si alguno falla, no siga: copie el error completo.
+En Supabase (proyecto meduca2027) abra **SQL Editor** y ejecute, uno por uno y en orden, los archivos de `supabase/migrations/`: `0001` y `0002`. `0003` es opcional y está en `supabase/especificas/`. Cada uno debe terminar con «Success». Si alguno falla, no siga: copie el error completo.
 
 ## 2. Configurar Auth
 
@@ -94,7 +94,7 @@ Las pruebas de cerrar sesión y de recuperación de contraseña se hacen en la i
 
 ## Revisión de la etapa 1 (parte A)
 
-- [ ] 0001, 0002 y 0003 sin errores.
+- [ ] 0001 y 0002 sin errores; 0003 solo si se necesitan datos ficticios.
 - [ ] Administrador inicial creado y verificado.
 - [ ] Alumno: solo su perfil, sin grupos ni asignaciones; no puede darse un rol.
 - [ ] Profesor: solo su grupo y su asignación.

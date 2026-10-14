@@ -11,7 +11,7 @@ Todas las etapas de la guía (0 a 9) tienen su implementación. Antes de usar **
 - **Lo que esta revisión NO prueba:** ninguna migración se ha ejecutado aquí ni se ha abierto ninguna pantalla en un navegador. Eso lo cubren las casillas siguientes.
 
 ## Orden de instalación en un proyecto nuevo (o de prueba)
-Ejecutar en el SQL Editor, en orden: `0001` a `0017` de `supabase/migrations/` (la 0004 crea el administrador inicial). Luego publicar el repositorio en GitHub Pages desde `main`/root.
+Ejecutar en el SQL Editor, en orden: las migraciones generales de `0001` a `0017` de `supabase/migrations/` (0003 está separado y es opcional) (la 0004 crea el administrador inicial). Luego publicar el repositorio en GitHub Pages desde `main`/root.
 
 ## Casillas por etapa (resumen de las revisiones de la guía)
 - [ ] **0 Primera vista:** abre en computadora y celular; el CSS carga.

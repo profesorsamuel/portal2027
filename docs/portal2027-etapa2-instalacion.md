@@ -55,4 +55,4 @@ rollback;
 - Si el grupo (grado+sección) no existe en ese año, la importación lo crea; la vista previa lo avisa.
 - Reimportar actualiza nombres, correo y datos del acudiente, y cambia el grupo/estado de la matrícula del año si difieren.
 - Fichas no se borran desde el portal en esta etapa.
-- La biblioteca de Excel (`xlsx` 0.18.5, jsDelivr, versión fija) se usa solo en el navegador de la administración con sus propios archivos.
+- Excel usa SheetJS 0.20.3 desde su CDN oficial, con SRI SHA-384 verificado y respaldo local de los mismos bytes en `js/vendor/`. El cargador `js/core/portal2027-excel.js` lo comparten administración y libreta.

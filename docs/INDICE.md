@@ -27,7 +27,6 @@ Las etapas se numeraron dos veces a lo largo del proyecto (la primera guía de 9
 | [VALIDACIONES_ACCESO_ETAPAS_AGRUPADAS.md](VALIDACIONES_ACCESO_ETAPAS_AGRUPADAS.md) | Validaciones agrupadas de acceso. |
 | [REVISION_SEGUIMIENTO_SEGURIDAD.md](REVISION_SEGUIMIENTO_SEGURIDAD.md) | Revisión limitada del módulo de seguimiento. |
 | [REVISION_HTML_Y_CSP.md](REVISION_HTML_Y_CSP.md) | Revisión de HTML y CSP, pendiente de implementación. |
-| [CSP_INVENTARIO_5A.md](CSP_INVENTARIO_5A.md) | Inventario previo de la CSP (scripts, estilos, orígenes) y riesgos pendientes. |
 | [portal2027-auditoria-csp.md](portal2027-auditoria-csp.md) | Auditoría previa de CSP (sin activar). |
 | [portal2027-acceso-estudiantes-cedula.md](portal2027-acceso-estudiantes-cedula.md) | Acceso de estudiantes con grado, nombre y cédula. |
 | [portal2027-criterios-activacion-claves.md](portal2027-criterios-activacion-claves.md) | Condiciones antes de activar claves temporales. |
