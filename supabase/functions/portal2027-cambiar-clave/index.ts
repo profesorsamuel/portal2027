@@ -2,23 +2,11 @@
 // Recibe { claveActual, claveNueva }. Nunca recibe un ID de otra cuenta.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-const ORIGEN = Deno.env.get('PORTAL2027_ORIGEN') || 'https://profesorsamuel.github.io';
-const CORS = {
-  'Access-Control-Allow-Origin': ORIGEN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Cache-Control': 'no-store',
-  'Vary': 'Origin',
-};
-const responder = (cuerpo: unknown, estado = 200) => new Response(JSON.stringify(cuerpo), {
-  status: estado, headers: { ...CORS, 'Content-Type': 'application/json' },
-});
+import { comprobarSolicitudPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
 Deno.serve(async (req) => {
-  const origen = req.headers.get('Origin');
-  if (origen && origen !== ORIGEN) return responder({ error: 'Origen no permitido.' }, 403);
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return responder({ error: 'Método no permitido.' }, 405);
+  const rechazo = comprobarSolicitudPortal(req);
+  if (rechazo) return rechazo;
 
   try {
     const url = Deno.env.get('SUPABASE_URL');
