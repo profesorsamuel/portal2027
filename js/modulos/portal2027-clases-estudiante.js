@@ -1,6 +1,6 @@
 /* portal2027-clases-estudiante.js — «Mis clases y tareas» (guía, etapa 5, parte B): panel del estudiante.
    Los datos llegan de portal2027_mis_clases (solo lo publicado para su grupo y su propia entrega).
-   La entrega sube el archivo a su carpeta privada y luego se registra con portal2027_entregar_tarea. */
+   La entrega sube el archivo a su carpeta privada y luego registra la tanda con portal2027_entregar_tarea_archivos. */
 (function () {
   'use strict';
 
@@ -34,6 +34,142 @@
 
     function aviso(texto, tipo) { msg.textContent = texto; msg.className = 'mensaje ' + (tipo || 'info'); msg.hidden = !texto; }
 
+    var entregaOcupada = false;
+    function formEntrega(t, matriculaId) {
+      var en = t.entrega, items = [], preparando = false, bloqueada = false, comentarioEnviado = null;
+      var archivo = el('input', { type: 'file', accept: C.ACEPTAR, multiple: true });
+      var coment = el('input', { type: 'text', maxlength: '1000' });
+      var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: en ? 'Reemplazar mi entrega' : 'Entregar' });
+      var lista = el('ul', { clase: 'fotos-previas' });
+      var progreso = el('progress', { max: '1', value: '0', hidden: true, 'aria-label': 'Archivos preparados para entregar' });
+      var estadoEntrega = el('p', { role: 'status', 'aria-live': 'polite' });
+      var f = el('form', { clase: 'formulario-clases' }, [
+        el('label', null, ['Hasta 15 fotos JPG/PNG o un documento individual (hasta 10 MB por archivo)', archivo]),
+        el('p', { clase: 'bloque-ayuda', texto: en ? 'Esta tanda reemplazará todos los adjuntos de su entrega actual.' : 'Elija las fotos de su cuaderno o ejercicios.' }),
+        lista, el('label', null, ['Comentario (opcional)', coment]), enviar, progreso, estadoEntrega
+      ]);
+      function dibujarFotos() {
+        lista.textContent = '';
+        items.forEach(function (it) {
+          var img = null;
+          if (/\.(jpe?g|png)$/i.test(it.original.name)) {
+            img = el('img', { clase: 'foto-previa-miniatura', alt: 'Vista previa de ' + it.original.name });
+            var url = URL.createObjectURL(it.final || it.original);
+            img.onload = img.onerror = function () { URL.revokeObjectURL(url); };
+            img.src = url;
+          }
+          var quitar = boton('Quitar', function () { items = items.filter(function (x) { return x !== it; }); dibujarFotos(); });
+          quitar.disabled = preparando || entregaOcupada || bloqueada;
+          lista.appendChild(el('li', null, [img, el('div', null, [
+            el('strong', { texto: it.original.name }),
+            el('small', { texto: 'Original: ' + (it.original.size / 1048576).toFixed(2) + ' MB · Final: ' + (it.final ? (it.final.size / 1048576).toFixed(2) + ' MB' : 'Sin preparar') }),
+            el('small', { texto: it.error || (it.subida ? 'Subido; pendiente de confirmar la entrega' : 'Listo para enviar') })
+          ]), quitar]));
+        });
+      }
+      archivo.addEventListener('change', async function () {
+        if (entregaOcupada || preparando || bloqueada) { return; }
+        var elegidas = Array.prototype.slice.call(archivo.files || []); archivo.value = '';
+        if (!elegidas.length) { return; }
+        var todas = items.map(function (it) { return it.original; }).concat(elegidas);
+        if (todas.length > 15) { aviso('Puede adjuntar hasta 15 fotos.', 'error'); return; }
+        if (todas.length > 1 && todas.some(function (a) { return !/\.(jpe?g|png)$/i.test(a.name); })) {
+          aviso('Para enviar varios archivos, elija solo fotos JPG o PNG. Los documentos se entregan individualmente.', 'error'); return;
+        }
+        preparando = true; entregaOcupada = true; archivo.disabled = true; sel.disabled = true; enviar.disabled = true;
+        estadoEntrega.textContent = 'Preparando los archivos…';
+        try {
+          for (var i = 0; i < elegidas.length; i++) {
+            var it = { original: elegidas[i], final: null, ruta: null, subida: false, error: '' };
+            items.push(it);
+            try {
+              it.final = await C.reducirImagen(it.original);
+              var v = C.validar(it.final); if (v.error) { throw new Error(v.error); }
+            } catch (e) {
+              console.error('Preparar adjunto', it.original.name, e);
+              it.error = 'No se pudo preparar. Quite este archivo y elija otro permitido de hasta 10 MB.';
+            }
+            dibujarFotos();
+          }
+          estadoEntrega.textContent = 'Revise los archivos antes de entregar.';
+        } finally {
+          preparando = false; entregaOcupada = false; archivo.disabled = false; sel.disabled = false; enviar.disabled = false; dibujarFotos();
+        }
+      });
+      f.addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        if (bloqueada === 'conflicto') { return; }
+        if (preparando || entregaOcupada) { aviso('Espere a que termine la preparación o subida actual.', 'info'); return; }
+        if (!items.length) { aviso('Elija al menos una foto o un documento.', 'error'); return; }
+        if (items.some(function (it) { return !it.final || (!it.ruta && it.error); })) { aviso('Quite los archivos que no se pudieron preparar antes de entregar.', 'error'); return; }
+        entregaOcupada = true; bloqueada = true;
+        if (comentarioEnviado === null) { comentarioEnviado = coment.value; }
+        var controles = Array.prototype.slice.call(sec.querySelectorAll('button,input,select,textarea'));
+        var previos = controles.map(function (c) { var d = c.disabled; c.disabled = true; return d; });
+        progreso.hidden = false; progreso.max = items.length; progreso.value = 0;
+        var recibida = false;
+        try {
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            estadoEntrega.textContent = (i + 1) + ' de ' + items.length + ': ' + it.original.name;
+            if (!it.subida) {
+              try {
+                if (!it.ruta) {
+                  it.ruta = t.id + '/' + matriculaId + '/' + Date.now() + '-' +
+                    (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).slice(2)) + '-' + C.nombreSeguro(it.final.name);
+                }
+                var v = C.validar(it.final); if (v.error) { throw new Error(v.error); }
+                var s = await db.storage.from(C.BUCKET_ENTREGAS).upload(it.ruta, it.final, { contentType: v.tipo, cacheControl: '0', upsert: false });
+                if (s.error) {
+                  // Si se perdió la respuesta de una subida confirmada, reutiliza la misma ruta.
+                  var existe = await db.storage.from(C.BUCKET_ENTREGAS).createSignedUrl(it.ruta, 60);
+                  if (existe.error || !existe.data) { throw s.error; }
+                }
+                it.subida = true; it.error = '';
+              } catch (e) { console.error('Subir adjunto', it.original.name, e); it.error = 'No se pudo subir. Reintente con conexión disponible.'; }
+            }
+            progreso.value = i + 1; dibujarFotos();
+          }
+          if (items.some(function (it) { return !it.subida; })) {
+            estadoEntrega.textContent = 'La entrega todavía no se registró. Reintente: se conservarán los archivos ya subidos.';
+            enviar.textContent = 'Reintentar entrega'; return;
+          }
+          estadoEntrega.textContent = 'Confirmando la entrega…';
+          var g = await db.rpc('portal2027_entregar_tarea_archivos', {
+            p_tarea: t.id, p_archivos: items.map(function (it) { return { ruta: it.ruta, nombre: it.final.name.slice(0, 200) }; }),
+            p_comentario: comentarioEnviado, p_version: en ? en.version : null
+          });
+          if (g.error) { throw g.error; }
+          recibida = true;
+          estadoEntrega.textContent = 'Entrega recibida.';
+          var actualizada = await cargar();
+          if (!actualizada) { aviso('Su entrega se guardó, pero no se pudo actualizar la pantalla. Recargue para verla.', 'info'); return; }
+          aviso(g.data && g.data.tardia ? 'Entrega recibida. Quedó marcada como tardía.' : 'Entrega recibida.', 'ok');
+        } catch (e) {
+          console.error('Confirmar entrega', e);
+          if (recibida) { aviso('Su entrega se guardó, pero no se pudo actualizar la pantalla. Recargue para verla.', 'info'); }
+          else if (/CONFLICTO|ya fue revisada/i.test((e && e.message) || '')) {
+            estadoEntrega.textContent = 'La entrega cambió o el profesor ya la revisó. Recargue para consultar su estado antes de reenviar.';
+            enviar.textContent = 'Recargar entrega';
+            enviar.onclick = function () { if (!entregaOcupada) { cargar(); } };
+            // El próximo clic recarga; no vuelve a registrar una versión anterior.
+            f.onsubmit = function (evento) { evento.preventDefault(); };
+            bloqueada = 'conflicto';
+          } else {
+            estadoEntrega.textContent = 'No se pudo confirmar la entrega. Reintente para comprobarla sin volver a subir los archivos.';
+            enviar.textContent = 'Reintentar entrega';
+          }
+        } finally {
+          entregaOcupada = false;
+          controles.forEach(function (c, i) { c.disabled = previos[i]; });
+          archivo.disabled = true; coment.disabled = true; enviar.disabled = recibida;
+          if (bloqueada === 'conflicto') { enviar.type = 'button'; }
+          dibujarFotos();
+        }
+      });
+      return f;
+    }
+
     function tarjetaTarea(t, matriculaId) {
       var en = t.entrega;
       var chips = [
@@ -46,43 +182,17 @@
         t.instrucciones ? el('p', { clase: 'bloque-ayuda', texto: t.instrucciones }) : null
       ];
       if (en) {
-        hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Su entrega: ' + en.archivo_nombre + ' · ' + C.fechaHora(en.entregada_en) }));
-        hijos.push(el('div', { clase: 'cabecera-acciones' }, [boton('Abrir mi archivo', async function () {
-          try { await C.abrir(C.BUCKET_ENTREGAS, en.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
-        })]));
+        var adjuntos = Array.isArray(en.archivos) && en.archivos.length ? en.archivos : [{ ruta: en.archivo_ruta, nombre: en.archivo_nombre }];
+        hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Su entrega: ' + adjuntos.length + ' archivo(s) · ' + C.fechaHora(en.entregada_en) }));
+        hijos.push(el('div', { clase: 'cabecera-acciones' }, adjuntos.map(function (a) {
+          return boton('Abrir ' + a.nombre, async function () {
+            try { await C.abrir(C.BUCKET_ENTREGAS, a.ruta); }
+            catch (e) { console.error('Abrir adjunto', e); aviso('No se pudo abrir el archivo. Inténtelo de nuevo.', 'error'); }
+          });
+        })));
         if (en.comentario_profesor) { hijos.push(el('p', { clase: 'mensaje info', texto: 'Comentario del profesor: ' + en.comentario_profesor })); }
       }
-      if (!en || en.estado === 'entregada') {
-        var archivo = el('input', { type: 'file', accept: C.ACEPTAR });
-        var coment = el('input', { type: 'text', maxlength: '1000' });
-        var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: en ? 'Reemplazar mi entrega' : 'Entregar' });
-        var f = el('form', { clase: 'formulario-clases' }, [
-          el('label', null, ['Archivo (hasta 10 MB)', archivo]),
-          el('label', null, ['Comentario (opcional)', coment]),
-          enviar
-        ]);
-        f.addEventListener('submit', async function (ev) {
-          ev.preventDefault();
-          var arch = archivo.files[0];
-          var v = C.validar(arch);
-          if (v.error) { aviso(v.error, 'error'); return; }
-          enviar.disabled = true;
-          aviso('Subiendo su entrega…', 'info');
-          try {
-            var ruta = t.id + '/' + matriculaId + '/' + Date.now() + '-' + C.nombreSeguro(arch.name);
-            var s = await db.storage.from(C.BUCKET_ENTREGAS).upload(ruta, arch, { contentType: v.tipo, cacheControl: '0', upsert: false });
-            if (s.error) { throw s.error; }
-            var g = await db.rpc('portal2027_entregar_tarea', { p_tarea: t.id, p_ruta: ruta, p_nombre: arch.name, p_comentario: coment.value });
-            if (g.error) { throw g.error; }
-            await cargar();
-            aviso(g.data && g.data.tardia ? 'Entrega recibida. Quedó marcada como tardía.' : 'Entrega recibida.', 'ok');
-          } catch (e) {
-            enviar.disabled = false;
-            aviso('No se envió su entrega. ' + C.textoError(e), 'error');
-          }
-        });
-        hijos.push(f);
-      }
+      if (!en || en.estado === 'entregada') { hijos.push(formEntrega(t, matriculaId)); }
       return el('li', { clase: 'tarjeta-clase tarjeta-columna' }, hijos);
     }
 
@@ -130,9 +240,12 @@
         var r = await db.rpc('portal2027_mis_clases', { p_trimestre: sel.value });
         if (r.error) { throw r.error; }
         dibujar(r.data);
+        return true;
       } catch (e) {
         cont.textContent = '';
-        aviso('No se pudo cargar. ' + C.textoError(e), 'error');
+        console.error('Cargar clases del estudiante', e);
+        aviso('No se pudieron cargar sus clases. Revise su conexión y recargue.', 'error');
+        return false;
       }
     }
     sel.addEventListener('change', function () { aviso('', 'info'); cargar(); });

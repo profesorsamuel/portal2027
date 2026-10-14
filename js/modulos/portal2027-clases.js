@@ -496,11 +496,14 @@
 
     var hijos = [
       el('h3', { texto: 'Entrega de ' + nombreEst(m) }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + en.archivo_nombre }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + (Array.isArray(en.archivos) ? en.archivos.length + ' archivo(s)' : en.archivo_nombre) }),
       en.comentario ? el('p', { clase: 'bloque-ayuda', texto: 'Comentario del estudiante: ' + en.comentario }) : null,
-      el('div', { clase: 'cabecera-acciones' }, [boton('Abrir archivo', async function () {
-        try { await C.abrir(C.BUCKET_ENTREGAS, en.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
-      })]),
+      el('div', { clase: 'cabecera-acciones' }, (Array.isArray(en.archivos) && en.archivos.length ? en.archivos : [{ ruta: en.archivo_ruta, nombre: en.archivo_nombre }]).map(function (a) {
+        return boton('Abrir ' + a.nombre, async function () {
+          try { await C.abrir(C.BUCKET_ENTREGAS, a.ruta); }
+          catch (e) { console.error('Abrir adjunto del estudiante', e); aviso('No se pudo abrir el archivo. Inténtelo de nuevo.', 'error'); }
+        });
+      })),
       campo('Comentario para el estudiante', coment)
     ];
     if (nota) {
