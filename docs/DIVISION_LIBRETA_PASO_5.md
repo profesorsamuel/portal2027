@@ -1,5 +1,7 @@
 # División de libreta — Paso 5: preferencias visuales y anchos
 
+La continuación de papelera e historial está en DIVISION_LIBRETA_PASO_6.md.
+
 ## Instalación
 
 Requiere las etapas 1 a 5 y el paso 4 de división de libreta. No necesita SQL.
