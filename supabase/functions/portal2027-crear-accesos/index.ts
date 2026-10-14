@@ -1,7 +1,8 @@
 // portal2027-crear-accesos — Edge Function (servidor), solo administración.
-// Recibe { accesos: [{ codigo, cedula }] }. Para cada estudiante crea (o actualiza) una cuenta
-// cuyo correo interno se deriva del código y cuya contraseña es la cédula. La cédula no se guarda
-// en ninguna tabla: Supabase Auth solo conserva su hash. Tampoco se devuelve en la respuesta.
+// Etapa 1: conserva la contraseña de las cuentas ya vinculadas.
+// Recibe { accesos: [{ codigo, cedula }] }. Las cuentas nuevas mantienen el flujo
+// anterior hasta completar el acceso temporal. No devuelve contraseñas.
+// No usar esta operación como restablecimiento de una cuenta existente.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const CORS = {
@@ -55,11 +56,15 @@ Deno.serve(async (req) => {
       .select('id, nombres, apellidos, usuario_id').ilike('codigo', codigo).maybeSingle();
     if (!ficha) { fallo('No existe un estudiante con ese código'); continue; }
 
-    // Ya tiene cuenta: solo se actualiza la contraseña.
+    // Repetir una importación nunca debe deshacer una contraseña personal.
+    // Se conserva "actualizado" para que el panel actual interprete la respuesta;
+    // en este caso significa acceso ya vinculado, sin cambiar la contraseña.
     if (ficha.usuario_id) {
-      const { error } = await servicio.auth.admin.updateUserById(ficha.usuario_id, { password: clave });
-      if (error) { fallo('No se pudo actualizar: ' + error.message); continue; }
-      resultados.push({ codigo, estado: 'actualizado' });
+      resultados.push({
+        codigo,
+        estado: 'actualizado',
+        detalle: 'Cuenta ya vinculada. Se conservó su contraseña; no se restableció.',
+      });
       continue;
     }
 
