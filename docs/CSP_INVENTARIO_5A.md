@@ -68,3 +68,7 @@ Origen que **no** aparece como conexión del navegador: `https://wa.me`, `https:
 ## Guardas automáticas
 
 `tests/portal2027-csp-inventario.test.cjs` falla si aparece un `<script>` en línea, un `on*=`, un `javascript:`, `eval`/`new Function`, o si **aumenta** la deuda de estilos en línea. `tests/portal2027-hash-inicial.test.cjs` comprueba que el fragmento de la URL se guarda antes que supabase-js.
+
+
+## Actualización 2026-10-16
+Se extrajeron los estilos inline de HTML a CSS. `style-src` ya no requiere `unsafe-inline`; la prueba automatizada impide su reaparición. **GitHub Pages no permite configurar mediante meta la directiva `frame-ancestors`: la protección anti-clickjacking requiere cabeceras HTTP en un hosting compatible (por ejemplo Cloudflare o Netlify).** Esta revisión estática no confirma comportamiento en navegador real.

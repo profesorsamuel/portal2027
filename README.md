@@ -111,4 +111,6 @@ En Linux, si Chromium pide bibliotecas del sistema: `npx playwright install-deps
 
 - [docs/INDICE.md](docs/INDICE.md): lista de todos los documentos.
 - Estructura de archivos: [portal2027-estructura.md](docs/portal2027-estructura.md). Base de datos: [portal2027-base-de-datos.md](docs/portal2027-base-de-datos.md).
-- Seguridad pendiente de verificar: [REVISION_SEGURIDAD_0047_0049.md](docs/REVISION_SEGURIDAD_0047_0049.md), [ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md](docs/ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md), [REVISION_HTML_Y_CSP.md](docs/REVISION_HTML_Y_CSP.md).
+- Seguridad pendiente de verificar: [REVISION_SEGURIDAD_0047_0049.md](docs/REVISION_SEGURIDAD_0047_0049.md), [ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md](docs/ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md), [REVISION_HTML_Y_CSP.md](docs/historico/REVISION_HTML_Y_CSP.md).
+
+Documentación: [vigente e histórica](docs/INDICE.md). Las etapas anteriores están en `docs/historico/`.

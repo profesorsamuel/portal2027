@@ -20,7 +20,7 @@ function enlacesLocales(rutaMd) {
 
 test('docs/INDICE.md lista todos los documentos de docs/ y ninguno inexistente', () => {
   const indice = leer('docs/INDICE.md');
-  const reales = fs.readdirSync(path.join(raiz, 'docs')).filter(f => f !== 'INDICE.md');
+  const reales = [...fs.readdirSync(path.join(raiz, 'docs')).filter(f => f.endsWith('.md') && f !== 'INDICE.md'), ...fs.readdirSync(path.join(raiz, 'docs/historico')).filter(f => f.endsWith('.md')).map(f => 'historico/' + f)];
   const listados = [...indice.matchAll(/^\| \[([^\]]+)\]\(([^)]+)\)/gm)].map(m => m[2]);
   for (const f of reales) assert.ok(listados.includes(f), 'Falta en el índice: ' + f);
   for (const f of listados) assert.ok(reales.includes(f), 'El índice menciona un archivo inexistente: ' + f);

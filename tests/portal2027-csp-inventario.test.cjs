@@ -50,9 +50,9 @@ test('El JavaScript no usa eval, new Function ni on*=/style= dentro de cadenas H
 
 test('Deuda de estilos en línea: no puede aumentar', () => {
   const tope = {
-    'pages/portal2027-estudiante.html': { bloques: 1, atributos: 0 },
-    'pages/portal2027-prompt-planificacion.html': { bloques: 1, atributos: 1 },
-    'pages/portal2027-planificacion.html': { bloques: 0, atributos: 2 },
+    'pages/portal2027-estudiante.html': { bloques: 0, atributos: 0 },
+    'pages/portal2027-prompt-planificacion.html': { bloques: 0, atributos: 0 },
+    'pages/portal2027-planificacion.html': { bloques: 0, atributos: 0 },
   };
   for (const p of paginas) {
     const t = fs.readFileSync(p, 'utf8'), r = rel(p), m = tope[r] || { bloques: 0, atributos: 0 };

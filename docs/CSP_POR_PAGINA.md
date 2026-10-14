@@ -22,3 +22,7 @@ Cada valor siguiente es la política exacta de la meta de su HTML.
 
 ## Deuda pendiente
 `style-src 'unsafe-inline'` sigue siendo necesario por estilos de páginas, impresión y html2canvas. No se ha comprobado la compatibilidad del visor PDF en Chrome/Firefox ni URLs firmadas de Supabase. CSP por meta no admite `report-uri`, `frame-ancestors` ni Report-Only.
+
+
+## Actualización 2026-10-16
+Se extrajeron los estilos inline de HTML a CSS. `style-src` ya no requiere `unsafe-inline`; la prueba automatizada impide su reaparición. **GitHub Pages no permite configurar mediante meta la directiva `frame-ancestors`: la protección anti-clickjacking requiere cabeceras HTTP en un hosting compatible (por ejemplo Cloudflare o Netlify).** Esta revisión estática no confirma comportamiento en navegador real.
