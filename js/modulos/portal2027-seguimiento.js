@@ -169,7 +169,10 @@
   /* ---------- 2) NOTAS TRIMESTRALES (planilla) ---------- */
   function vistaPlanilla(filas, trims, ctx) {
     var zona = el('div');
-    zona.appendChild(el('div', { clase: 'cabecera-acciones no-imprimir' }, [el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } })]));
+    var estadoPdf = el('p', { clase: 'bloque-ayuda no-imprimir', role: 'status', 'aria-live': 'polite', hidden: true });
+    var botonPdf = el('button', { clase: 'boton', type: 'button', texto: 'Descargar boletín en PDF', onclick: function () { descargarBoletin(botonPdf, estadoPdf, filas, trims, ctx); } });
+    zona.appendChild(el('div', { clase: 'cabecera-acciones no-imprimir' }, [botonPdf, el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Imprimir / guardar PDF', onclick: function () { window.print(); } })]));
+    zona.appendChild(estadoPdf);
     zona.appendChild(el('p', { clase: 'bloque-ayuda no-imprimir', texto: 'Cada trimestre sale del motor único. La nota final es el promedio de los trimestres con nota; en rojo, lo menor a ' + MIN.toFixed(1) + '. Ausencias (A) y tardanzas (T) vienen de la asistencia; la ausencia justificada no cuenta.' }));
     zona.appendChild(el('div', { clase: 'solo-impresion', style: 'text-align:center;font-weight:700' }, [el('div', { texto: 'MINISTERIO DE EDUCACIÓN' }), el('div', { texto: 'NOTAS TRIMESTRALES, AUSENCIAS Y TARDANZAS' })]));
     zona.appendChild(el('p', { texto: 'PLANTEL: C.E.B.G. EL JIRAL · ASIGNATURA: ' + ctx.materia.toUpperCase() + ' · AÑO LEC. ' + ctx.anio + ' · GRUPO ' + ctx.grupo }));
@@ -187,6 +190,45 @@
     zona.appendChild(tabla(cab, cuerpo));
     zona.appendChild(el('div', { clase: 'seg-firma' }, [el('div', { texto: 'PROFESOR: ______________________________' }), el('strong', { texto: ctx.firma })]));
     return zona;
+  }
+
+  /* ---------- Boletín PDF (solo lee; no modifica nada) ---------- */
+  // Profesor y profesor consejero: la función 0040 los entrega al profesor de la asignación (la tabla de consejeros solo la ve la administración).
+  // Si esa función aún no está instalada, el PDF se genera igual: firma con el profesor de la sesión y consejero en línea para completar a mano.
+  async function datosBoletin(ctx) {
+    try {
+      var r = await consultar(db.rpc('portal2027_datos_boletin', { p_asignacion: ctx.asignacionId }));
+      return { profesor: (r && r.profesor) || '', consejero: (r && r.consejero) || '' };
+    } catch (e) {
+      return { profesor: ctx.profesorEsSesion ? ctx.firma : '', consejero: '' };
+    }
+  }
+  // Datos tal como los calcula la pantalla (valores originales; el redondeo a 1 decimal lo hace el motor al mostrar).
+  // Nota final anual: solo si TODOS los trimestres tienen nota; si falta alguno queda en blanco (no se inventa).
+  function filasBoletin(filas, trims) {
+    return filas.map(function (f) {
+      var finales = f.tri.map(function (x) { return x.final; });
+      var completo = trims.length > 0 && finales.length === trims.length && finales.every(function (v) { return v !== null && v !== undefined; });
+      return { nombre: nombreEst(f.est), notas: finales,
+        final: completo ? M.promedio(finales) : null,
+        aus: f.tri.map(function (x) { return x.aus; }), tar: f.tri.map(function (x) { return x.tar; }) };
+    });   // «filas» ya viene en orden alfabético
+  }
+  async function descargarBoletin(boton, estado, filas, trims, ctx) {
+    function msg(t, tipo) { estado.hidden = false; estado.className = 'bloque-ayuda no-imprimir' + (tipo === 'error' ? ' mensaje error' : ''); estado.textContent = t; }
+    boton.disabled = true; msg('Generando el PDF…');
+    try {
+      if (!P.boletinPdf) { throw new Error('No se cargó el generador de PDF. Recargue la página (Ctrl+F5).'); }
+      var extra = await datosBoletin(ctx);
+      var nombre = await P.boletinPdf.descargar({
+        plantel: 'C.E.B.G. EL JIRAL', materia: ctx.materia.toUpperCase(), anio: String(ctx.anio), grupo: ctx.grupo,
+        consejero: extra.consejero, profesor: extra.profesor, minimo: MIN,
+        trimestres: trims.map(function (t) { return t.numero; }), estudiantes: filasBoletin(filas, trims)
+      }, { rutaLogo: P.raiz + 'assets/img/meduca-logo.png' });
+      msg('Listo: se descargó «' + nombre + '».' + (extra.consejero ? '' : ' El profesor consejero quedó en blanco (falta instalar el SQL 0040 o el grupo no tiene consejero asignado).'));
+    } catch (e) {
+      msg('No se pudo generar el PDF. ' + ((e && e.message) || ''), 'error');
+    } finally { boton.disabled = false; }
   }
 
   /* ---------- 3) CUADRO DE FRACASO ---------- */
@@ -226,11 +268,12 @@
     var id = new URLSearchParams(window.location.search).get('asignacion');
     contenido.textContent = '';
     try {
-      var asig = id ? await consultar(db.from('portal2027_asignaciones').select('id, salon:portal2027_salones(id,nombre,anio_id,anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)').eq('id', id).maybeSingle()) : null;
+      var asig = id ? await consultar(db.from('portal2027_asignaciones').select('id, profesor_id, salon:portal2027_salones(id,nombre,anio_id,anio:portal2027_anios(anio)), materia:portal2027_materias(nombre)').eq('id', id).maybeSingle()) : null;
       if (!asig) { errorPantalla('No se encontró esta asignación o no tiene acceso a ella.'); return; }
       var trims = await consultar(db.from('portal2027_trimestres').select('id,numero').eq('anio_id', asig.salon.anio_id).order('numero'));
       var filas = await cargar(asig, trims);
-      var ctx = { materia: asig.materia.nombre, grupo: asig.salon.nombre, anio: asig.salon.anio.anio, firma: P.nombreCompleto(info.perfil) || '[Su nombre]' };
+      var ctx = { materia: asig.materia.nombre, grupo: asig.salon.nombre, anio: asig.salon.anio.anio, firma: P.nombreCompleto(info.perfil) || '[Su nombre]',
+        asignacionId: asig.id, profesorEsSesion: !!(info.sesion && info.sesion.user && info.sesion.user.id === asig.profesor_id) };
 
       contenido.appendChild(el('header', { clase: 'panel-cabecera' }, [
         el('div', null, [el('p', { clase: 'panel-centro', texto: 'C.E.B.G. El Jiral · Seguimiento académico' }), el('h1', { texto: ctx.materia + ' · ' + ctx.grupo }), el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + ctx.anio + ' · ' + filas.length + ' estudiantes' })]),
