@@ -1,0 +1,20 @@
+# Configuracion de funciones Edge de Portal 2027.
+# Solo la busqueda de estudiantes es publica: la pantalla de entrada la llama
+# antes de iniciar sesion. Esta protegida por limite de intentos (consumirIntentoPortal)
+# y no devuelve contrasenas. Todas las demas exigen sesion (JWT) valida.
+project_id = "gwxghgpsgvaletrqmwcn"
+
+[functions.portal2027-buscar-estudiante]
+verify_jwt = false
+
+[functions.portal2027-crear-accesos]
+verify_jwt = true
+
+[functions.portal2027-cambiar-clave]
+verify_jwt = true
+
+[functions.portal2027-importar-profesores]
+verify_jwt = true
+
+[functions.portal2027-invitar-estudiante]
+verify_jwt = true
