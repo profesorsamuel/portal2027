@@ -1,17 +1,11 @@
 // portal2027-crear-accesos — Edge Function (servidor), solo administración.
-// Etapa 1: conserva la contraseña de las cuentas ya vinculadas.
+// Etapa 7: usa seguridad compartida y conserva la contraseña de las cuentas ya vinculadas.
 // Recibe { accesos: [{ codigo, cedula }] }. Las cuentas nuevas mantienen el flujo
 // anterior hasta completar el acceso temporal. No devuelve contraseñas.
 // No usar esta operación como restablecimiento de una cuenta existente.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-const responder = (cuerpo: unknown, estado = 200) =>
-  new Response(JSON.stringify(cuerpo), { status: estado, headers: { ...CORS, 'Content-Type': 'application/json' } });
+import { comprobarSolicitudPortal, comprobarAdministradorPortal, responderPortal as responder } from '../_shared/portal2027-seguridad.ts';
 
 const DOMINIO = 'estudiantes.portal2027.app'; // dominio interno; no recibe correos
 const MAX_LOTE = 200;
@@ -22,19 +16,16 @@ const normalizarCedula = (c: string) => String(c || '').replace(/[^A-Za-z0-9]/g,
 const correoDe = (codigo: string) => codigo.toLowerCase().replace(/[^a-z0-9]/g, '') + '@' + DOMINIO;
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return responder({ error: 'Método no permitido' }, 405);
+  const rechazo = comprobarSolicitudPortal(req);
+  if (rechazo) return rechazo;
 
-  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-  const { data: u, error: eu } = await servicio.auth.getUser(token);
-  if (eu || !u?.user) return responder({ error: 'Sesión no válida' }, 401);
-
-  const { data: perfil } = await servicio.from('portal2027_perfiles').select('activo').eq('id', u.user.id).maybeSingle();
-  const { data: rol } = await servicio.from('portal2027_roles_usuario').select('rol')
-    .eq('usuario_id', u.user.id).eq('rol', 'administrador').maybeSingle();
-  if (!perfil?.activo || !rol) return responder({ error: 'Solo la administración puede crear accesos' }, 403);
+  const servicio = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const permiso = await comprobarAdministradorPortal(req, servicio);
+  if (permiso.respuesta) return permiso.respuesta;
+  const usuario = permiso.usuario;
+  if (!usuario) return responder({ error: 'Inicie sesión nuevamente.' }, 401);
 
   let cuerpo: { accesos?: { codigo?: string; cedula?: string }[] };
   try { cuerpo = await req.json(); } catch { return responder({ error: 'Solicitud no válida' }, 400); }
@@ -81,7 +72,7 @@ Deno.serve(async (req) => {
       .update({ usuario_id: uid, invitado_en: new Date().toISOString() }).eq('id', ficha.id);
     if (e1) { fallo('Cuenta creada pero no se pudo vincular: ' + e1.message); continue; }
     const { error: e2 } = await servicio.from('portal2027_roles_usuario')
-      .upsert({ usuario_id: uid, rol: 'estudiante', asignado_por: u.user.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
+      .upsert({ usuario_id: uid, rol: 'estudiante', asignado_por: usuario.id }, { onConflict: 'usuario_id,rol', ignoreDuplicates: true });
     if (e2) { fallo('Cuenta vinculada pero sin rol: ' + e2.message); continue; }
     resultados.push({ codigo, estado: 'creado' });
   }
