@@ -216,3 +216,50 @@ input, select, textarea {
   .tabla-tarjetas tr:last-child td:last-child { border-bottom: 0; }
   .tabla-tarjetas .cabecera-acciones { display: flex; flex-wrap: wrap; }
 }
+
+/* Etapa 5A: diálogos y avisos compartidos. */
+.portal-dialogo {
+  width: min(520px, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  padding: 1.4rem;
+  margin: auto;
+  overflow: auto;
+  border: 1px solid var(--borde-panel);
+  border-radius: 14px;
+  background: var(--blanco);
+  color: var(--texto);
+  box-shadow: 0 18px 60px rgba(20, 50, 59, .25);
+}
+.portal-dialogo::backdrop, .portal-dialogo-fondo { background: rgba(20, 50, 59, .6); }
+.portal-dialogo-fondo { position: fixed; inset: 0; z-index: 1000; }
+.portal-dialogo-alternativo { display: block; position: fixed; inset: 0; z-index: 1001; }
+.portal-dialogo h2 { font-size: 1.4rem; overflow-wrap: anywhere; }
+.portal-dialogo-texto { margin-top: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.portal-dialogo-formulario > label { display: grid; gap: .35rem; margin-top: 1rem; }
+.portal-dialogo input { min-width: 0; width: 100%; min-height: 44px; }
+.portal-dialogo-acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .6rem; margin-top: 1.2rem; }
+.portal-dialogo-acciones .boton { min-height: 44px; margin: 0; }
+.portal-dialogo-aceptar { background: var(--tinta); color: var(--blanco); }
+.portal-dialogo-aceptar:is(:hover, :focus-visible, :active) { background: var(--tinta-suave); }
+.portal-avisos {
+  position: fixed;
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1100;
+  width: min(420px, calc(100% - 2rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  display: grid;
+  gap: .6rem;
+  max-height: 70vh;
+  max-height: 70dvh;
+  overflow-y: auto;
+  pointer-events: none;
+}
+.portal-aviso { display: flex; align-items: flex-start; gap: .7rem; padding: .75rem; border: 1px solid var(--linea); border-radius: 10px; box-shadow: 0 4px 16px rgba(20, 50, 59, .15); pointer-events: auto; }
+.portal-aviso > div { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.portal-aviso-ok { background: #e8f5ec; border-color: #9fcfae; color: #1d5a35; }
+.portal-aviso-error { background: #fdecea; border-color: #e9a7a0; color: #7a1d14; }
+.portal-aviso-info { background: #eef4f3; color: var(--tinta); }
+.portal-aviso-cerrar { flex-shrink: 0; min-width: 44px; min-height: 44px; padding: .4rem .6rem; border: 1px solid currentColor; border-radius: 7px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.portal-aviso-cerrar:is(:hover, :focus-visible, :active) { background: rgba(255, 255, 255, .6); }
+@media (max-width: 480px) { .portal-dialogo { padding: 1rem; } .portal-dialogo-acciones .boton { flex: 1 1 auto; } }
