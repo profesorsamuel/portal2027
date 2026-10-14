@@ -4,6 +4,7 @@
     db = P?.db,
     $ = (id) => document.getElementById(id),
     dias = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  const el = P.el;
   let user,
     admin = false,
     asignaciones = [],
@@ -15,18 +16,21 @@
     $('estado').textContent = t;
     $('estado').className = 'barra-estado ' + (bad ? 'error' : 'ok');
   }
-  function esc(t) {
-    return String(t ?? '').replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;'
-        })[c]
-    );
+  // Los datos se asignan como texto/atributos del DOM, nunca como HTML.
+  function poner(nodo, hijos) {
+    nodo.textContent = '';
+    hijos.forEach((h) => nodo.appendChild(h));
+  }
+  function filaVacia(nodo, texto, columnas) {
+    poner(nodo, [el('tr', null, [el('td', { colspan: String(columnas), texto })])]);
+  }
+  function claseTipo(tipo) { return ['clase', 'recreo', 'consejeria', 'otro'].includes(tipo) ? tipo : 'otro'; }
+  function fichas(nodo, total, etiqueta, conteo) {
+    const hijos = [el('div', { clase: 'ficha total' }, [el('b', { texto: String(total) }), el('span', { texto: etiqueta })])];
+    Object.entries(conteo).forEach(([id, n]) => hijos.push(el('div', { clase: 'ficha ' + colorDe(id) }, [
+      el('b', { texto: String(n) }), el('span', { texto: nombre(asignaciones.find((a) => a.id === id) || {}) })
+    ])));
+    poner(nodo, hijos);
   }
   async function query(q) {
     let r = await q;
@@ -37,9 +41,7 @@
     return query(db.rpc(n, args));
   }
   function sel(id, arr, label) {
-    $(id).innerHTML = arr
-      .map((x) => `<option value="${esc(x.id)}">${esc(label(x))}</option>`)
-      .join('');
+    poner($(id), arr.map((x) => el('option', { value: String(x.id ?? ''), texto: String(label(x) ?? '') })));
   }
   function nombre(a) {
     return `${a.salon?.nombre || '?'} · ${a.materia?.nombre || '?'}`;
@@ -164,70 +166,53 @@
     );
   }
   function renderFranjas() {
-    let tb = $('franjas');
-    if (!$('anio').value || !$('profesor').value) {
-      tb.innerHTML = '<tr><td colspan="5">Seleccione año y profesor.</td></tr>';
-      return;
-    }
-    let html = '',
-      dia = 0;
-    for (let h of horario) {
+    const tb = $('franjas');
+    if (!$('anio').value || !$('profesor').value) { filaVacia(tb, 'Seleccione año y profesor.', 5); return; }
+    const filas = []; let dia = 0;
+    for (const h of horario) {
       if (h.dia !== dia) {
         dia = h.dia;
-        html += `<tr class="dia-fila"><th colspan="5">${dias[dia]}</th></tr>`;
+        filas.push(el('tr', { clase: 'dia-fila' }, [el('th', { colspan: '5', texto: dias[dia] || '' })]));
       }
-      let a = asignaciones.find((x) => x.id === h.asignacion_id),
-        txt =
-          h.tipo === 'clase'
-            ? `<span class="grupo-marca ${colorDe(h.asignacion_id)}"></span>${esc(nombre(a || {}))}`
-            : esc(h.etiqueta || tipoTxt(h.tipo));
-      html += `<tr><td>${esc(f12(h.hora_inicio))}</td><td>${esc(f12(h.hora_fin))}</td><td><span class="insignia ${esc(h.tipo)}">${esc(tipoTxt(h.tipo))}</span></td><td>${txt}</td><td><button type="button" class="boton" data-editar="${h.id}">Editar</button><button type="button" class="boton" data-borrar="${h.id}">Eliminar</button></td></tr>`;
+      const a = asignaciones.find((x) => x.id === h.asignacion_id);
+      const descripcion = h.tipo === 'clase'
+        ? el('td', null, [el('span', { clase: 'grupo-marca ' + colorDe(h.asignacion_id) }), nombre(a || {})])
+        : el('td', { texto: h.etiqueta || tipoTxt(h.tipo) });
+      filas.push(el('tr', null, [
+        el('td', { texto: f12(h.hora_inicio) }), el('td', { texto: f12(h.hora_fin) }),
+        el('td', null, [el('span', { clase: 'insignia ' + claseTipo(h.tipo), texto: tipoTxt(h.tipo) })]), descripcion,
+        el('td', null, [el('button', { type: 'button', clase: 'boton', 'data-editar': String(h.id), texto: 'Editar' }),
+          el('button', { type: 'button', clase: 'boton', 'data-borrar': String(h.id), texto: 'Eliminar' })])
+      ]));
     }
-    tb.innerHTML =
-      html ||
-      '<tr><td colspan="5">Todavía no hay franjas. Use «Preparar el horario de 2027 con un clic» o agregue una franja.</td></tr>';
+    if (filas.length) poner(tb, filas);
+    else filaVacia(tb, 'Todavía no hay franjas. Use «Preparar el horario de 2027 con un clic» o agregue una franja.', 5);
   }
   function renderSemana() {
-    let g = $('semana-grid'),
-      res = $('resumen-semana'),
-      hoy = new Date().getDay(),
-      cl = horario.filter((h) => h.tipo === 'clase');
+    const g = $('semana-grid'), res = $('resumen-semana'), hoy = new Date().getDay(), cl = horario.filter((h) => h.tipo === 'clase');
     if (!horario.length) {
-      res.innerHTML = '';
-      g.innerHTML =
-        '<p class="dia-vacio" style="grid-column:1/-1">Todavía no hay horario guardado. Baje a «Editar horario» y presione «Preparar mis clases».</p>';
-      return;
+      res.textContent = '';
+      const vacio = el('p', { clase: 'dia-vacio', texto: 'Todavía no hay horario guardado. Baje a «Editar horario» y presione «Preparar mis clases».' });
+      vacio.style.gridColumn = '1/-1'; poner(g, [vacio]); return;
     }
-    let conteo = {};
-    cl.forEach(
-      (h) => (conteo[h.asignacion_id] = (conteo[h.asignacion_id] || 0) + 1)
-    );
-    res.innerHTML =
-      `<div class="ficha total"><b>${cl.length}</b><span>clases por semana</span></div>` +
-      Object.entries(conteo)
-        .map(
-          ([id, n]) =>
-            `<div class="ficha ${colorDe(id)}"><b>${n}</b><span>${esc(nombre(asignaciones.find((a) => a.id === id) || {}))}</span></div>`
-        )
-        .join('');
-    g.innerHTML = [1, 2, 3, 4, 5]
-      .map((d) => {
-        let hs = horario.filter((h) => h.dia === d);
-        return (
-          `<div class="dia-col ${d === hoy ? 'hoy' : ''}"><h4>${dias[d]}${d === hoy ? '<small>Hoy</small>' : ''}</h4>` +
-          (hs
-            .map((h) => {
-              let a = asignaciones.find((x) => x.id === h.asignacion_id),
-                hora = `<span class="hora">${esc(rango(h.hora_inicio, h.hora_fin))}</span>`;
-              if (h.tipo === 'clase')
-                return `<div class="franja-tarjeta ${colorDe(h.asignacion_id)}">${hora}<span class="nombre">${esc(a?.salon?.nombre || '?')}<span class="materia">${esc(a?.materia?.nombre || '?')}</span></span></div>`;
-              return `<div class="franja-tarjeta ${esc(h.tipo)}">${hora}<span class="nombre">${esc(h.etiqueta || tipoTxt(h.tipo))}</span></div>`;
-            })
-            .join('') || '<p class="dia-vacio">Sin franjas</p>') +
-          '</div>'
-        );
-      })
-      .join('');
+    const conteo = {};
+    cl.forEach((h) => (conteo[h.asignacion_id] = (conteo[h.asignacion_id] || 0) + 1));
+    fichas(res, cl.length, 'clases por semana', conteo);
+    poner(g, [1, 2, 3, 4, 5].map((d) => {
+      const hs = horario.filter((h) => h.dia === d);
+      const titulo = el('h4', { texto: dias[d] });
+      if (d === hoy) titulo.appendChild(el('small', { texto: 'Hoy' }));
+      const tarjetas = hs.map((h) => {
+        const a = asignaciones.find((x) => x.id === h.asignacion_id);
+        const hora = el('span', { clase: 'hora', texto: rango(h.hora_inicio, h.hora_fin) });
+        const n = h.tipo === 'clase'
+          ? el('span', { clase: 'nombre' }, [a?.salon?.nombre || '?', el('span', { clase: 'materia', texto: a?.materia?.nombre || '?' })])
+          : el('span', { clase: 'nombre', texto: h.etiqueta || tipoTxt(h.tipo) });
+        return el('div', { clase: 'franja-tarjeta ' + (h.tipo === 'clase' ? colorDe(h.asignacion_id) : claseTipo(h.tipo)) }, [hora, n]);
+      });
+      if (!tarjetas.length) tarjetas.push(el('p', { clase: 'dia-vacio', texto: 'Sin franjas' }));
+      return el('div', { clase: 'dia-col' + (d === hoy ? ' hoy' : '') }, [titulo, ...tarjetas]);
+    }));
   }
   async function cargarHorario() {
     if (!$('anio').value || !$('profesor').value) {
@@ -291,17 +276,11 @@
     });
   }
   function renderExclusiones() {
-    let l = exclusiones.filter(
-      (x) => x.profesor_id === null || x.profesor_id === $('profesor').value
-    );
-    $('exclusiones').innerHTML =
-      l
-        .map(
-          (x) =>
-            `<span class="exclusion">${esc(fechaCorta(x.fecha))} · ${esc(x.motivo)} <em>(${x.profesor_id ? 'personal' : 'colegio'})</em><button type="button" class="boton" data-excluir="${x.id}" aria-label="Eliminar día sin clases" title="Eliminar">×</button></span>`
-        )
-        .join('') ||
-      '<p class="vacio-texto">Todavía no hay días sin clases registrados.</p>';
+    const l = exclusiones.filter((x) => x.profesor_id === null || x.profesor_id === $('profesor').value);
+    poner($('exclusiones'), l.length ? l.map((x) => el('span', { clase: 'exclusion' }, [
+      fechaCorta(x.fecha) + ' · ' + (x.motivo ?? '') + ' ', el('em', { texto: '(' + (x.profesor_id ? 'personal' : 'colegio') + ')' }),
+      el('button', { type: 'button', clase: 'boton', 'data-excluir': String(x.id), 'aria-label': 'Eliminar día sin clases', title: 'Eliminar', texto: '×' })
+    ])) : [el('p', { clase: 'vacio-texto', texto: 'Todavía no hay días sin clases registrados.' })]);
   }
   function syncDoble() {
     $('doble').value =
@@ -314,8 +293,7 @@
     let t = trimestres.find((x) => x.id === $('trimestre').value);
     if (!t) {
       sesionesCalc = [];
-      $('resumen').innerHTML =
-        '<p class="vacio-texto">Configure las fechas del trimestre en Administración.</p>';
+      poner($('resumen'), [el('p', { clase: 'vacio-texto', texto: 'Configure las fechas del trimestre en Administración.' })]);
       renderSesiones();
       return;
     }
@@ -369,50 +347,30 @@
       }
     }
     sesionesCalc = salida;
-    $('resumen').innerHTML = salida.length
-      ? `<div class="ficha total"><b>${salida.length}</b><span>sesiones en el trimestre</span></div>` +
-        Object.entries(conteo)
-          .map(
-            ([id, n]) =>
-              `<div class="ficha ${colorDe(id)}"><b>${n}</b><span>${esc(nombre(asignaciones.find((a) => a.id === id) || {}))}</span></div>`
-          )
-          .join('')
-      : '';
-    let f = $('filtro-sesiones'),
-      prev = f.value;
-    f.innerHTML =
-      '<option value="">Todos los grupos</option>' +
-      Object.keys(conteo)
-        .map(
-          (id) =>
-            `<option value="${esc(id)}">${esc(nombre(asignaciones.find((a) => a.id === id) || {}))}</option>`
-        )
-        .join('');
+    if (salida.length) fichas($('resumen'), salida.length, 'sesiones en el trimestre', conteo);
+    else $('resumen').textContent = '';
+    const f = $('filtro-sesiones'), prev = f.value;
+    poner(f, [el('option', { value: '', texto: 'Todos los grupos' }), ...Object.keys(conteo).map((id) =>
+      el('option', { value: id, texto: nombre(asignaciones.find((a) => a.id === id) || {}) }))]);
     f.value = conteo[prev] ? prev : '';
     visibles = 40;
     renderSesiones();
   }
   function renderSesiones() {
-    let f = $('filtro-sesiones').value,
-      l = sesionesCalc.filter((s) => !f || s.asignacion_id === f),
-      hoy = dateISO(new Date()),
-      vis = l.slice(0, visibles),
-      html = '',
-      mes = '';
-    for (let s of vis) {
-      let fe = parseDate(s.fecha),
-        m = fe.toLocaleDateString('es-PA', { month: 'long', year: 'numeric' });
-      if (m !== mes) {
-        mes = m;
-        html += `<tr class="mes-fila"><th colspan="4">${esc(m)}</th></tr>`;
-      }
-      html += `<tr class="${s.fecha === hoy ? 'es-hoy' : s.fecha < hoy ? 'ya-paso' : ''}"><td>${esc(fe.toLocaleDateString('es-PA', { weekday: 'short', day: '2-digit', month: 'short' }))}</td><td>${esc(rango(s.inicio, s.hora_fin))}</td><td><span class="grupo-marca ${colorDe(s.asignacion_id)}"></span>${esc(s.nombre)}</td><td>${s.numero}</td></tr>`;
+    const f = $('filtro-sesiones').value, l = sesionesCalc.filter((s) => !f || s.asignacion_id === f), hoy = dateISO(new Date()), vis = l.slice(0, visibles);
+    const filas = []; let mes = '';
+    for (const s of vis) {
+      const fe = parseDate(s.fecha), m = fe.toLocaleDateString('es-PA', { month: 'long', year: 'numeric' });
+      if (m !== mes) { mes = m; filas.push(el('tr', { clase: 'mes-fila' }, [el('th', { colspan: '4', texto: m })])); }
+      filas.push(el('tr', { clase: s.fecha === hoy ? 'es-hoy' : s.fecha < hoy ? 'ya-paso' : '' }, [
+        el('td', { texto: fe.toLocaleDateString('es-PA', { weekday: 'short', day: '2-digit', month: 'short' }) }),
+        el('td', { texto: rango(s.inicio, s.hora_fin) }),
+        el('td', null, [el('span', { clase: 'grupo-marca ' + colorDe(s.asignacion_id) }), s.nombre]),
+        el('td', { texto: String(s.numero) })
+      ]));
     }
-    $('sesiones').innerHTML =
-      html || '<tr><td colspan="4">No hay clases previstas.</td></tr>';
-    $('contador-sesiones').textContent = l.length
-      ? `Mostrando ${vis.length} de ${l.length} sesiones`
-      : '';
+    if (filas.length) poner($('sesiones'), filas); else filaVacia($('sesiones'), 'No hay clases previstas.', 4);
+    $('contador-sesiones').textContent = l.length ? `Mostrando ${vis.length} de ${l.length} sesiones` : '';
     $('ver-mas').hidden = vis.length >= l.length;
   }
   $('filtro-sesiones').onchange = () => {
@@ -474,14 +432,8 @@
       sel('anio', anios, (x) => x.anio);
       let activo = anios.find((x) => x.activo);
       if (activo) $('anio').value = activo.id;
-      $('profesor').innerHTML = (
-        admin ? profesores : profesores.filter((x) => x.usuario_id === user.id)
-      )
-        .map(
-          (x) =>
-            `<option value="${esc(x.usuario_id)}">${esc((x.perfil?.nombres || '') + ' ' + (x.perfil?.apellidos || ''))}</option>`
-        )
-        .join('');
+      sel('profesor', (admin ? profesores : profesores.filter((x) => x.usuario_id === user.id))
+        .map((x) => ({ ...x, id: x.usuario_id })), (x) => (x.perfil?.nombres || '') + ' ' + (x.perfil?.apellidos || ''));
       if (profesores.some((x) => x.usuario_id === user.id))
         $('profesor').value = user.id;
       if (!admin) $('profesor').disabled = true;
@@ -804,22 +756,17 @@
 
   let faciles = [];
   function opcionesAsignacion(seleccion) {
-    return asigs()
-      .map(
-        (a) =>
-          `<option value="${esc(a.id)}" ${a.id === seleccion ? 'selected' : ''}>${esc(nombre(a))}</option>`
-      )
-      .join('');
+    return asigs().map((a) => el('option', { value: String(a.id), selected: a.id === seleccion, texto: nombre(a) }));
   }
   function renderFacil() {
-    const t = $('vista-facil');
-    if (!t) return;
-    t.innerHTML = faciles
-      .map(
-        (f, i) =>
-          `<tr><td>${dias[f.dia]}</td><td><input type="time" data-i="${i}" data-k="inicio" value="${esc(f.inicio)}"></td><td><input type="time" data-i="${i}" data-k="fin" value="${esc(f.fin)}"></td><td><span class="insignia ${esc(f.tipo)}">${esc(tipoTxt(f.tipo))}</span></td><td>${f.tipo === 'clase' ? `<select data-i="${i}" data-k="asignacion_id">${opcionesAsignacion(f.asignacion_id)}</select>` : esc(f.etiqueta || '')}</td></tr>`
-      )
-      .join('');
+    const t = $('vista-facil'); if (!t) return;
+    poner(t, faciles.map((f, i) => el('tr', null, [
+      el('td', { texto: dias[f.dia] || '' }),
+      el('td', null, [el('input', { type: 'time', 'data-i': String(i), 'data-k': 'inicio', value: f.inicio })]),
+      el('td', null, [el('input', { type: 'time', 'data-i': String(i), 'data-k': 'fin', value: f.fin })]),
+      el('td', null, [el('span', { clase: 'insignia ' + claseTipo(f.tipo), texto: tipoTxt(f.tipo) })]),
+      el('td', null, f.tipo === 'clase' ? [el('select', { 'data-i': String(i), 'data-k': 'asignacion_id' }, opcionesAsignacion(f.asignacion_id))] : [String(f.etiqueta || '')])
+    ])));
   }
   $('vista-facil').onchange = (e) => {
     let i = Number(e.target.dataset.i),

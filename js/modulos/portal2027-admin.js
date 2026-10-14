@@ -688,6 +688,8 @@
     yo = info;
     estado = el('p', { clase: 'mensaje estado-panel', role: 'status', hidden: true });
     zona.appendChild(estado);
+    try { await P.cargarExcel(); }
+    catch (e) { console.error('Excel no disponible en administración', e); aviso('No se pudo cargar Excel. Recargue antes de importar o descargar plantillas.', 'error'); }
     await cargar();
     dibujar();
   };

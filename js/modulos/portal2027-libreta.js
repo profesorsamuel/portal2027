@@ -1260,17 +1260,7 @@
   }
 
   /* ---------- cargar notas desde Excel o pegando ---------- */
-  var XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  function cargarXlsx() {
-    return new Promise(function (ok, fallo) {
-      if (window.XLSX) { ok(window.XLSX); return; }
-      var sc = document.createElement('script');
-      sc.src = XLSX_URL;
-      sc.onload = function () { ok(window.XLSX); };
-      sc.onerror = function () { fallo(new Error('No se pudo cargar el lector de Excel. Revise su internet o pegue las notas copiadas de Excel.')); };
-      document.head.appendChild(sc);
-    });
-  }
+  function cargarXlsx() { return P.cargarExcel(); }
   function esNum(c) { return (typeof c === 'number' && isFinite(c)) || (typeof c === 'string' && /^\d+([.,]\d+)?$/.test(c.trim())); }
   function aNumero(c) { return typeof c === 'number' ? c : Number(String(c).trim().replace(',', '.')); }
   function tokensNombre(s) {
