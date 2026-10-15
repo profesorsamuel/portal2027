@@ -12,6 +12,8 @@
 
   async function consultar(q) { var r = await q; if (r.error) { throw r.error; } return r.data; }
 
+  var ETIQUETA_TIPO = { pdf: 'PDF', imagen: 'Imagen', enlace: 'Enlace' };
+
   function boton(texto, fn) {
     return el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: texto, onclick: fn });
   }
@@ -182,6 +184,24 @@
         el('div', null, [el('strong', { texto: t.titulo }), ' '].concat(chips)),
         t.instrucciones ? el('p', { clase: 'bloque-ayuda', texto: t.instrucciones }) : null
       ];
+      var anexos = Array.isArray(t.adjuntos) ? t.adjuntos : [];
+      if (anexos.length) {
+        hijos.push(el('div', { clase: 'adjuntos-tarea' }, [
+          el('h4', { texto: 'Material de la tarea' }),
+          el('ul', { clase: 'lista-adjuntos' }, anexos.map(function (a) {
+            var fila = [el('span', { clase: 'etiqueta-chica', texto: ETIQUETA_TIPO[a.tipo] || 'Archivo' }), el('strong', { texto: a.titulo })];
+            if (a.tipo === 'enlace') {
+              fila.push(C.enlace(a.enlace, 'Abrir enlace'));
+            } else {
+              fila.push(boton('Abrir ' + (a.archivo_nombre || a.titulo), async function () {
+                try { await C.abrir(C.BUCKET_MATERIALES, a.archivo_ruta); }
+                catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
+              }));
+            }
+            return el('li', null, [el('div', { clase: 'lista-adjuntos-fila' }, fila), C.miniatura(a)]);
+          }))
+        ]));
+      }
       if (en) {
         var adjuntos = Array.isArray(en.archivos) && en.archivos.length ? en.archivos : [{ ruta: en.archivo_ruta, nombre: en.archivo_nombre }];
         hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Su entrega: ' + adjuntos.length + ' archivo(s) · ' + C.fechaHora(en.entregada_en) }));

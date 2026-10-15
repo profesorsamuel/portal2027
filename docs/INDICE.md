@@ -8,6 +8,7 @@
 | [AUDITORIA_ACCESO_PENDIENTE.md](AUDITORIA_ACCESO_PENDIENTE.md) | Documento vigente o comprobación pendiente |
 | [AUDITORIA_RLS_PENDIENTE.md](AUDITORIA_RLS_PENDIENTE.md) | Documento vigente o comprobación pendiente |
 | [COMO_CARGAR_HORARIO_2027.md](COMO_CARGAR_HORARIO_2027.md) | Documento vigente o comprobación pendiente |
+| [portal2027-adjuntos-tareas.md](portal2027-adjuntos-tareas.md) | Documento vigente: adjuntos de tareas y copia de lista de alumnos |
 | [CSP_INVENTARIO_5A.md](CSP_INVENTARIO_5A.md) | Documento vigente o comprobación pendiente |
 | [CSP_POR_PAGINA.md](CSP_POR_PAGINA.md) | Documento vigente o comprobación pendiente |
 | [ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md](ESTADO_REAL_SEGURIDAD_Y_SIGUIENTES_PASOS.md) | Documento vigente o comprobación pendiente |

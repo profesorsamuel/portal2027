@@ -30,3 +30,21 @@
 
 .zona-soltar{border:2px dashed #7b9ca5;border-radius:10px;padding:22px;text-align:center;margin:12px 0;background:#f3f9fa}.zona-soltar.sobre{background:#d4eff4;border-color:#136a80}
 .visor-clases{position:fixed;inset:0;background:#101820;color:white;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}.visor-clases[hidden]{display:none}.visor-clases img{max-width:95vw;max-height:78vh;object-fit:contain;transform-origin:center;touch-action:pan-x pan-y}.visor-clases .controles{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.visor-clases button{padding:10px;border-radius:8px;cursor:pointer}.visor-clases p{color:white}
+
+/* Adjuntos de tareas (PDF, imágenes y enlaces) y copia de la lista de alumnos. */
+.adjuntos-tarea { display:grid; gap:0.6rem; margin:0.75rem 0 0; padding:0.75rem 0.9rem; border:1px dashed #7b9ca5; border-radius:10px; background:#f7fbfc; min-width:0; }
+.adjuntos-tarea legend { font-weight:600; padding:0 0.3rem; }
+.adjuntos-tarea h4 { margin:0; font-size:0.95rem; }
+.adjuntos-panel { display:grid; gap:0.5rem; padding:0.75rem; border:1px solid var(--linea); border-radius:8px; background:var(--blanco); }
+.adjuntos-panel[hidden] { display:none; }
+.adjuntos-panel label { display:grid; gap:0.25rem; font-size:0.92rem; }
+.adjuntos-panel input[type="text"], .adjuntos-panel input[type="url"] { font:inherit; padding:0.5rem 0.6rem; border:1px solid #aebdba; border-radius:8px; width:100%; box-sizing:border-box; }
+.adjuntos-panel input[type="file"] { font:inherit; }
+.adjuntos-panel input[hidden] { display:none; }
+.lista-adjuntos { list-style:none; margin:0; padding:0; display:grid; gap:0.5rem; }
+.lista-adjuntos li { display:grid; gap:0.35rem; }
+.lista-adjuntos-fila { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; min-width:0; }
+.lista-adjuntos-fila strong { overflow-wrap:anywhere; }
+.lista-adjuntos small { color:var(--texto-suave); overflow-wrap:anywhere; }
+.lista-adjuntos .recurso-miniatura { margin:0; }
+.texto-oculto { position:fixed; left:-9999px; top:0; opacity:0; pointer-events:none; }
