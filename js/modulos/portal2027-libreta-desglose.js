@@ -102,7 +102,7 @@
     Object.keys(cajas).forEach(function (k) { cajas[k].addEventListener('input', actualizarPrevia); });
     actualizarPrevia();
     cuerpo.appendChild(previa);
-    cuerpo.appendChild(el('p', 'desc-nota', 'Después de guardar, pulse «Traer asistencia y comportamiento» en cada semana para aplicar los cambios.'));
+    cuerpo.appendChild(el('p', 'desc-nota', 'Al guardar se recalculan automáticamente las notas de conducta de todas las semanas editables con fechas definidas.'));
 
     var pie = el('footer', 'desc-pie');
     var msg = el('p', 'desc-msg'); msg.setAttribute('role', 'alert');
@@ -134,7 +134,18 @@
         p_tardanza: n.descuento_tardanza, p_bono: n.bono_bien, p_minimo: n.minimo
       });
       if (r.error) { aviso('No se guardó. ' + P.traducirError(r.error), 'error'); guardar.disabled = false; return; }
-      aviso('Descuentos guardados. Pulse «Traer asistencia y comportamiento» en cada semana para aplicarlos.', 'ok');
+      var semanas = S.evals.filter(function (e) {
+        return e.categoria === 'apreciacion' && e.semana_inicio && e.semana_fin && !e.bloqueada && !e.eliminada_en;
+      });
+      var actualizadas = 0, errores = [];
+      for (var j = 0; j < semanas.length; j++) {
+        var q = await db.rpc('portal2027_aplicar_conducta_semana', { p_evaluacion: semanas[j].id });
+        if (q.error) { errores.push('Semana ' + semanas[j].semana + ': ' + P.traducirError(q.error)); }
+        else { actualizadas++; }
+      }
+      try { await recargar(); } catch (e) { errores.push('No se pudo refrescar la libreta: ' + textoError(e)); }
+      aviso(errores.length ? 'Configuración guardada; ' + actualizadas + ' semana(s) recalculada(s). ' + errores.join(' · ') :
+        'Cambios aplicados automáticamente en ' + actualizadas + ' semana(s). Las notas ya están actualizadas.', errores.length ? 'error' : 'ok');
       guardar.hidden = true; restablecer.hidden = true; cancelar.textContent = 'Cerrar';
     };
     v.addEventListener('close', function () { v.remove(); });
