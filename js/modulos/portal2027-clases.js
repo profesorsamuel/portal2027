@@ -268,13 +268,13 @@
       try {
         await cargar();
         var seccion = f.parentNode;
-        var anterior = seccion.querySelector('.lista-clases');
+        var anterior = seccion.querySelector('.materiales-lista');
         if (anterior) { anterior.remove(); }
         var vacio = seccion.querySelector('.vacio-texto');
         if (vacio) { vacio.remove(); }
-        seccion.appendChild(el('ul', { clase: 'lista-clases' }, S.materiales.filter(function (m) {
+        seccion.appendChild(listaMateriales(S.materiales.filter(function (m) {
           return (m.clase_id || null) === contexto.clase && (S.verPapelera || !m.eliminado_en);
-        }).map(filaMaterial)));
+        })));
       } catch (e) { console.error('Actualizar materiales', e); aviso('La tanda terminó, pero no se pudo actualizar la lista. Pulse «Recargar».', 'error'); }
     }
     habilitarArrastre(f, archivo, function(files) { agregarFotos(files); });
@@ -334,36 +334,83 @@
     var enPapelera = !!m.eliminado_en;
     var acciones = [];
     if (m.archivo_ruta && !enPapelera) {
-      if (/\.(jpe?g|png)$/i.test(m.archivo_nombre || '')) acciones.push(boton('Presentar imágenes', function () { C.visorImagenes(S.materiales.filter(function(x){ return (x.clase_id || null) === (m.clase_id || null) && !x.eliminado_en; }), m); }));
-      acciones.push(boton('Abrir archivo', async function () {
-        try { await C.abrir(C.BUCKET_MATERIALES, m.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
-      }));
+      acciones.push(boton('Abrir archivo', function () { abrirMaterial(m); }));
     }
     if (C.urlSegura(m.enlace)) acciones.push(C.enlace(m.enlace, 'Abrir enlace'));
     acciones.push(selectorMover(m, 'material'));
     if (!enPapelera) {
-      acciones.push(boton(m.publicado ? 'Ocultar a estudiantes' : 'Mostrar a estudiantes', function () {
-        accion('Guardando…', m.publicado ? 'Material oculto.' : 'Material visible.', async function () {
-          var g = await db.rpc('portal2027_actualizar_material', { p_id: m.id, p_publicado: !m.publicado, p_a_papelera: null });
-          if (g.error) { throw g.error; }
-        });
-      }));
+      acciones.push(boton(m.publicado ? 'Ocultar' : 'Mostrar', function () { alternarVisible(m); }));
     }
-    acciones.push(boton(enPapelera ? 'Restaurar' : 'A la papelera', function () {
-      accion('Guardando…', enPapelera ? 'Material restaurado.' : 'Material en la papelera.', async function () {
-        var g = await db.rpc('portal2027_actualizar_material', { p_id: m.id, p_publicado: null, p_a_papelera: !enPapelera });
-        if (g.error) { throw g.error; }
-      });
-    }, enPapelera ? '' : 'boton-peligro'));
-    return el('li', { clase: 'tarjeta-clase tarjeta-material' }, [
+    acciones.push(botonQuitar(m, enPapelera));
+    return el('li', { clase: 'tarjeta-clase tarjeta-material tarjeta-material-fila' }, [
       el('div', { clase: 'material-info' }, [
-        el('strong', { texto: (/\.pdf$/i.test(m.archivo_nombre || '') ? '📕 ' : (m.archivo_ruta ? '🖼️ ' : '🔗 ')) + m.titulo }), ' ',
-        chip(enPapelera ? 'En papelera' : (m.publicado ? 'Visible' : 'Oculto'), enPapelera ? 'rojo' : (m.publicado ? 'verde' : 'gris')),
+        el('div', { clase: 'material-titulo-fila' }, [
+          el('strong', { texto: (/\.pdf$/i.test(m.archivo_nombre || '') ? '📕 ' : (m.archivo_ruta ? '🖼️ ' : '🔗 ')) + m.titulo }),
+          chip(enPapelera ? 'En papelera' : (m.publicado ? 'Visible' : 'Oculto'), enPapelera ? 'rojo' : (m.publicado ? 'verde' : 'gris'))
+        ]),
         m.descripcion ? el('p', { clase: 'bloque-ayuda', texto: m.descripcion }) : null,
-        C.miniatura(m),
-        m.archivo_nombre ? el('p', { clase: 'bloque-ayuda', texto: 'Archivo: ' + m.archivo_nombre }) : null
+        m.archivo_nombre ? el('p', { clase: 'bloque-ayuda', texto: m.archivo_nombre }) : null
       ]),
-      el('div', { clase: 'cabecera-acciones' }, acciones)
+      el('div', { clase: 'material-acciones' }, acciones)
+    ]);
+  }
+
+  /* ---------- ayudas de materiales (fila y foto) ---------- */
+  function esFoto(m) { return !!m.archivo_ruta && /\.(jpe?g|png)$/i.test(m.archivo_nombre || ''); }
+  function fotosDeLaClase(m) { return S.materiales.filter(function (x) { return (x.clase_id || null) === (m.clase_id || null) && !x.eliminado_en; }); }
+  async function abrirMaterial(m) {
+    try { await C.abrir(C.BUCKET_MATERIALES, m.archivo_ruta); } catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }
+  }
+  function alternarVisible(m) {
+    accion('Guardando…', m.publicado ? 'Material oculto.' : 'Material visible.', async function () {
+      var g = await db.rpc('portal2027_actualizar_material', { p_id: m.id, p_publicado: !m.publicado, p_a_papelera: null });
+      if (g.error) { throw g.error; }
+    });
+  }
+  function cambiarPapelera(m, aPapelera) {
+    accion('Guardando…', aPapelera ? 'Quitado. Puede recuperarlo con «Mostrar papelera».' : 'Material restaurado.', async function () {
+      var g = await db.rpc('portal2027_actualizar_material', { p_id: m.id, p_publicado: null, p_a_papelera: aPapelera });
+      if (g.error) { throw g.error; }
+    });
+  }
+  // Botón ✕ (a la papelera) o «Restaurar» si ya está en la papelera.
+  function botonQuitar(m, enPapelera) {
+    if (enPapelera) { return boton('↩ Restaurar', function () { cambiarPapelera(m, false); }); }
+    return el('button', { clase: 'boton-quitar', type: 'button', texto: '✕', title: 'Quitar (va a la papelera)', 'aria-label': 'Quitar ' + (m.titulo || 'material'), onclick: function () { cambiarPapelera(m, true); } });
+  }
+
+  // Foto en cuadrícula compacta: miniatura que abre la presentación, ✕ para quitarla y acciones mínimas.
+  function tarjetaFoto(m) {
+    var enPapelera = !!m.eliminado_en;
+    var miniatura = C.miniatura(m);
+    var marco = enPapelera
+      ? el('div', { clase: 'mat-foto-marco' }, [miniatura])
+      : el('button', { clase: 'mat-foto-marco', type: 'button', title: 'Ver foto', 'aria-label': 'Presentar imágenes desde ' + (m.titulo || 'esta foto'), onclick: function () { C.visorImagenes(fotosDeLaClase(m), m); } }, [miniatura]);
+    var pie = [];
+    if (enPapelera) { pie.push(chip('En papelera', 'rojo')); }
+    else {
+      pie.push(el('button', { clase: 'boton-mini ' + (m.publicado ? 'mini-visible' : 'mini-oculto'), type: 'button', texto: m.publicado ? '👁 Visible' : '🙈 Oculto', title: m.publicado ? 'Pulse para ocultar a los estudiantes' : 'Pulse para mostrar a los estudiantes', onclick: function () { alternarVisible(m); } }));
+      pie.push(el('details', { clase: 'mat-foto-mas' }, [
+        el('summary', { texto: 'Más', title: 'Abrir archivo o mover a otra clase' }),
+        el('div', { clase: 'mat-foto-mas-cuerpo' }, [boton('Abrir archivo', function () { abrirMaterial(m); }), selectorMover(m, 'material')])
+      ]));
+    }
+    return el('li', { clase: 'mat-foto' + (enPapelera ? ' mat-foto-papelera' : '') }, [
+      marco,
+      enPapelera ? boton('↩ Restaurar', function () { cambiarPapelera(m, false); }, 'mat-foto-restaurar') : botonQuitar(m, false),
+      el('p', { clase: 'mat-foto-nombre', texto: m.titulo || m.archivo_nombre || 'Foto', title: m.archivo_nombre || m.titulo || '' }),
+      el('div', { clase: 'mat-foto-pie' }, pie)
+    ]);
+  }
+
+  // PDF y enlaces en filas delgadas; las fotos juntas en una cuadrícula.
+  function listaMateriales(lista) {
+    var fotos = lista.filter(esFoto);
+    var otros = lista.filter(function (m) { return !esFoto(m); });
+    return el('div', { clase: 'materiales-lista' }, [
+      otros.length ? el('ul', { clase: 'lista-clases lista-materiales-filas' }, otros.map(filaMaterial)) : null,
+      fotos.length ? el('p', { clase: 'bloque-ayuda mat-foto-cuenta', texto: '🖼️ ' + fotos.length + (fotos.length === 1 ? ' foto' : ' fotos') + ' · toque una para presentarla; la ✕ la quita.' }) : null,
+      fotos.length ? el('ul', { clase: 'fotos-cuadricula' }, fotos.map(tarjetaFoto)) : null
     ]);
   }
 
@@ -371,7 +418,7 @@
     var lista = S.materiales.filter(function (m) { return (m.clase_id || null) === S.claseId && (S.verPapelera || !m.eliminado_en); });
     var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: '📎 Material de la clase' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['📕 Subir PDF de la clase', '🖼️ Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }, 'boton-claro'); })), S.tipoMaterial ? formMaterial() : null]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en esta clase.' })); }
-    else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(filaMaterial))); }
+    else { sec.appendChild(listaMateriales(lista)); }
     return sec;
   }
 
