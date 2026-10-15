@@ -409,7 +409,7 @@
             recursos(materiales, aviso).forEach(function (n) { bloque.appendChild(n); });
           }
           if (tareas.length) {
-            bloque.appendChild(el('h4', { clase: 'seccion-titulo', texto: '✏️ Tareas' }));
+            bloque.appendChild(el('h4', { clase: 'seccion-titulo titulo-tareas', texto: '✏️ Tareas de la clase' }));
             bloque.appendChild(el('ul', { clase: 'lista-tareas' }, tareas.map(function (t) { return tarjetaTarea(t, datos.matricula_id); })));
           }
           materia.appendChild(bloque);

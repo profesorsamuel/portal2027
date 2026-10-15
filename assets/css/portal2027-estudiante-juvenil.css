@@ -343,3 +343,34 @@ body[data-rol="estudiante"] .tarea-tarjeta :is(p, strong, small, span, a) { over
   body[data-rol="estudiante"] .archivo-acciones { width: 100%; padding-left: 0; }
   body[data-rol="estudiante"] .archivo-acciones .boton { width: 100%; }
 }
+
+/* Separación visual de clases y recursos — 2026-10-15 */
+body[data-rol="estudiante"] .materia-tarjeta .clase-detalle {
+  --clase-acento: #2563eb; --clase-fondo: #eff6ff;
+  border: 2px solid var(--clase-acento); border-radius: 18px;
+  overflow: hidden; box-shadow: 0 5px 16px rgba(15,23,42,.10);
+  margin-block: 1rem; background: #fff;
+}
+body[data-rol="estudiante"] .materia-tarjeta .clase-detalle:nth-of-type(3n+2) { --clase-acento: #0d9488; --clase-fondo: #e6fffa; }
+body[data-rol="estudiante"] .materia-tarjeta .clase-detalle:nth-of-type(3n+3) { --clase-acento: #9333ea; --clase-fondo: #faf5ff; }
+body[data-rol="estudiante"] .clase-detalle > summary {
+  background: var(--clase-fondo); border-radius: 0; border-left: 7px solid var(--clase-acento);
+  min-height: 68px; padding: .85rem 1rem; flex-wrap: wrap;
+}
+body[data-rol="estudiante"] .clase-detalle[open] > summary { border-radius: 0; border-bottom: 2px solid var(--clase-acento); }
+body[data-rol="estudiante"] .clase-detalle .clase-titulo strong { color: var(--clase-acento); font-size: 1.08rem; }
+body[data-rol="estudiante"] .clase-detalle .clase-tema { color: #334155; font-weight: 700; white-space: normal; }
+body[data-rol="estudiante"] .clase-detalle .seccion-titulo {
+  padding: .85rem 1rem; border-radius: 12px; margin-top: 1.2rem; margin-bottom: .85rem;
+  background: #e0f2fe; border-left: 6px solid #0284c7; color: #075985;
+  font-size: 1.06rem; letter-spacing: .01em;
+}
+body[data-rol="estudiante"] .clase-detalle .seccion-titulo.titulo-tareas {
+  background: #fef3c7; border-left-color: #d97706; color: #92400e;
+  margin-top: 1.7rem;
+}
+body[data-rol="estudiante"] .clase-detalle .lista-tareas { padding-bottom: .6rem; }
+@media(max-width:600px) {
+  body[data-rol="estudiante"] .clase-detalle > summary { padding: .8rem; }
+  body[data-rol="estudiante"] .clase-detalle .seccion-titulo { font-size: 1rem; padding: .75rem; }
+}
