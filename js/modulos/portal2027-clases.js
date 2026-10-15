@@ -683,8 +683,9 @@
     var pub = el('input', { type: 'checkbox', checked: t ? t.publicada : false });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: t ? 'Guardar cambios' : 'Crear tarea' });
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
-      campo('Nota en la libreta', vinculo)];
+      campo('Evaluación vinculada a la libreta (seleccione la columna correspondiente)', vinculo)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
+    hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta tarea pertenece a la clase seleccionada de la planificación. Sus PDF, imágenes y enlaces quedan asociados a ella. Para registrar una nota en la libreta, seleccione una evaluación; las entregas se califican desde «Evaluar entregas».' }));
     hijos.push(bloqueAdjuntos(t, pendientes));
     hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
     var acciones = [enviar];
@@ -773,9 +774,10 @@
     ];
     var acciones = [selectorMover(t, 'tarea')];
     if (!enPapelera) {
-      acciones.unshift(boton(S.abierta === t.id ? '✖ Cerrar entregas' : '📥 Ver entregas', function () {
+      acciones.unshift(boton(S.abierta === t.id ? '✖ Cerrar evaluación' : '📝 Evaluar entregas', function () {
         S.abierta = S.abierta === t.id ? null : t.id; S.revisando = null; dibujar();
       }, 'boton-relleno'));
+      acciones.push(boton('📒 Abrir libreta', function () { window.location.href = P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id); }));
       acciones.push(boton('✏️ Editar', function () { S.editando = t.id; dibujar(); }));
       acciones.push(boton(t.publicada ? 'Ocultar' : 'Publicar', function () {
         cambiarTarea(t, { p_publicada: !t.publicada }, t.publicada ? 'Tarea oculta.' : 'Tarea publicada.');
@@ -790,6 +792,7 @@
       el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
       el('div', { clase: 'tarea-chips' }, chips),
       t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
+      el('p', { clase: 'bloque-ayuda', texto: t.evaluacion_id ? 'Evaluación vinculada: las notas de las entregas revisadas se guardan en la columna seleccionada de la libreta.' : 'Sin evaluación vinculada. Use «Editar» para seleccionar una columna de la libreta antes de calificar.' }),
       progresoEntregas(t),
       el('div', { clase: 'cabecera-acciones tarea-acciones' }, acciones)
     ];
@@ -808,7 +811,7 @@
     var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
-      el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
+      el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Cada tarea pertenece a la clase seleccionada en la planificación; adjunte PDF, imágenes o enlaces y vincule una evaluación de la libreta para registrar notas.' }),
       el('div', { clase: 'cabecera-acciones' }, [
         boton(S.nuevaTarea ? '✖ Cancelar' : '➕ Nueva tarea', function () { S.nuevaTarea = !S.nuevaTarea; dibujar(); }, S.nuevaTarea ? '' : 'boton-relleno'),
         botonCopiar('📋 Copiar lista de alumnos')
