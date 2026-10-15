@@ -679,12 +679,12 @@
     }
     var vinculo = el('select', null, opciones);
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
-    if (bloqueaVinculo) { vinculo.disabled = true; }
+    // Se permite cambiar el vínculo; el servidor protege notas ya registradas.
     var pub = el('input', { type: 'checkbox', checked: t ? t.publicada : false });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: t ? 'Guardar cambios' : 'Crear tarea' });
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
       campo('Nota en la libreta', vinculo)];
-    if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
+    if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Hay entregas revisadas. Puede vincular una evaluación sin borrar la tarea; las notas existentes en otra evaluación se protegen para evitar pérdidas.' })); }
     hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Al guardar una tarea dentro de una clase planificada se crea automáticamente su columna Tarea en el desglose semanal (requiere SQL 0052). La opción Nota en la libreta es independiente y se conserva para las evaluaciones tradicionales.' }));
     hijos.push(bloqueAdjuntos(t, pendientes));
     hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
@@ -706,7 +706,7 @@
           g = await db.rpc('portal2027_actualizar_tarea', {
             p_id: t.id, p_version: t.version, p_titulo: titulo.value, p_instrucciones: instr.value,
             p_fecha_limite: iso, p_limpiar_plazo: !iso,
-            p_evaluacion: vinculo.value || null, p_limpiar_evaluacion: !vinculo.value && !bloqueaVinculo,
+            p_evaluacion: vinculo.value || null, p_limpiar_evaluacion: !vinculo.value,
             p_publicada: pub.checked, p_a_papelera: null
           });
         } else {
