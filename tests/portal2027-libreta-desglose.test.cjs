@@ -22,7 +22,7 @@ function entorno(extra={}){
  const llamadas=[],avisos=[];
  P.aviso=(t,tipo)=>avisos.push({t,tipo});P.traducirError=()=> 'Error simulado';P.confirmar=async()=>respuestas.length?respuestas.shift():false;P.pedirTexto=async()=>respuestas.length?respuestas.shift():null;
  const config={base:5,descuento_mal:0.5,descuento_ausencia:0.5,descuento_tardanza:0.25,bono_bien:0,minimo:1};
- const db={from:tabla=>{const q={select(){return q;},eq(){return q;},maybeSingle(){return q;},then(ok,mal){const data=tabla==='portal2027_registros_semana'?registros:tabla==='portal2027_config_conducta_semanal'?config:{valor:4.5,version:3};return Promise.resolve({data}).then(ok,mal);}};return q;},rpc:async(n,a)=>{llamadas.push({n,a});if(fallo)return{error:{message:'CONFLICTO'}};return{data:{id:'nuevo',version:3,creados:0,actualizados:1}};}};
+ const db={from:tabla=>{const q={select(){return q;},eq(){return q;},maybeSingle(){return q;},then(ok,mal){const data=tabla==='portal2027_registros_semana'?registros:tabla==='portal2027_config_conducta_semanal'?config:{valor:4.5,version:3};return Promise.resolve({data}).then(ok,mal);}};return q;},rpc:async(n,a)=>{if(n==='portal2027_tareas_de_semana')return{data:[]};llamadas.push({n,a});if(fallo)return{error:{message:'CONFLICTO'}};return{data:{id:'nuevo',version:3,creados:0,actualizados:1}};}};
  const api=P.libretaDesglose.crear({estado:S,db,textoError:()=> 'Error simulado',conDialogo:async(k,fn)=>fn(),recargar:async()=>recargas++,nombreEst:e=>e.nombres,clave:(a,b)=>a+'|'+b,documento});
  return{api,S,ev,db,llamadas,avisos,doc:documento,responder:(...r)=>respuestas=r,error:v=>fallo=v,registros:r=>registros=r,recargas:()=>recargas};
 }

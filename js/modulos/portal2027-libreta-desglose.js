@@ -213,16 +213,28 @@
           .select('id,evaluacion_id,matricula_id,tipo,descripcion,valor,version,grupo').eq('evaluacion_id', ev.id);
         if (r.error) { throw r.error; }
 
+        // Numeración de tareas vinculadas (Tarea 1, Tarea 2…) por orden de creación; requiere la migración 0056.
+        var infoTarea = {};
+        var rt = await db.rpc('portal2027_tareas_de_semana', { p_evaluacion: ev.id });
+        if (!rt.error) { (rt.data || []).forEach(function (t) { infoTarea[t.grupo] = t; }); }
+
         // Una columna por grupo (no por tipo + descripción): así dos registros iguales se ven por separado.
         var grupos = [], porGrupo = {};
         (r.data || []).forEach(function (x) {
           if (!porGrupo[x.grupo]) {
-            porGrupo[x.grupo] = { grupo: x.grupo, tipo: x.tipo, descripcion: x.descripcion, porMat: {} };
+            var it = infoTarea[x.grupo];
+            porGrupo[x.grupo] = { grupo: x.grupo, tipo: x.tipo, descripcion: x.descripcion, porMat: {},
+              numero: it ? it.numero : null, etiqueta: it ? 'Tarea ' + it.numero : null, subtitulo: it ? it.titulo : null };
             grupos.push(porGrupo[x.grupo]);
           }
           porGrupo[x.grupo].porMat[x.matricula_id] = x;
         });
         grupos.sort(function (a, b) {
+          if (a.numero !== null || b.numero !== null) {
+            if (a.numero === null) { return 1; }
+            if (b.numero === null) { return -1; }
+            return a.numero - b.numero;
+          }
           return a.tipo.localeCompare(b.tipo, 'es') || a.descripcion.localeCompare(b.descripcion, 'es') || (a.grupo < b.grupo ? -1 : 1);
         });
 
@@ -291,8 +303,10 @@
         var thEst = document.createElement('th'); thEst.textContent = 'Estudiante'; thEst.className = 'col-est'; fila.appendChild(thEst);
         grupos.forEach(function (g) {
           var th = document.createElement('th'); th.className = 'col-registro';
-          var nombreCol = g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
-          var rotulo = document.createElement('span'); rotulo.className = 'col-registro-titulo'; rotulo.textContent = nombreCol;
+          var nombreCol = g.etiqueta ? g.etiqueta + ' · ' + g.subtitulo : g.tipo + (g.descripcion ? ' · ' + g.descripcion : '');
+          var rotulo = document.createElement('span'); rotulo.className = 'col-registro-titulo';
+          rotulo.textContent = g.etiqueta ? g.etiqueta : nombreCol;
+          if (g.etiqueta) { rotulo.title = g.subtitulo; }
           var btnCol = document.createElement('button');
           btnCol.type = 'button'; btnCol.className = 'desglose-col-borrar'; btnCol.textContent = 'Eliminar columna';
           btnCol.title = 'Borra esta columna completa (los registros de todos los estudiantes)';
@@ -314,7 +328,11 @@
               await recargar(); pintar();
             });
           };
-          th.append(rotulo, btnCol);
+          if (g.etiqueta) {
+            var sub = document.createElement('span'); sub.className = 'col-registro-subtitulo'; sub.textContent = g.subtitulo;
+            sub.style.display = 'block'; sub.style.fontWeight = 'normal'; sub.style.fontSize = '.8em';
+            th.append(rotulo, sub, btnCol);
+          } else { th.append(rotulo, btnCol); }
           fila.appendChild(th);
         });
         var thProm = document.createElement('th'); thProm.textContent = 'Promedio semanal'; thProm.className = 'col-prom-sem'; fila.appendChild(thProm);
@@ -347,7 +365,7 @@
       inp.className = 'nota-input'; inp.disabled = bloqueado || g.tipo === 'Conducta';
       if (g.tipo === 'Conducta') { inp.title = 'Automática: use «Traer asistencia y comportamiento»'; }
       inp.dataset.fila = String(fila); inp.dataset.col = String(col);
-      inp.setAttribute('aria-label', 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + g.tipo + (g.descripcion ? ' ' + g.descripcion : ''));
+      inp.setAttribute('aria-label', 'Nota de ' + nombreEst(mat.estudiante) + ' en ' + (g.etiqueta ? g.etiqueta + ' ' + g.subtitulo : g.tipo + (g.descripcion ? ' ' + g.descripcion : '')));
       var reg = g.porMat[mat.id] || null;
       inp.value = reg && reg.valor !== null ? reg.valor : '';
       caja.appendChild(inp);
