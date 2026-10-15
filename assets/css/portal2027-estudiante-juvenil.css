@@ -291,3 +291,55 @@ body[data-rol="estudiante"] .boton.prev-quitar:is(:hover, :focus-visible, :activ
 .lista-tareas > .tarea-tarjeta { position: relative; box-shadow: 0 4px 0 rgba(0, 0, 0, .08); }
 .lista-tareas > .tarea-tarjeta + .tarea-tarjeta::before { content: ""; position: absolute; left: 12%; right: 12%; top: -.85rem; border-top: 3px dotted var(--linea); }
 .tarea-numero { padding: .2rem 1rem; font-size: .95rem; letter-spacing: .02em; }
+
+
+/* ---------- Ajuste de presentación de tareas (octubre 2026) ---------- */
+body[data-rol="estudiante"] .clases-contenido,
+body[data-rol="estudiante"] .materia-tarjeta,
+body[data-rol="estudiante"] .clase-detalle,
+body[data-rol="estudiante"] .lista-tareas,
+body[data-rol="estudiante"] .tarea-tarjeta { min-width: 0; }
+body[data-rol="estudiante"] .clases-barra { margin: .25rem 0 1rem; }
+body[data-rol="estudiante"] .selector-trimestre { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; font-weight: 750; }
+body[data-rol="estudiante"] .selector-trimestre select { min-width: 150px; max-width: 100%; padding: .55rem .75rem; background: #fff; }
+body[data-rol="estudiante"] .materia-tarjeta { box-shadow: 0 8px 24px rgba(28, 48, 104, .06); }
+body[data-rol="estudiante"] .materia-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+body[data-rol="estudiante"] .clase-detalle > summary { gap: .65rem; }
+body[data-rol="estudiante"] .clase-titulo { min-width: 0; }
+body[data-rol="estudiante"] .clase-tema { overflow-wrap: anywhere; }
+body[data-rol="estudiante"] .tarea-tarjeta { gap: .7rem; padding: clamp(.75rem, 2vw, 1.15rem); box-shadow: 0 4px 16px rgba(28, 48, 104, .045); }
+body[data-rol="estudiante"] .tarea-cabecera { align-items: flex-start; }
+body[data-rol="estudiante"] .tarea-titulo { flex: 1 1 180px; min-width: 0; }
+body[data-rol="estudiante"] .tarea-meta { align-items: center; }
+body[data-rol="estudiante"] .vale-nota { background: #e3f8ee; border-color: #b5ead2; color: #08734f; font-weight: 750; }
+body[data-rol="estudiante"] .tarea-instrucciones { line-height: 1.65; }
+body[data-rol="estudiante"] .adjuntos-tarea,
+body[data-rol="estudiante"] .entrega-hecha,
+body[data-rol="estudiante"] .formulario-entrega { min-width: 0; }
+body[data-rol="estudiante"] .archivo-fila { flex-wrap: wrap; }
+body[data-rol="estudiante"] .archivo-acciones { max-width: 100%; }
+body[data-rol="estudiante"] .archivo-acciones .boton { max-width: 100%; overflow-wrap: anywhere; }
+body[data-rol="estudiante"] .formulario-entrega .selector-archivos { min-width: 0; }
+body[data-rol="estudiante"] .formulario-entrega .selector-texto { overflow-wrap: anywhere; }
+body[data-rol="estudiante"] .formulario-entrega input:not([type="file"]) { width: 100%; min-width: 0; }
+body[data-rol="estudiante"] .estado { white-space: normal; text-align: center; }
+body[data-rol="estudiante"] .tarea-tarjeta :is(p, strong, small, span, a) { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  body[data-rol="estudiante"] .bloque { padding: .7rem; border-radius: 18px; }
+  body[data-rol="estudiante"] .clases-barra { align-items: stretch; }
+  body[data-rol="estudiante"] .resumen-tareas { flex-basis: 100%; }
+  body[data-rol="estudiante"] .selector-trimestre { justify-content: space-between; }
+  body[data-rol="estudiante"] .selector-trimestre select { flex: 1 1 140px; }
+  body[data-rol="estudiante"] .materia-tarjeta { border-radius: 16px; }
+  body[data-rol="estudiante"] .materia-tarjeta .materia-cabecera { padding: .75rem; }
+  body[data-rol="estudiante"] .materia-tarjeta .materia-cabecera h3 { font-size: 1.08rem; }
+  body[data-rol="estudiante"] .clase-detalle > summary { align-items: flex-start; padding: .7rem; }
+  body[data-rol="estudiante"] .clase-pills { flex-wrap: wrap; }
+  body[data-rol="estudiante"] .tarea-cabecera { display: grid; grid-template-columns: minmax(0, 1fr); }
+  body[data-rol="estudiante"] .tarea-titulo { font-size: 1rem; }
+  body[data-rol="estudiante"] .formulario-entrega .selector-archivos { padding: .7rem; gap: .55rem; }
+  body[data-rol="estudiante"] .archivo-fila { align-items: flex-start; }
+  body[data-rol="estudiante"] .archivo-info { flex-basis: calc(100% - 3.5rem); }
+  body[data-rol="estudiante"] .archivo-acciones { width: 100%; padding-left: 0; }
+  body[data-rol="estudiante"] .archivo-acciones .boton { width: 100%; }
+}
