@@ -15,7 +15,7 @@
   var S = {
     plan: [], claseId: null, tipoMaterial: null, asig: null, trimestres: [], trimestreId: null,
     materiales: [], tareas: [], evals: [], mats: [], entregas: [], adjuntos: [], notas: {},   // notas: evalId|matId -> {valor}
-    verPapelera: false, editando: null, abierta: null, revisando: null           // abierta = tareaId; revisando = matriculaId
+    verPapelera: false, editando: null, abierta: null, revisando: null, adjuntosDisponibles: true   // abierta = tareaId; revisando = matriculaId
   };
   var estado = null;
   var zona = null;
@@ -79,7 +79,14 @@
     var ids = S.tareas.map(function (x) { return x.id; });
     if (ids.length) {
       S.entregas = await consultar(db.from('portal2027_entregas').select('*').in('tarea_id', ids));
-      S.adjuntos = await consultar(db.from('portal2027_tareas_adjuntos').select('*').in('tarea_id', ids).order('orden'));
+      try {
+        S.adjuntos = await consultar(db.from('portal2027_tareas_adjuntos').select('*').in('tarea_id', ids).order('orden'));
+        S.adjuntosDisponibles = true;
+      } catch (e) {
+        // Normalmente significa que falta ejecutar la migración 0050 en Supabase.
+        console.error('Adjuntos de tareas no disponibles', e);
+        S.adjuntos = []; S.adjuntosDisponibles = false;
+      }
     }
     var evIds = S.tareas.filter(function (x) { return x.evaluacion_id; }).map(function (x) { return x.evaluacion_id; });
     if (evIds.length) {
@@ -527,7 +534,7 @@
         lista.appendChild(el('li', null, [el('div', { clase: 'lista-adjuntos-fila' }, contenido.concat([quitar]))]));
       });
       contador.textContent = filas.length + ' de ' + MAX_ADJUNTOS + ' adjuntos' + (t ? '' : ' (se guardarán al crear la tarea)');
-      Object.keys(botones).forEach(function (k) { botones[k].disabled = filas.length >= MAX_ADJUNTOS; });
+      Object.keys(botones).forEach(function (k) { botones[k].disabled = !S.adjuntosDisponibles || filas.length >= MAX_ADJUNTOS; });
     }
 
     // Guarda varios adjuntos de una tarea existente. Informa cuáles sí y cuáles no se guardaron.
@@ -551,6 +558,11 @@
         fallos.push('actualizar');
       } finally { aceptarBtn.disabled = false; cerrarBtn.disabled = false; }
       return fallos;
+    }
+
+    if (!S.adjuntosDisponibles) {
+      Object.keys(botones).forEach(function (k) { botones[k].disabled = true; });
+      resumen.textContent = 'Los adjuntos no están activos todavía en la base de datos. Ejecute la migración 0050 en Supabase y recargue la página.';
     }
 
     botones.pdf.addEventListener('click', function () { abrirPanel('pdf'); });
