@@ -788,6 +788,12 @@
         el('td', { texto: nombreEst(m) }),
         el('td', null, [chip(etiquetaEstado(en), !en ? 'gris' : (en.estado === 'revisada' ? 'azul' : (en.tardia ? 'ambar' : 'verde')))]),
         el('td', { texto: en ? C.fechaHora(en.entregada_en) : '—' }),
+        el('td', { texto: (function () {
+          if (!en) { return '—'; }
+          var oficial = t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null;
+          var valor = oficial && oficial.valor != null ? oficial.valor : en.nota_profesor;
+          return valor == null || valor === '' ? '—' : Number(valor).toFixed(1);
+        })() }),
         el('td', { clase: 'celda-accion' }, [en ? boton(S.revisando === m.id ? '✖ Cerrar' : '🔍 Revisar', function () {
           S.revisando = S.revisando === m.id ? null : m.id; dibujar();
         }, 'boton-relleno') : null])
@@ -795,7 +801,7 @@
     });
     var cont = el('div', { clase: 'detalle-ficha' }, [
       el('div', { clase: 'tabla-contenedor' }, [el('table', { clase: 'tabla-datos' }, [
-        el('thead', null, [el('tr', null, ['Estudiante', 'Estado', 'Entregada', ''].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
+        el('thead', null, [el('tr', null, ['Estudiante', 'Estado', 'Entregada', 'Nota', ''].map(function (x) { return el('th', { scope: 'col', texto: x }); }))]),
         el('tbody', null, filas)])])
     ]);
     if (S.revisando) {
