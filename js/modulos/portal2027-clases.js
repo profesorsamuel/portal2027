@@ -668,10 +668,10 @@
     var titulo = el('input', { type: 'text', maxlength: '120', required: true, value: t ? t.titulo : '' });
     var instr = el('textarea', { rows: '3', maxlength: '4000', value: t ? t.instrucciones : '' });
     var plazo = el('input', { type: 'datetime-local', value: t ? C.aInputFecha(t.fecha_limite) : '' });
-    var usados = {};
-    S.tareas.forEach(function (x) { if (x.evaluacion_id && (!t || x.id !== t.id)) { usados[x.evaluacion_id] = true; } });
+    // Una evaluación semanal puede contener varias tareas: cada una recibe
+    // su propio grupo/columna en portal2027_tareas_desglose (migraciones 0052-0056).
     var opciones = [el('option', { value: '', texto: 'Sin nota (solo se revisa y se comenta)' })];
-    S.evals.filter(function (e) { return !usados[e.id]; }).forEach(function (e) {
+    S.evals.forEach(function (e) {
       opciones.push(el('option', { value: e.id, texto: etiquetaEval(e), selected: !!(t && t.evaluacion_id === e.id) }));
     });
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
