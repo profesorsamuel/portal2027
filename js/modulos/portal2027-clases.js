@@ -677,16 +677,24 @@
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
       opciones.push(el('option', { value: t.evaluacion_id, texto: 'Columna en la papelera de la libreta (se conserva el vínculo)', selected: true }));
     }
-    // Permite crear tantas columnas como tareas, incluso en la misma clase/semana.
-    opciones.push(el('option', { value: '__crear_apreciacion__', texto: '➕ Crear nueva columna de Apreciación para esta tarea' }));
-    opciones.push(el('option', { value: '__crear_escrito__', texto: '➕ Crear nueva columna de Ejercicio escrito para esta tarea' }));
+    // Cada tarea nueva tiene una columna de calificación independiente.
+    if (!t) {
+      opciones = [
+        el('option', { value: '__crear_apreciacion__', texto: 'Apreciación — nota propia de esta tarea', selected: true }),
+        el('option', { value: '__crear_escrito__', texto: 'Ejercicio escrito — nota propia de esta tarea' }),
+        el('option', { value: '', texto: 'Sin nota' })
+      ];
+    } else {
+      opciones.push(el('option', { value: '__crear_apreciacion__', texto: 'Apreciación — crear nota propia' }));
+      opciones.push(el('option', { value: '__crear_escrito__', texto: 'Ejercicio escrito — crear nota propia' }));
+    }
     var vinculo = el('select', null, opciones);
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
     if (bloqueaVinculo) { vinculo.disabled = true; }
     var pub = el('input', { type: 'checkbox', checked: t ? t.publicada : false });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: t ? 'Guardar cambios' : 'Crear tarea' });
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
-      campo('Nota en la libreta', vinculo)];
+      campo('Nota de esta tarea en la libreta', vinculo)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
     hijos.push(bloqueAdjuntos(t, pendientes));
     hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
