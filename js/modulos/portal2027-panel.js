@@ -213,8 +213,7 @@
   var MENU_ESTUDIANTE = [
     { titulo: 'Mi información', icono: '👤', texto: 'Mis datos de contacto y mi foto' },
     { titulo: 'Mis notas y ejercicios', icono: '📊', texto: 'Notas, ejercicios virtuales y asistencia' },
-    { titulo: 'Mis clases y tareas', icono: '📚', texto: 'Tareas y materiales de mis clases' },
-    { titulo: 'Mis documentos', icono: '📁', texto: 'Documentos entregados y pendientes' }
+    { titulo: 'Mis clases y tareas', icono: '📚', texto: 'Tareas y materiales de mis clases' }
   ];
 
   function menuEstudiante(zona) {
@@ -316,7 +315,6 @@
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
         await P.renderEstudianteClases(zona, info);
-        await P.renderDocumentosEstudiante(zona, info);
         menuEstudiante(zona);
       }
     } catch (e) {
