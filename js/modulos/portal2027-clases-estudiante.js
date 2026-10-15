@@ -328,6 +328,7 @@
     function tarjetaTarea(t, matriculaId) {
       var en = t.entrega, est = estadoTarea(en), plazo = plazoInfo(t, !!en);
       var hijos = [
+        t._n ? el('span', { clase: 'tarea-numero', texto: 'Tarea ' + t._n }) : null,
         el('div', { clase: 'tarea-cabecera' }, [el('strong', { clase: 'tarea-titulo', texto: t.titulo }), el('span', { clase: 'estado ' + est.clase, texto: est.texto })]),
         el('p', { clase: 'tarea-meta' }, [el('span', { clase: plazo.clase, texto: plazo.texto }), t.vale_nota ? el('span', { clase: 'vale-nota', texto: '⭐ Cuenta para la nota' }) : null]),
         t.instrucciones ? el('p', { clase: 'tarea-instrucciones', texto: t.instrucciones }) : null
@@ -380,7 +381,10 @@
         ids.forEach(function (id, pos) {
           var g = grupos[id];
           var materiales = m.materiales.filter(function (x) { return (x.clase_id || 'sin') === id; });
-          var tareas = m.tareas.filter(function (x) { return (x.clase_id || 'sin') === id; })
+          var tareas = m.tareas.filter(function (x) { return (x.clase_id || 'sin') === id; });
+          // Numeración fija según el orden original; no cambia aunque las pendientes se muestren primero.
+          tareas.forEach(function (x, i) { x._n = i + 1; });
+          tareas = tareas.slice()
             .sort(function (x, y) { return (x.entrega ? 1 : 0) - (y.entrega ? 1 : 0); });
           var pendientes = tareas.filter(function (t) { return !t.entrega; }).length;
           var pills = [];
