@@ -799,15 +799,20 @@
   }
 
   function seccionTareas() {
-    // Numerar solo las tareas activas de la clase. Las tareas en papelera
-    // no consumen números; al restaurarlas se recalcula el orden visible.
+    // La numeración es consecutiva y se calcula desde las tareas activas
+    // de esta clase cada vez que se dibuja la lista. Borrar una tarea (también
+    // enviarla a papelera) no deja huecos: las restantes pasan a ser 1, 2, 3…
+    // Las tareas de papelera se muestran aparte y no consumen números.
     var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
-      return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
+      var a = x.creado_en || '', b = y.creado_en || '';
+      if (a !== b) { return a < b ? -1 : 1; }
+      var ix = String(x.id || ''), iy = String(y.id || '');
+      return ix < iy ? -1 : (ix > iy ? 1 : 0);
     });
     var activas = todas.filter(function (t) { return !t.eliminada_en; });
-    var numeros = {};
+    var numeros = Object.create(null);
     activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
-    var lista = S.verPapelera ? todas : activas;
+    var lista = S.verPapelera ? activas.concat(todas.filter(function (t) { return !!t.eliminada_en; })) : activas;
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),

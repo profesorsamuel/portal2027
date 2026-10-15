@@ -740,7 +740,7 @@
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
-      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
+      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: (numero ? 'Tarea ' + numero : 'En papelera') }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
       el('div', { clase: 'tarea-chips' }, chips),
       t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
       progresoEntregas(t),
@@ -752,13 +752,18 @@
   }
 
   function seccionTareas() {
-    // Numeración fija por orden de creación dentro de la clase (las de la papelera conservan su número).
+    // Numeración consecutiva calculada solo con tareas activas de esta clase.
+    // Las tareas eliminadas/en papelera no consumen números ni dejan huecos.
     var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
-      return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
+      var a = x.creado_en || '', b = y.creado_en || '';
+      if (a !== b) { return a < b ? -1 : 1; }
+      var ix = String(x.id || ''), iy = String(y.id || '');
+      return ix < iy ? -1 : (ix > iy ? 1 : 0);
     });
-    var numeros = {};
-    todas.forEach(function (t, i) { numeros[t.id] = i + 1; });
-    var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
+    var activas = todas.filter(function (t) { return !t.eliminada_en; });
+    var numeros = Object.create(null);
+    activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
+    var lista = S.verPapelera ? activas.concat(todas.filter(function (t) { return !!t.eliminada_en; })) : activas;
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
