@@ -15,7 +15,7 @@
   var S = {
     plan: [], claseId: null, tipoMaterial: null, asig: null, trimestres: [], trimestreId: null,
     materiales: [], tareas: [], evals: [], mats: [], entregas: [], adjuntos: [], notas: {},   // notas: evalId|matId -> {valor}
-    verPapelera: false, editando: null, abierta: null, revisando: null, adjuntosDisponibles: true   // abierta = tareaId; revisando = matriculaId
+    verPapelera: false, nuevaTarea: false, editando: null, abierta: null, revisando: null, adjuntosDisponibles: true   // abierta = tareaId; revisando = matriculaId
   };
   var estado = null;
   var zona = null;
@@ -47,6 +47,7 @@
   function boton(texto, fn, extra) {
     return el('button', { clase: 'boton boton-secundario boton-chico' + (extra ? ' ' + extra : ''), type: 'button', texto: texto, onclick: fn });
   }
+  function chip(texto, tipo) { return el('span', { clase: 'chip' + (tipo ? ' chip-' + tipo : ''), texto: texto }); }
   function campo(texto, control) { return el('label', null, [texto, control]); }
 
   // Ejecuta una acción de escritura y muestra el resultado real (nunca «guardado» si falló).
@@ -111,17 +112,23 @@
     return sel;
   }
   function navegacionClases() {
-    var sec = el('section', { clase: 'bloque clases-navegacion' }, [el('h2', { texto: 'Clases del trimestre' }), el('p', { clase: 'bloque-ayuda', texto: 'Seleccione una clase para agregar su PDF, imágenes, enlaces y tareas.' })]);
+    var sec = el('section', { clase: 'bloque clases-navegacion' }, [el('h2', { texto: '📚 Clases del trimestre' }), el('p', { clase: 'bloque-ayuda', texto: 'Seleccione una clase para agregar su PDF, imágenes, enlaces y tareas.' })]);
     var opciones = S.plan.concat([{ id: null, numero: null, tema: 'Sin clase asignada' }]);
     sec.appendChild(el('div', { clase: 'clases-cuadricula' }, opciones.map(function(c) {
       var nm = S.materiales.filter(function(m) { return (m.clase_id || null) === c.id && !m.eliminado_en; }).length;
       var nt = S.tareas.filter(function(t) { return (t.clase_id || null) === c.id && !t.eliminada_en; }).length;
-      return el('button', { type: 'button', clase: 'clase-selector' + (S.claseId === c.id ? ' activa' : ''), 'aria-pressed': S.claseId === c.id ? 'true' : 'false', onclick: function() { S.claseId = c.id; S.tipoMaterial = null; S.editando = null; S.abierta = null; S.revisando = null; dibujar(); } }, [el('strong', { texto: c.numero === null ? c.tema : 'Clase ' + c.numero }), c.numero === null ? null : el('span', { texto: c.tema }), c.fecha_inicio ? el('small', { texto: c.fecha_inicio + ' → ' + c.fecha_fin }) : null, el('small', { texto: nm + ' materiales · ' + nt + ' tareas' })]);
+      var esSin = c.numero === null;
+      return el('button', { type: 'button', clase: 'clase-selector' + (S.claseId === c.id ? ' activa' : ''), 'aria-pressed': S.claseId === c.id ? 'true' : 'false', onclick: function() { S.claseId = c.id; S.tipoMaterial = null; S.editando = null; S.nuevaTarea = false; S.abierta = null; S.revisando = null; dibujar(); } }, [
+        el('span', { clase: 'clase-num', texto: esSin ? '·' : 'Clase ' + c.numero }),
+        el('strong', { texto: esSin ? c.tema : c.tema }),
+        c.fecha_inicio ? el('small', { clase: 'clase-fechas', texto: '📅 ' + c.fecha_inicio + ' → ' + c.fecha_fin }) : null,
+        el('span', { clase: 'clase-conteo' }, [chip('📎 ' + nm, nm ? 'azul' : ''), chip('✏️ ' + nt, nt ? 'ambar' : '')])
+      ]);
     })));
     if (!S.plan.length) sec.appendChild(el('p', { clase: 'mensaje info', texto: 'Agregue las clases en Planificación para organizar sus recursos.' }));
     sec.appendChild(el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a Planificación' }));
     var actual = S.plan.filter(function(c) { return c.id === S.claseId; })[0];
-    sec.appendChild(el('h3', { texto: actual ? 'Clase ' + actual.numero + ' · ' + actual.tema : 'Sin clase asignada' }));
+    sec.appendChild(el('h3', { clase: 'clase-actual', texto: '➡️ ' + (actual ? 'Clase ' + actual.numero + ' · ' + actual.tema : 'Sin clase asignada') }));
     return sec;
   }
 
@@ -348,10 +355,10 @@
         if (g.error) { throw g.error; }
       });
     }, enPapelera ? '' : 'boton-peligro'));
-    return el('li', { clase: 'tarjeta-clase' }, [
-      el('div', null, [
-        el('strong', { texto: m.titulo }), ' ',
-        el('span', { clase: 'etiqueta-chica', texto: enPapelera ? 'En papelera' : (m.publicado ? 'Visible' : 'Oculto') }),
+    return el('li', { clase: 'tarjeta-clase tarjeta-material' }, [
+      el('div', { clase: 'material-info' }, [
+        el('strong', { texto: (/\.pdf$/i.test(m.archivo_nombre || '') ? '📕 ' : (m.archivo_ruta ? '🖼️ ' : '🔗 ')) + m.titulo }), ' ',
+        chip(enPapelera ? 'En papelera' : (m.publicado ? 'Visible' : 'Oculto'), enPapelera ? 'rojo' : (m.publicado ? 'verde' : 'gris')),
         m.descripcion ? el('p', { clase: 'bloque-ayuda', texto: m.descripcion }) : null,
         C.miniatura(m),
         m.archivo_nombre ? el('p', { clase: 'bloque-ayuda', texto: 'Archivo: ' + m.archivo_nombre }) : null
@@ -362,7 +369,7 @@
 
   function seccionMateriales() {
     var lista = S.materiales.filter(function (m) { return (m.clase_id || null) === S.claseId && (S.verPapelera || !m.eliminado_en); });
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: 'PDF e imágenes' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['Subir PDF de la clase', 'Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }); })), S.tipoMaterial ? formMaterial() : null]);
+    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: '📎 Material de la clase' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['📕 Subir PDF de la clase', '🖼️ Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }, 'boton-claro'); })), S.tipoMaterial ? formMaterial() : null]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en esta clase.' })); }
     else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(filaMaterial))); }
     return sec;
@@ -636,7 +643,7 @@
     var acciones = [enviar];
     if (t) { acciones.push(boton('Cancelar', function () { S.editando = null; dibujar(); })); }
     hijos.push(el('div', { clase: 'cabecera-acciones' }, acciones));
-    var f = el('form', { clase: 'formulario-clases formulario-revision' }, hijos);
+    var f = el('form', { clase: 'formulario-clases' + (t ? ' formulario-edicion' : ' formulario-nueva') }, hijos);
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       if (!titulo.value.trim()) { aviso('Escriba el título de la tarea.', 'error'); return; }
@@ -644,7 +651,8 @@
       var adjuntosNuevos = pendientes.slice();
       var nuevaId = null;
       enviar.disabled = true;
-      await accion('Guardando tarea…', t ? 'Tarea actualizada.' : 'Tarea creada.', async function () {
+      if (!t) { S.nuevaTarea = false; }
+      var guardada = await accion('Guardando tarea…', t ? 'Tarea actualizada.' : 'Tarea creada.', async function () {
         var g;
         if (t) {
           g = await db.rpc('portal2027_actualizar_tarea', {
@@ -663,6 +671,7 @@
         if (g.error) { throw g.error; }
         S.editando = null;
       });
+      if (!t && guardada === false) { S.nuevaTarea = true; }   // si falló, el formulario sigue abierto con lo escrito
       // Tarea nueva: los adjuntos se suben después de crearla y se informa el resultado real.
       if (!t && nuevaId && adjuntosNuevos.length) {
         var fallidos = [];
@@ -696,36 +705,46 @@
     var rev = hechas.filter(function (e) { return e.estado === 'revisada'; }).length;
     return hechas.length + ' de ' + S.mats.length + ' entregadas · ' + rev + ' revisadas';
   }
+  // Barra de avance de entregas (elemento nativo <progress>, sin estilos en línea).
+  function progresoEntregas(t) {
+    var hechas = S.entregas.filter(function (e) { return e.tarea_id === t.id; }).length;
+    return el('div', { clase: 'entregas-progreso' }, [
+      el('progress', { max: String(Math.max(S.mats.length, 1)), value: String(hechas), 'aria-label': 'Entregas recibidas' }),
+      el('span', { texto: resumenEntregas(t) })
+    ]);
+  }
 
   function tarjetaTarea(t, numero) {
     var enPapelera = !!t.eliminada_en;
     var ev = t.evaluacion_id ? evalPorId(t.evaluacion_id) : null;
+    var nAdj = adjuntosDeTarea(t.id).length;
     var chips = [
-      el('span', { clase: 'etiqueta-chica', texto: enPapelera ? 'En papelera' : (t.publicada ? 'Visible' : 'Borrador') }),
-      t.fecha_limite ? el('span', { clase: 'etiqueta-chica', texto: 'Plazo: ' + C.fechaHora(t.fecha_limite) }) : el('span', { clase: 'etiqueta-chica', texto: 'Sin plazo' }),
-      t.evaluacion_id ? el('span', { clase: 'etiqueta-chica', texto: 'Nota: ' + (ev ? etiquetaEval(ev) : 'columna en papelera') }) : null,
-      adjuntosDeTarea(t.id).length ? el('span', { clase: 'etiqueta-chica', texto: adjuntosDeTarea(t.id).length + ' adjunto(s)' }) : null
+      chip(enPapelera ? 'En papelera' : (t.publicada ? '👁️ Visible' : '📝 Borrador'), enPapelera ? 'rojo' : (t.publicada ? 'verde' : 'gris')),
+      t.fecha_limite ? chip('📅 Plazo: ' + C.fechaHora(t.fecha_limite), 'azul') : chip('Sin plazo', 'gris'),
+      t.evaluacion_id ? chip('⭐ ' + (ev ? etiquetaEval(ev) : 'columna en papelera'), 'ambar') : null,
+      nAdj ? chip('📎 ' + nAdj + (nAdj === 1 ? ' adjunto' : ' adjuntos'), 'gris') : null
     ];
     var acciones = [selectorMover(t, 'tarea')];
     if (!enPapelera) {
-      acciones.push(botonCopiar('Copiar alumnos'));
-      acciones.push(boton(S.abierta === t.id ? 'Cerrar entregas' : 'Ver entregas', function () {
+      acciones.unshift(boton(S.abierta === t.id ? '✖ Cerrar entregas' : '📥 Ver entregas', function () {
         S.abierta = S.abierta === t.id ? null : t.id; S.revisando = null; dibujar();
-      }));
+      }, 'boton-relleno'));
+      acciones.push(boton('✏️ Editar', function () { S.editando = t.id; dibujar(); }));
       acciones.push(boton(t.publicada ? 'Ocultar' : 'Publicar', function () {
         cambiarTarea(t, { p_publicada: !t.publicada }, t.publicada ? 'Tarea oculta.' : 'Tarea publicada.');
       }));
-      acciones.push(boton('Editar', function () { S.editando = t.id; dibujar(); }));
+      acciones.push(botonCopiar('Copiar alumnos'));
     }
     acciones.push(boton(enPapelera ? 'Restaurar' : 'A la papelera', function () {
       cambiarTarea(t, { p_a_papelera: !enPapelera }, enPapelera ? 'Tarea restaurada.' : 'Tarea en la papelera.');
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
-      el('div', { clase: 'tarjeta-cabecera' }, [el('div', null, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), ' ', el('strong', { texto: t.titulo })].concat([' '], chips)),
-        el('div', { clase: 'cabecera-acciones' }, acciones)]),
-      t.instrucciones ? el('p', { clase: 'bloque-ayuda', texto: t.instrucciones }) : null,
-      el('p', { clase: 'bloque-ayuda', texto: resumenEntregas(t) })
+      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
+      el('div', { clase: 'tarea-chips' }, chips),
+      t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
+      progresoEntregas(t),
+      el('div', { clase: 'cabecera-acciones tarea-acciones' }, acciones)
     ];
     if (S.editando === t.id) { hijos.push(formTarea(t)); }
     if (S.abierta === t.id && !enPapelera) { hijos.push(tablaEntregas(t)); }
@@ -741,10 +760,13 @@
     todas.forEach(function (t, i) { numeros[t.id] = i + 1; });
     var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
     var sec = el('section', { clase: 'bloque' }, [
-      el('h2', { texto: 'Tareas' }),
-      el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Copie la lista para pegarla en un ejercicio.' }),
-      el('div', { clase: 'cabecera-acciones' }, [botonCopiar('Copiar lista de alumnos')]),
-      formTarea(null)
+      el('h2', { texto: '✏️ Tareas de la clase' }),
+      el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
+      el('div', { clase: 'cabecera-acciones' }, [
+        boton(S.nuevaTarea ? '✖ Cancelar' : '➕ Nueva tarea', function () { S.nuevaTarea = !S.nuevaTarea; dibujar(); }, S.nuevaTarea ? '' : 'boton-relleno'),
+        botonCopiar('📋 Copiar lista de alumnos')
+      ]),
+      S.nuevaTarea ? formTarea(null) : null
     ]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay tareas en esta clase.' })); }
     else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(function (t) { return tarjetaTarea(t, numeros[t.id]); }))); }
@@ -762,13 +784,13 @@
     if (S.mats.length === 0) { return el('p', { clase: 'vacio-texto', texto: 'Este grupo no tiene estudiantes matriculados.' }); }
     var filas = S.mats.map(function (m) {
       var en = entregaDe(t.id, m.id);
-      return el('tr', null, [
+      return el('tr', { clase: en ? '' : 'fila-sin-entrega' }, [
         el('td', { texto: nombreEst(m) }),
-        el('td', { texto: etiquetaEstado(en) }),
+        el('td', null, [chip(etiquetaEstado(en), !en ? 'gris' : (en.estado === 'revisada' ? 'azul' : (en.tardia ? 'ambar' : 'verde')))]),
         el('td', { texto: en ? C.fechaHora(en.entregada_en) : '—' }),
-        el('td', null, [en ? boton(S.revisando === m.id ? 'Cerrar' : 'Revisar', function () {
+        el('td', { clase: 'celda-accion' }, [en ? boton(S.revisando === m.id ? '✖ Cerrar' : '🔍 Revisar', function () {
           S.revisando = S.revisando === m.id ? null : m.id; dibujar();
-        }) : null])
+        }, 'boton-relleno') : null])
       ]);
     });
     var cont = el('div', { clase: 'detalle-ficha' }, [
@@ -905,6 +927,7 @@
 
     var params = new URLSearchParams(window.location.search);
     var asigId = params.get('asignacion');
+    document.body.classList.add('pagina-clases');
     contenido.textContent = '';
     estado = el('p', { clase: 'mensaje estado-panel', role: 'status', 'aria-live': 'polite', hidden: true });
     try {
@@ -920,11 +943,11 @@
         el('div', null, [
           el('p', { clase: 'panel-centro', texto: 'C.E.B.G. El Jiral · Clases y tareas' }),
           el('h1', { texto: S.asig.materia.nombre + ' · ' + S.asig.salon.nombre }),
-          el('p', { clase: 'panel-datos', texto: 'Año lectivo ' + S.asig.salon.anio.anio })
+          el('p', { clase: 'panel-datos', texto: '📅 Año lectivo ' + S.asig.salon.anio.anio })
         ]),
         el('div', { clase: 'cabecera-acciones' }, [
-          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Libreta' }),
-          el('a', { clase: 'boton boton-secundario', href: P.rutaPanel(rolPanel), texto: 'Volver al panel' }),
+          el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-libreta.html?asignacion=' + encodeURIComponent(S.asig.id), texto: '📒 Libreta' }),
+          el('a', { clase: 'boton boton-secundario', href: P.rutaPanel(rolPanel), texto: '← Volver al panel' }),
           el('button', { clase: 'boton boton-secundario', type: 'button', texto: 'Cerrar sesión', onclick: P.cerrarSesion })
         ])
       ]));
