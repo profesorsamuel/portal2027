@@ -685,7 +685,7 @@
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
       campo('Nota en la libreta', vinculo)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
-    hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Al guardar una tarea dentro de una clase planificada se crea automáticamente su columna Tarea en el desglose semanal (requiere SQL 0052). La opción Nota en la libreta es independiente y se conserva para las evaluaciones tradicionales.' }));
+    hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Cada tarea de esta clase crea su propia columna en el desglose de la semana correspondiente. Puede crear Tarea 1, Tarea 2, Tarea 3 y más, y calificar cada una de 0 a 5. Requiere ejecutar las migraciones SQL 0052 a 0056 en orden.' }));
     hijos.push(bloqueAdjuntos(t, pendientes));
     hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
     var acciones = [enviar];
