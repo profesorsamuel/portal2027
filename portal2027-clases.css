@@ -1,0 +1,181 @@
+/* portal2027-clases.css — materiales, tareas y entregas */
+.lista-clases { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.tarjeta-clase { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.6rem; padding: 0.75rem 0.9rem; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--blanco); }
+.tarjeta-clase.tarjeta-columna { flex-direction: column; align-items: stretch; }
+.tarjeta-cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.6rem; }
+.etiqueta-chica { display: inline-block; padding: 0.05rem 0.5rem; margin: 0.1rem 0.15rem; border: 1px solid var(--linea); border-radius: 999px; background: #eef4f3; font-size: 0.82rem; color: var(--texto-suave); }
+.formulario-clases { display: grid; gap: 0.6rem; margin-top: 0.75rem; max-width: 40rem; }
+.formulario-clases label { display: grid; gap: 0.25rem; font-size: 0.92rem; margin: 0; }
+.formulario-clases textarea, .formulario-clases input[type="text"], .formulario-clases input[type="datetime-local"] { font: inherit; padding: 0.55rem 0.65rem; border: 1px solid #aebdba; border-radius: 8px; width: 100%; box-sizing: border-box; }
+.boton-principal-chico { border: 2px solid var(--tinta); font: inherit; font-weight: 600; padding: 0.5rem 1.1rem; border-radius: 8px; cursor: pointer; background: var(--acento); width: fit-content; }
+.boton-principal-chico:disabled { opacity: 0.6; cursor: wait; }
+.bloque h4 { font-size: 1rem; margin: 0.9rem 0 0.2rem; }
+
+.clases-cuadricula { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:16px 0; }
+.clase-selector { display:flex; flex-direction:column; gap:6px; text-align:left; padding:14px; border:1px solid #b7cbd0; border-radius:10px; background:#fff; color:#123747; cursor:pointer; font:inherit; }
+.clase-selector.activa { border:2px solid #09677a; background:#e6f5f8; }
+.clase-selector small { font-size:.8rem; }
+.clase-selector:focus-visible { outline:3px solid #eeb32b; }
+
+.recurso-miniatura { display:block; width:100%; max-width:280px; height:180px; object-fit:contain; border:1px solid #b7cbd0; border-radius:8px; margin:10px 0; background:#f6fafb; }
+.recurso-miniatura[hidden] { display:none; }
+
+/* Vista previa de la tanda de fotos del profesor. */
+.fotos-previas { list-style:none; padding:0; margin:0; display:grid; gap:10px; }
+.fotos-previas li { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--linea); border-radius:8px; flex-wrap:wrap; }
+.foto-previa-miniatura { width:80px; height:80px; object-fit:contain; background:#f6fafb; border-radius:6px; }
+.fotos-previas li > div { flex:1; min-width:140px; overflow-wrap:anywhere; }
+.fotos-previas strong, .fotos-previas small { display:block; }
+.formulario-clases progress { width:100%; height:20px; }
+
+.zona-soltar{border:2px dashed #7b9ca5;border-radius:10px;padding:22px;text-align:center;margin:12px 0;background:#f3f9fa}.zona-soltar.sobre{background:#d4eff4;border-color:#136a80}
+.visor-clases{position:fixed;inset:0;background:#101820;color:white;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}.visor-clases[hidden]{display:none}.visor-clases img{max-width:95vw;max-height:78vh;object-fit:contain;transform-origin:center;touch-action:pan-x pan-y}.visor-clases .controles{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.visor-clases button{padding:10px;border-radius:8px;cursor:pointer}.visor-clases p{color:white}
+
+/* Adjuntos de tareas (PDF, imágenes y enlaces) y copia de la lista de alumnos. */
+.adjuntos-tarea { display:grid; gap:0.6rem; margin:0.75rem 0 0; padding:0.75rem 0.9rem; border:1px dashed #7b9ca5; border-radius:10px; background:#f7fbfc; min-width:0; }
+.adjuntos-tarea legend { font-weight:600; padding:0 0.3rem; }
+.adjuntos-tarea h4 { margin:0; font-size:0.95rem; }
+.adjuntos-panel { display:grid; gap:0.5rem; padding:0.75rem; border:1px solid var(--linea); border-radius:8px; background:var(--blanco); }
+.adjuntos-panel[hidden] { display:none; }
+.adjuntos-panel label { display:grid; gap:0.25rem; font-size:0.92rem; }
+.adjuntos-panel input[type="text"], .adjuntos-panel input[type="url"] { font:inherit; padding:0.5rem 0.6rem; border:1px solid #aebdba; border-radius:8px; width:100%; box-sizing:border-box; }
+.adjuntos-panel input[type="file"] { font:inherit; }
+.adjuntos-panel input[hidden] { display:none; }
+.lista-adjuntos { list-style:none; margin:0; padding:0; display:grid; gap:0.5rem; }
+.lista-adjuntos li { display:grid; gap:0.35rem; }
+.lista-adjuntos-fila { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; min-width:0; }
+.lista-adjuntos-fila strong { overflow-wrap:anywhere; }
+.lista-adjuntos small { color:var(--texto-suave); overflow-wrap:anywhere; }
+.lista-adjuntos .recurso-miniatura { margin:0; }
+.texto-oculto { position:fixed; left:-9999px; top:0; opacity:0; pointer-events:none; }
+
+/* Tareas del profesor: «Tarea N» y separación clara entre una tarea y la siguiente. */
+.lista-clases:has(.tarjeta-tarea) { gap: 1.4rem; }
+.tarjeta-tarea { border: 1px solid var(--linea); border-left: 8px solid #09677a; box-shadow: 0 3px 0 rgba(9, 103, 122, 0.18); }
+.tarjeta-tarea:nth-child(even) { border-left-color: #eeb32b; box-shadow: 0 3px 0 rgba(238, 179, 43, 0.3); background: #fffdf6; }
+.tarea-numero-prof { display: inline-block; padding: 0.1rem 0.75rem; border-radius: 999px; background: #09677a; color: #fff; font-size: 0.85rem; font-weight: 800; }
+.tarjeta-tarea:nth-child(even) .tarea-numero-prof { background: #eeb32b; color: #123747; }
+
+/* Revisión de entregas: fotos del estudiante a la vista. */
+.formulario-revision { max-width: none; padding: 0.9rem; margin: 0 0 1rem; border: 2px solid #09677a; border-radius: 10px; background: #f3f9fa; }
+.entrega-vista { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+.entrega-marco { display: grid; gap: 0.3rem; padding: 0.4rem; border: 1px solid #b7cbd0; border-radius: 8px; background: #fff; cursor: zoom-in; font: inherit; text-align: center; }
+.entrega-marco:focus-visible { outline: 3px solid #eeb32b; }
+.entrega-imagen { width: 100%; max-height: 260px; object-fit: contain; background: #f6fafb; border-radius: 6px; }
+.entrega-imagen[hidden] { display: none; }
+.entrega-marco small { overflow-wrap: anywhere; color: var(--texto-suave); }
+
+/* =====================================================================
+   Pantalla «Clases y tareas» (profesor): aspecto más limpio y amable.
+   Todo va acotado a body.pagina-clases para no afectar otras pantallas.
+   ===================================================================== */
+body.pagina-clases { background: #eef3f4; }
+.pagina-clases .portal { max-width: 1000px; }
+.pagina-clases .secciones { display: grid; gap: 1.1rem; }
+
+/* Encabezado */
+.pagina-clases .panel-cabecera { background: linear-gradient(135deg, #14323b 0%, #1f5563 100%); color: #fff; border: 0; border-radius: 16px; padding: 1.3rem 1.5rem; margin-bottom: 1.1rem; align-items: center; box-shadow: 0 6px 18px rgba(20, 50, 59, .18); }
+.pagina-clases .panel-cabecera h1 { color: #fff; font-family: var(--fuente-texto); font-weight: 800; margin: .15rem 0 .25rem; }
+.pagina-clases .panel-centro { color: #ffd987; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
+.pagina-clases .panel-datos { color: #cfe3e8; }
+.pagina-clases .panel-cabecera .boton-secundario { color: #fff; border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .08); border-radius: 999px; padding: .5rem 1rem; font-size: .92rem; }
+.pagina-clases .panel-cabecera .boton-secundario:is(:hover, :focus-visible) { background: rgba(255, 255, 255, .22); }
+
+/* Barra de trimestre */
+.pagina-clases .secciones > .formulario-fila { margin: 0; padding: .75rem 1rem; background: #fff; border: 1px solid var(--linea); border-radius: 12px; box-shadow: 0 1px 2px rgba(20, 50, 59, .06); align-items: center; }
+.pagina-clases .secciones > .formulario-fila select { padding: .4rem .6rem; border: 1px solid #aebdba; border-radius: 8px; font: inherit; }
+
+/* Bloques */
+.pagina-clases .bloque { border-radius: 14px; padding: 1.25rem 1.4rem; border-color: #dbe5e7; box-shadow: 0 2px 6px rgba(20, 50, 59, .06); }
+.pagina-clases .bloque > h2 { font-family: var(--fuente-texto); font-size: 1.2rem; font-weight: 800; color: var(--tinta); border-bottom: 0; padding-bottom: 0; margin-bottom: .2rem; }
+.pagina-clases .bloque-ayuda { margin-top: .25rem; }
+.pagina-clases .bloque .cabecera-acciones { margin-top: .75rem; }
+.pagina-clases .vacio-texto { margin-top: .9rem; padding: 1.1rem; text-align: center; border: 2px dashed #cfdcde; border-radius: 12px; background: #f8fbfb; }
+
+/* Botones */
+.pagina-clases .boton-chico { border-radius: 999px; padding: .45rem 1rem; border-width: 1.5px; }
+.pagina-clases .boton-chico.boton-relleno { background: var(--tinta); color: #fff; border-color: var(--tinta); }
+.pagina-clases .boton-chico.boton-relleno:is(:hover, :focus-visible) { background: var(--tinta-suave); }
+.pagina-clases .boton-chico.boton-claro { background: #e6f2f4; border-color: #9cc4cc; color: #0c4a59; }
+.pagina-clases .boton-chico.boton-claro:is(:hover, :focus-visible) { background: #d3e8ec; }
+.pagina-clases .boton-chico.boton-peligro { background: #fff; border-color: #e1b1ab; color: #8a2a20; }
+.pagina-clases .boton-chico.boton-peligro:is(:hover, :focus-visible) { background: #fdecea; }
+.pagina-clases .boton-principal-chico { background: #e8a317; border: 2px solid #b97f08; border-radius: 999px; padding: .6rem 1.5rem; color: #14323b; box-shadow: 0 2px 0 #b97f08; }
+.pagina-clases .boton-principal-chico:is(:hover, :focus-visible) { background: #f2b32f; }
+.pagina-clases select { max-width: 100%; }
+.pagina-clases .tarea-acciones select, .pagina-clases .tarjeta-material select { padding: .4rem .6rem; border: 1px solid #aebdba; border-radius: 999px; font: inherit; font-size: .9rem; background: #fff; }
+
+/* Chips */
+.chip { display: inline-block; padding: .12rem .65rem; margin: .1rem .15rem .1rem 0; border-radius: 999px; font-size: .8rem; font-weight: 600; background: #eef2f2; color: #455a5e; border: 1px solid #d5dedc; }
+.chip-verde { background: #e4f5ea; color: #1d6b3a; border-color: #a9d9ba; }
+.chip-azul { background: #e5f1fb; color: #1b5a8c; border-color: #b3d4ee; }
+.chip-ambar { background: #fff3d6; color: #8a5a00; border-color: #f0d28a; }
+.chip-rojo { background: #fdecea; color: #8a2a20; border-color: #eab6b0; }
+.chip-gris { background: #f1f4f4; color: #5b6e72; border-color: #d9e1e1; }
+
+/* Selector de clases */
+.pagina-clases .clases-cuadricula { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; margin: 1rem 0; }
+.pagina-clases .clase-selector { position: relative; gap: .35rem; padding: .9rem .95rem; border: 2px solid #dbe5e7; border-radius: 14px; background: #fff; transition: transform .12s, box-shadow .12s, border-color .12s; }
+.pagina-clases .clase-selector:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20, 50, 59, .12); border-color: #9cc4cc; }
+.pagina-clases .clase-selector.activa { background: linear-gradient(160deg, #14323b, #1f5563); color: #fff; border-color: #14323b; box-shadow: 0 6px 16px rgba(20, 50, 59, .25); }
+.clase-num { align-self: flex-start; padding: .05rem .65rem; border-radius: 999px; background: #e6f2f4; color: #0c4a59; font-size: .78rem; font-weight: 800; }
+.pagina-clases .clase-selector.activa .clase-num { background: #e8a317; color: #14323b; }
+.clase-selector strong { font-size: 1rem; line-height: 1.2; }
+.clase-fechas { opacity: .75; }
+.clase-conteo { display: flex; flex-wrap: wrap; gap: .2rem; margin-top: .15rem; }
+.pagina-clases .clase-selector.activa .chip { background: rgba(255, 255, 255, .15); color: #fff; border-color: rgba(255, 255, 255, .35); }
+.pagina-clases h3.clase-actual { margin: 1rem 0 0; padding: .55rem .9rem; border-left: 5px solid #e8a317; background: #fff8e6; border-radius: 0 10px 10px 0; font-family: var(--fuente-texto); font-size: 1.05rem; }
+
+/* Material de la clase */
+.pagina-clases .tarjeta-material { flex-direction: column; align-items: stretch; gap: .6rem; padding: .9rem 1rem; border-radius: 12px; border-color: #dbe5e7; background: #fbfdfd; }
+.material-info { display: grid; gap: .25rem; min-width: 0; }
+.pagina-clases .recurso-miniatura { max-width: 190px; height: 125px; margin: .35rem 0 0; border-radius: 10px; }
+.pagina-clases .tarjeta-material .bloque-ayuda { margin: 0; font-size: .85rem; overflow-wrap: anywhere; }
+
+/* Formularios */
+.pagina-clases .formulario-clases { max-width: none; padding: 1.1rem 1.2rem; margin-top: .9rem; border: 2px solid #9cc4cc; border-radius: 14px; background: #f3f9fa; gap: .8rem; }
+.pagina-clases .formulario-clases label { font-weight: 600; color: #1d3b44; }
+.pagina-clases .formulario-clases .etiqueta-check { display: flex; align-items: center; gap: .5rem; font-weight: 600; }
+.pagina-clases .formulario-clases input[type="checkbox"] { width: 1.2rem; height: 1.2rem; }
+.pagina-clases .formulario-clases textarea, .pagina-clases .formulario-clases input[type="text"], .pagina-clases .formulario-clases input[type="datetime-local"], .pagina-clases .formulario-clases select { border-radius: 10px; background: #fff; font-weight: 400; }
+.pagina-clases .formulario-nueva { border-color: #e8a317; background: #fffaf0; }
+.pagina-clases .formulario-nueva::before { content: "➕ Nueva tarea"; font-weight: 800; font-size: 1.05rem; color: #8a5a00; }
+.pagina-clases .formulario-edicion::before { content: "✏️ Editando tarea"; font-weight: 800; font-size: 1.05rem; color: #0c4a59; }
+
+/* Tarjetas de tarea */
+.pagina-clases .lista-clases:has(.tarjeta-tarea) { gap: 1.5rem; margin-top: 1.1rem; }
+.pagina-clases .tarjeta-tarea { gap: .55rem; padding: 1rem 1.1rem 1.05rem; border-radius: 14px; border: 1px solid #dbe5e7; border-left-width: 8px; background: #fff; box-shadow: 0 3px 8px rgba(20, 50, 59, .08); }
+.pagina-clases .tarjeta-tarea:nth-child(even) { background: #fffdf7; }
+.tarea-titulo-fila { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.tarea-titulo-prof { font-size: 1.15rem; color: var(--tinta); }
+.tarea-chips { display: flex; flex-wrap: wrap; }
+.tarea-texto { margin: 0; padding: .55rem .8rem; border-radius: 10px; background: #f4f8f8; color: #2d4146; font-size: .95rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.entregas-progreso { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; font-size: .88rem; color: var(--texto-suave); }
+.entregas-progreso progress { width: 160px; height: 10px; border: 0; border-radius: 999px; overflow: hidden; background: #e1e9ea; accent-color: #2f9e5f; }
+.entregas-progreso progress::-webkit-progress-bar { background: #e1e9ea; border-radius: 999px; }
+.entregas-progreso progress::-webkit-progress-value { background: #2f9e5f; border-radius: 999px; }
+.entregas-progreso progress::-moz-progress-bar { background: #2f9e5f; border-radius: 999px; }
+.pagina-clases .tarea-acciones { margin-top: .35rem; padding-top: .7rem; border-top: 1px dashed #d5dedc; }
+.pagina-clases .tarea-acciones .boton-peligro { margin-left: auto; }
+
+/* Entregas y revisión */
+.pagina-clases .detalle-ficha { margin-top: .5rem; }
+.pagina-clases .tabla-contenedor { margin-top: .5rem; border: 1px solid #dbe5e7; border-radius: 12px; background: #fff; }
+.pagina-clases .tabla-datos tbody tr.fila-sin-entrega td:first-child { color: #5b6e72; }
+.pagina-clases .tabla-datos td.celda-accion { text-align: right; white-space: nowrap; }
+.pagina-clases .tabla-datos tbody tr:nth-child(even) { background: #f9fbfb; }
+.pagina-clases .formulario-revision { border-color: #14323b; background: #f3f9fa; }
+.pagina-clases .formulario-revision h3 { margin-top: 0; font-family: var(--fuente-texto); }
+
+@media (max-width: 640px) {
+  .pagina-clases .panel-cabecera { padding: 1rem; border-radius: 14px; }
+  .pagina-clases .bloque { padding: 1rem; }
+  .pagina-clases .clases-cuadricula { grid-template-columns: repeat(2, 1fr); }
+  .pagina-clases .tarea-acciones .boton-peligro { margin-left: 0; }
+  .pagina-clases .tarea-acciones select { width: 100%; }
+}
+.material-info .chip { justify-self: start; }
+.pagina-clases .tarjeta-tarea { border-left-color: #09677a; }
+.pagina-clases .tarjeta-tarea:nth-child(even) { border-left-color: #eeb32b; }
+.pagina-clases .secciones > .formulario-fila .etiqueta-check { display: flex; align-items: center; gap: .4rem; margin: 0; }
+.pagina-clases .secciones > .formulario-fila input[type="checkbox"] { min-width: 0; width: 1.2rem; height: 1.2rem; }
