@@ -677,6 +677,9 @@
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
       opciones.push(el('option', { value: t.evaluacion_id, texto: 'Columna en la papelera de la libreta (se conserva el vínculo)', selected: true }));
     }
+    // Permite crear tantas columnas como tareas, incluso en la misma clase/semana.
+    opciones.push(el('option', { value: '__crear_apreciacion__', texto: '➕ Crear nueva columna de Apreciación para esta tarea' }));
+    opciones.push(el('option', { value: '__crear_escrito__', texto: '➕ Crear nueva columna de Ejercicio escrito para esta tarea' }));
     var vinculo = el('select', null, opciones);
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
     if (bloqueaVinculo) { vinculo.disabled = true; }
@@ -695,12 +698,25 @@
       ev.preventDefault();
       if (!titulo.value.trim()) { aviso('Escriba el título de la tarea.', 'error'); return; }
       var iso = C.deInputFecha(plazo.value);
+      var categoriaNueva = vinculo.value === '__crear_apreciacion__' ? 'apreciacion' : (vinculo.value === '__crear_escrito__' ? 'ejercicio_escrito' : null);
       var adjuntosNuevos = pendientes.slice();
       var nuevaId = null;
       enviar.disabled = true;
       if (!t) { S.nuevaTarea = false; }
       var guardada = await accion('Guardando tarea…', t ? 'Tarea actualizada.' : 'Tarea creada.', async function () {
         var g;
+        if (categoriaNueva) {
+          var clase = S.plan.find(function (c) { return c.id === (t ? t.clase_id : S.claseId); });
+          var temaColumna = (clase ? 'Semana ' + clase.numero + ' · ' : '') + titulo.value.trim();
+          var creada = await db.rpc('portal2027_crear_evaluacion', {
+            p_asignacion: S.asig.id, p_trimestre: S.trimestreId,
+            p_categoria: categoriaNueva, p_tema: temaColumna.slice(0, 120),
+            p_tipo: categoriaNueva === 'apreciacion' ? 'Tarea' : ''
+          });
+          if (creada.error) { throw creada.error; }
+          vinculo.value = creada.data;
+          // La columna nueva queda disponible aun si después falla guardar la tarea.
+        }
         if (t) {
           g = await db.rpc('portal2027_actualizar_tarea', {
             p_id: t.id, p_version: t.version, p_titulo: titulo.value, p_instrucciones: instr.value,
