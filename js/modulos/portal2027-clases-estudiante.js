@@ -189,10 +189,11 @@
         hijos.push(el('div', { clase: 'adjuntos-tarea' }, [
           el('h4', { texto: 'Material de la tarea' }),
           el('ul', { clase: 'lista-adjuntos' }, anexos.map(function (a) {
-            var fila = [el('span', { clase: 'etiqueta-chica', texto: ETIQUETA_TIPO[a.tipo] || 'Archivo' }), el('strong', { texto: a.titulo })];
+            var fila = [el('span', { clase: 'etiqueta-chica', texto: ETIQUETA_TIPO[a.tipo] || 'Archivo' })];
             if (a.tipo === 'enlace') {
-              fila.push(C.enlace(a.enlace, 'Abrir enlace'));
+              fila.push(C.enlace(a.enlace, a.titulo));
             } else {
+              fila.push(el('strong', { texto: a.titulo }));
               fila.push(boton('Abrir ' + (a.archivo_nombre || a.titulo), async function () {
                 try { await C.abrir(C.BUCKET_MATERIALES, a.archivo_ruta); }
                 catch (e) { aviso('No se pudo abrir el archivo. ' + C.textoError(e), 'error'); }

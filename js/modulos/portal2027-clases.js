@@ -444,25 +444,30 @@
     });
   }
 
-  // Bloque de adjuntos del formulario. Con tarea existente, cada adjunto se guarda al agregarlo.
-  // Con tarea nueva, los adjuntos quedan en «pendientes» y se suben al crear la tarea.
+  // Bloque de adjuntos del formulario. Permite elegir varios PDF o imágenes a la vez y agregar
+  // varios enlaces seguidos (el panel queda abierto). Con tarea existente cada adjunto se guarda
+  // al agregarlo; con tarea nueva se guardan al crear la tarea.
   function bloqueAdjuntos(t, pendientes) {
     var tipo = null;
     var titulo = el('input', { type: 'text', maxlength: '120', 'aria-label': 'Título del adjunto' });
-    var archivo = el('input', { type: 'file', accept: '.pdf,.jpg,.jpeg,.png' });
+    var archivo = el('input', { type: 'file', multiple: true, accept: '.pdf,.jpg,.jpeg,.png' });
     var enlace = el('input', { type: 'url', placeholder: 'https://…', 'aria-label': 'Enlace' });
     var etiqueta = el('p', { clase: 'bloque-ayuda' });
     var estadoPanel = el('p', { clase: 'mensaje', role: 'status', 'aria-live': 'polite', hidden: true });
     var aceptarBtn = boton('Añadir', null);
-    var cancelarBtn = boton('Cancelar', null);
+    var cerrarBtn = boton('Cerrar', null);
     var panel = el('div', { clase: 'adjuntos-panel', hidden: true }, [
-      etiqueta, campo('Título del adjunto', titulo), archivo, enlace, estadoPanel,
-      el('div', { clase: 'cabecera-acciones' }, [aceptarBtn, cancelarBtn])
+      etiqueta,
+      campo('Título (opcional; con varios archivos se numeran)', titulo),
+      archivo, enlace, estadoPanel,
+      el('div', { clase: 'cabecera-acciones' }, [aceptarBtn, cerrarBtn])
     ]);
     var lista = el('ul', { clase: 'lista-adjuntos' });
-    var contador = el('p', { clase: 'bloque-ayuda', 'aria-live': 'polite' });
-    var botones = { pdf: boton('Agregar PDF', null), imagen: boton('Agregar imagen', null), enlace: boton('Agregar enlace', null) };
+    var contador = el('p', { clase: 'bloque-ayuda' });
+    var resumen = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite' });
+    var botones = { pdf: boton('Agregar PDF', null), imagen: boton('Agregar imágenes', null), enlace: boton('Agregar enlaces', null) };
 
+    function cantidad() { return t ? adjuntosDeTarea(t.id).length : pendientes.length; }
     function mostrarEstado(texto, clase) { estadoPanel.textContent = texto; estadoPanel.className = 'mensaje ' + (clase || 'info'); estadoPanel.hidden = !texto; }
     function cerrarPanel() { tipo = null; panel.hidden = true; mostrarEstado('', 'info'); }
     function abrirPanel(k) {
@@ -470,80 +475,120 @@
       titulo.value = ''; archivo.value = ''; enlace.value = '';
       archivo.hidden = k === 'enlace'; enlace.hidden = k !== 'enlace';
       archivo.accept = k === 'pdf' ? '.pdf' : '.jpg,.jpeg,.png';
-      etiqueta.textContent = k === 'enlace' ? 'Enlace a un recurso o a una página para hacer la tarea (https://…).'
-        : k === 'pdf' ? 'Elija un PDF (hasta ' + F.maxMB('materiales') + ' MB).' : 'Elija una imagen JPG o PNG (se reducirá si es muy grande).';
+      etiqueta.textContent = k === 'enlace' ? 'Escriba un enlace y presione Añadir. Puede agregar varios seguidos (https://…).'
+        : k === 'pdf' ? 'Elija uno o varios PDF (hasta ' + F.maxMB('materiales') + ' MB cada uno).'
+        : 'Elija una o varias imágenes JPG o PNG (las grandes se reducen automáticamente).';
       mostrarEstado('', 'info');
       panel.hidden = false;
-      titulo.focus();
+      (k === 'enlace' ? enlace : titulo).focus();
     }
 
-    // Lee y valida lo que el profesor escogió antes de subir nada.
-    function leerItem() {
-      var nombre = titulo.value.trim();
-      if (!nombre) { mostrarEstado('Escriba un título para el adjunto.', 'error'); return null; }
+    // Convierte lo elegido en una lista de adjuntos. Valida antes de subir nada.
+    function leerItems() {
       if (tipo === 'enlace') {
-        if (!C.urlSegura(enlace.value)) { mostrarEstado('Use un enlace que empiece con https:// o http://.', 'error'); return null; }
-        return { tipo: 'enlace', titulo: nombre, enlace: enlace.value.trim() };
+        var url = enlace.value.trim();
+        if (!C.urlSegura(url)) { mostrarEstado('Use un enlace que empiece con https:// o http://.', 'error'); return null; }
+        var nombre = titulo.value.trim() || new URL(url).hostname;
+        return [{ tipo: 'enlace', titulo: nombre.slice(0, 120), enlace: url }];
       }
-      var f = archivo.files && archivo.files[0];
-      if (!f) { mostrarEstado('Elija un archivo.', 'error'); return null; }
-      if (tipo === 'pdf' && !/\.pdf$/i.test(f.name)) { mostrarEstado('Elija un archivo PDF.', 'error'); return null; }
-      if (tipo === 'imagen' && !/\.(jpe?g|png)$/i.test(f.name)) { mostrarEstado('Elija una imagen JPG o PNG.', 'error'); return null; }
-      var problema = F.errorTamano(f, 'materiales');
-      if (problema) { mostrarEstado(problema, 'error'); return null; }
-      return { tipo: tipo, titulo: nombre, archivo: f };
+      var archivos = Array.prototype.slice.call(archivo.files || []);
+      if (!archivos.length) { mostrarEstado('Elija al menos un archivo.', 'error'); return null; }
+      var patron = tipo === 'pdf' ? /\.pdf$/i : /\.(jpe?g|png)$/i;
+      var malos = archivos.filter(function (a) { return !patron.test(a.name); });
+      if (malos.length) {
+        mostrarEstado((tipo === 'pdf' ? 'Solo se aceptan PDF: ' : 'Solo se aceptan JPG o PNG: ') + malos.map(function (a) { return a.name; }).join(', '), 'error');
+        return null;
+      }
+      for (var i = 0; i < archivos.length; i++) {
+        var problema = F.errorTamano(archivos[i], 'materiales');
+        if (problema) { mostrarEstado(archivos[i].name + ': ' + problema, 'error'); return null; }
+      }
+      var base = titulo.value.trim();
+      return archivos.map(function (f, n) {
+        var sinExtension = f.name.replace(/\.[^.]+$/, '');
+        var tit = base ? (archivos.length > 1 ? base + ' ' + (n + 1) : base) : sinExtension;
+        return { tipo: tipo, titulo: tit.slice(0, 120), archivo: f };
+      });
     }
 
     function dibujarLista() {
       lista.textContent = '';
       var filas = t ? adjuntosDeTarea(t.id) : pendientes;
       filas.forEach(function (a, i) {
-        var detalle = a.tipo === 'enlace' ? a.enlace : (a.archivo_nombre || (a.archivo && a.archivo.name) || '');
-        var acciones = [];
-        if (t && a.tipo === 'enlace') { acciones.push(C.enlace(a.enlace, 'Abrir enlace')); }
-        if (t && a.tipo !== 'enlace') { acciones.push(boton('Abrir', function () { abrirAdjunto(a); })); }
-        acciones.push(boton('Quitar', t ? function () { quitarAdjunto(a); } : function () { pendientes.splice(i, 1); dibujarLista(); }));
-        lista.appendChild(el('li', null, [
-          el('span', { clase: 'etiqueta-chica', texto: ETIQUETA_TIPO[a.tipo] }),
-          el('strong', { texto: a.titulo }),
-          el('small', { texto: detalle })
-        ].concat(acciones)));
+        var quitar = boton('Quitar', t ? function () { quitarAdjunto(a); } : function () { pendientes.splice(i, 1); dibujarLista(); });
+        var contenido;
+        if (a.tipo === 'enlace') {
+          contenido = [el('span', { clase: 'etiqueta-chica', texto: 'Enlace' }), C.enlace(a.enlace, a.titulo)];
+        } else {
+          var acciones = t ? [boton('Abrir', function () { abrirAdjunto(a); })] : [];
+          contenido = [el('span', { clase: 'etiqueta-chica', texto: ETIQUETA_TIPO[a.tipo] }), el('strong', { texto: a.titulo }),
+            el('small', { texto: a.archivo_nombre || (a.archivo && a.archivo.name) || '' })].concat(acciones);
+        }
+        lista.appendChild(el('li', null, [el('div', { clase: 'lista-adjuntos-fila' }, contenido.concat([quitar]))]));
       });
       contador.textContent = filas.length + ' de ' + MAX_ADJUNTOS + ' adjuntos' + (t ? '' : ' (se guardarán al crear la tarea)');
       Object.keys(botones).forEach(function (k) { botones[k].disabled = filas.length >= MAX_ADJUNTOS; });
     }
 
+    // Guarda varios adjuntos de una tarea existente. Informa cuáles sí y cuáles no se guardaron.
+    async function guardarLote(tareaId, items) {
+      aceptarBtn.disabled = true; cerrarBtn.disabled = true;
+      var fallos = [], guardados = 0;
+      resumen.textContent = 'Subiendo ' + items.length + ' adjunto(s)…';
+      try {
+        for (var i = 0; i < items.length; i++) {
+          try { await registrarAdjunto(tareaId, items[i]); guardados++; }
+          catch (e) { console.error('Adjunto', items[i].titulo, e); fallos.push(items[i].titulo + ' (' + C.textoError(e) + ')'); }
+        }
+        await cargar();
+        dibujarLista();
+        resumen.textContent = fallos.length
+          ? guardados + ' guardado(s). No se guardaron: ' + fallos.join('; ') + '.'
+          : (guardados === 1 ? 'Adjunto agregado.' : guardados + ' adjuntos agregados.');
+      } catch (e) {
+        console.error('Actualizar adjuntos', e);
+        resumen.textContent = 'Los adjuntos se procesaron, pero no se pudo actualizar la lista. Pulse «Recargar».';
+        fallos.push('actualizar');
+      } finally { aceptarBtn.disabled = false; cerrarBtn.disabled = false; }
+      return fallos;
+    }
+
     botones.pdf.addEventListener('click', function () { abrirPanel('pdf'); });
     botones.imagen.addEventListener('click', function () { abrirPanel('imagen'); });
     botones.enlace.addEventListener('click', function () { abrirPanel('enlace'); });
-    cancelarBtn.addEventListener('click', cerrarPanel);
+    cerrarBtn.addEventListener('click', cerrarPanel);
     // Enter en estos campos no debe enviar la tarea completa.
     [titulo, enlace].forEach(function (c) {
       c.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); aceptarBtn.click(); } });
     });
 
     aceptarBtn.addEventListener('click', async function () {
-      var it = leerItem();
-      if (!it) { return; }
-      var filas = t ? adjuntosDeTarea(t.id).length : pendientes.length;
-      if (filas >= MAX_ADJUNTOS) { mostrarEstado('Una tarea admite hasta ' + MAX_ADJUNTOS + ' adjuntos.', 'error'); return; }
-      if (!t) {
-        pendientes.push(it);
-        cerrarPanel(); dibujarLista();
+      var items = leerItems();
+      if (!items) { return; }
+      var libres = MAX_ADJUNTOS - cantidad();
+      if (items.length > libres) {
+        mostrarEstado(libres > 0 ? 'Solo caben ' + libres + ' adjuntos más en esta tarea.' : 'Esta tarea ya tiene ' + MAX_ADJUNTOS + ' adjuntos.', 'error');
         return;
       }
-      aceptarBtn.disabled = true;
-      try {
-        await accion('Subiendo adjunto…', 'Adjunto agregado.', function () { return registrarAdjunto(t.id, it); });
-      } finally { aceptarBtn.disabled = false; }
+      var fallos = [];
+      if (!t) {
+        pendientes.push.apply(pendientes, items);
+        dibujarLista();
+        resumen.textContent = items.length === 1 ? 'Adjunto listo. Se guardará al crear la tarea.' : items.length + ' adjuntos listos. Se guardarán al crear la tarea.';
+      } else {
+        fallos = await guardarLote(t.id, items);
+      }
+      if (fallos.length) { mostrarEstado('Revise lo que no se guardó.', 'error'); return; }
+      if (tipo === 'enlace') { enlace.value = ''; titulo.value = ''; mostrarEstado('Enlace añadido. Puede agregar otro.', 'ok'); enlace.focus(); }
+      else { cerrarPanel(); }
     });
 
     dibujarLista();
     return el('fieldset', { clase: 'adjuntos-tarea' }, [
       el('legend', { texto: 'Archivos y enlaces de la tarea' }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Agregue PDF, imágenes o enlaces para que el estudiante los descargue o abra.' }),
+      el('p', { clase: 'bloque-ayuda', texto: 'Agregue PDF, imágenes o enlaces. Puede elegir varias imágenes a la vez y agregar varios enlaces.' }),
       el('div', { clase: 'cabecera-acciones' }, [botones.pdf, botones.imagen, botones.enlace]),
-      panel, lista, contador
+      panel, lista, contador, resumen
     ]);
   }
 
