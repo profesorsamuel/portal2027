@@ -71,6 +71,12 @@
   /* ---------- carga ---------- */
   async function cargar() {
     var a = S.asig.id, t = S.trimestreId;
+    // Antes de leer las columnas, asegura que exista la apreciación de cada clase planificada.
+    // Esto restaura una semana enviada a la papelera o crea la que falte (por ejemplo, Semana 1).
+    try {
+      var asegurar = await db.rpc('portal2027_asegurar_semanas_plan', { p_asignacion: a, p_trimestre: t });
+      if (asegurar.error) { console.warn('No se pudieron asegurar las apreciaciones de la planificación:', asegurar.error); }
+    } catch (e) { console.warn('No se pudieron asegurar las apreciaciones de la planificación:', e); }
     var r = await Promise.all([
       consultar(db.from('portal2027_materiales').select('*').eq('asignacion_id', a).eq('trimestre_id', t).order('creado_en', { ascending: false })),
       consultar(db.from('portal2027_tareas').select('*').eq('asignacion_id', a).eq('trimestre_id', t).order('creado_en')),
@@ -668,10 +674,10 @@
     var titulo = el('input', { type: 'text', maxlength: '120', required: true, value: t ? t.titulo : '' });
     var instr = el('textarea', { rows: '3', maxlength: '4000', value: t ? t.instrucciones : '' });
     var plazo = el('input', { type: 'datetime-local', value: t ? C.aInputFecha(t.fecha_limite) : '' });
-    var usados = {};
-    S.tareas.forEach(function (x) { if (x.evaluacion_id && (!t || x.id !== t.id)) { usados[x.evaluacion_id] = true; } });
+    // Una misma apreciación puede recibir varias tareas. No ocultar una columna
+    // solo porque ya esté vinculada a otra tarea.
     var opciones = [el('option', { value: '', texto: 'Sin nota (solo se revisa y se comenta)' })];
-    S.evals.filter(function (e) { return !usados[e.id]; }).forEach(function (e) {
+    S.evals.forEach(function (e) {
       opciones.push(el('option', { value: e.id, texto: etiquetaEval(e), selected: !!(t && t.evaluacion_id === e.id) }));
     });
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
