@@ -68,5 +68,5 @@ test('El README mantiene los números de las migraciones específicas fuera del 
   for (const n of esp) assert.ok(readme.includes(n), 'README no menciona ' + n);
   const gen = fs.readdirSync(path.join(raiz, 'supabase/migrations')).filter(f => /^\d{4}_/.test(f)).map(f => f.slice(0, 4));
   for (const n of esp) assert.ok(!gen.includes(n), n + ' no debe estar también en migrations/');
-  assert.equal(gen[gen.length - 1], '0050', 'Actualice el README si se añade una migración nueva');
+  assert.equal(gen[gen.length - 1], '0051', 'Actualice el README si se añade una migración nueva');
 });

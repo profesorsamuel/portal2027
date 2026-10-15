@@ -32,6 +32,7 @@ Los números **no son consecutivos a propósito**: `0003`, `0034`, `0035` y `004
 | 0048 | Restricciones sobre tablas existentes y acceso privado a Storage. Falla a propósito si falta 0047. |
 | 0049 | Tabla de control de intentos, de uso exclusivo de las Edge Functions (`service_role`). |
 | 0050 | Adjuntos de tareas (PDF, imágenes y enlaces). Instálela después de 0049 y antes de publicar la pantalla de clases con adjuntos. |
+| 0051 | Orden fijo de las tareas (Tarea 1, Tarea 2…) por orden de creación. Instálela después de 0050 y antes de publicar los módulos web. |
 
 `supabase/migrations/PRUEBA_MANUAL.sql` **no es una migración**: es una prueba para ejecutar a mano **después de 0049**, que termina con `rollback`. No la incluya al aplicar las migraciones en lote.
 

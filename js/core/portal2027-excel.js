@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var P = window.portal2027;
-  var rutaLocal = new URL('../vendor/xlsx-0.20.3.full.min.js?v=20261018', document.currentScript.src).href;
+  var rutaLocal = new URL('../vendor/xlsx-0.20.3.full.min.js?v=20261019', document.currentScript.src).href;
   var carga = null;
   var VERSION = '0.20.3';
   var SRI = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';

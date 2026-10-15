@@ -285,3 +285,9 @@ body[data-rol="estudiante"] .boton.prev-quitar:is(:hover, :focus-visible, :activ
   .selector-archivos { padding: .85rem; }
   .visor-clases .controles button { padding: .45rem .8rem; font-size: .85rem; }
 }
+
+/* Tareas en orden fijo (Tarea 1, Tarea 2…) con separación clara entre una y otra. */
+.lista-tareas { gap: 1.6rem; }
+.lista-tareas > .tarea-tarjeta { position: relative; box-shadow: 0 4px 0 rgba(0, 0, 0, .08); }
+.lista-tareas > .tarea-tarjeta + .tarea-tarjeta::before { content: ""; position: absolute; left: 12%; right: 12%; top: -.85rem; border-top: 3px dotted var(--linea); }
+.tarea-numero { padding: .2rem 1rem; font-size: .95rem; letter-spacing: .02em; }

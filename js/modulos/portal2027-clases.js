@@ -697,7 +697,7 @@
     return hechas.length + ' de ' + S.mats.length + ' entregadas · ' + rev + ' revisadas';
   }
 
-  function tarjetaTarea(t) {
+  function tarjetaTarea(t, numero) {
     var enPapelera = !!t.eliminada_en;
     var ev = t.evaluacion_id ? evalPorId(t.evaluacion_id) : null;
     var chips = [
@@ -722,18 +722,24 @@
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
-      el('div', { clase: 'tarjeta-cabecera' }, [el('div', null, [el('strong', { texto: t.titulo })].concat([' '], chips)),
+      el('div', { clase: 'tarjeta-cabecera' }, [el('div', null, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), ' ', el('strong', { texto: t.titulo })].concat([' '], chips)),
         el('div', { clase: 'cabecera-acciones' }, acciones)]),
       t.instrucciones ? el('p', { clase: 'bloque-ayuda', texto: t.instrucciones }) : null,
       el('p', { clase: 'bloque-ayuda', texto: resumenEntregas(t) })
     ];
     if (S.editando === t.id) { hijos.push(formTarea(t)); }
     if (S.abierta === t.id && !enPapelera) { hijos.push(tablaEntregas(t)); }
-    return el('li', { clase: 'tarjeta-clase tarjeta-columna' }, hijos);
+    return el('li', { clase: 'tarjeta-clase tarjeta-columna tarjeta-tarea' }, hijos);
   }
 
   function seccionTareas() {
-    var lista = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId && (S.verPapelera || !t.eliminada_en); });
+    // Numeración fija por orden de creación dentro de la clase (las de la papelera conservan su número).
+    var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
+      return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
+    });
+    var numeros = {};
+    todas.forEach(function (t, i) { numeros[t.id] = i + 1; });
+    var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: 'Tareas' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Copie la lista para pegarla en un ejercicio.' }),
@@ -741,7 +747,7 @@
       formTarea(null)
     ]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay tareas en esta clase.' })); }
-    else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(tarjetaTarea))); }
+    else { sec.appendChild(el('ul', { clase: 'lista-clases' }, lista.map(function (t) { return tarjetaTarea(t, numeros[t.id]); }))); }
     return sec;
   }
 

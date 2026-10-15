@@ -382,10 +382,13 @@
           var g = grupos[id];
           var materiales = m.materiales.filter(function (x) { return (x.clase_id || 'sin') === id; });
           var tareas = m.tareas.filter(function (x) { return (x.clase_id || 'sin') === id; });
-          // Numeración fija según el orden original; no cambia aunque las pendientes se muestren primero.
+          // Numeración y orden fijos: Tarea 1, Tarea 2… según el orden en que el profesor las creó.
+          // No se reordenan por fecha ni por estado (entregada o pendiente).
+          tareas = tareas.slice().sort(function (x, y) {
+            var a = x.creado_en || '', b = y.creado_en || '';
+            return a < b ? -1 : (a > b ? 1 : 0);
+          });
           tareas.forEach(function (x, i) { x._n = i + 1; });
-          tareas = tareas.slice()
-            .sort(function (x, y) { return (x.entrega ? 1 : 0) - (y.entrega ? 1 : 0); });
           var pendientes = tareas.filter(function (t) { return !t.entrega; }).length;
           var pills = [];
           if (pendientes) { pills.push(el('span', { clase: 'pill pill-pendiente', texto: '✏️ ' + pendientes + ' por entregar' })); }

@@ -48,3 +48,10 @@
 .lista-adjuntos small { color:var(--texto-suave); overflow-wrap:anywhere; }
 .lista-adjuntos .recurso-miniatura { margin:0; }
 .texto-oculto { position:fixed; left:-9999px; top:0; opacity:0; pointer-events:none; }
+
+/* Tareas del profesor: «Tarea N» y separación clara entre una tarea y la siguiente. */
+.lista-clases:has(.tarjeta-tarea) { gap: 1.4rem; }
+.tarjeta-tarea { border: 1px solid var(--linea); border-left: 8px solid #09677a; box-shadow: 0 3px 0 rgba(9, 103, 122, 0.18); }
+.tarjeta-tarea:nth-child(even) { border-left-color: #eeb32b; box-shadow: 0 3px 0 rgba(238, 179, 43, 0.3); background: #fffdf6; }
+.tarea-numero-prof { display: inline-block; padding: 0.1rem 0.75rem; border-radius: 999px; background: #09677a; color: #fff; font-size: 0.85rem; font-weight: 800; }
+.tarjeta-tarea:nth-child(even) .tarea-numero-prof { background: #eeb32b; color: #123747; }
