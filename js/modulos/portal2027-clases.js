@@ -14,7 +14,7 @@
 
   var S = {
     plan: [], claseId: null, tipoMaterial: null, asig: null, trimestres: [], trimestreId: null,
-    materiales: [], tareas: [], evals: [], mats: [], entregas: [], adjuntos: [], notas: {}, desglose: {}, notasDesglose: {},   // notas: evalId|matId -> {valor}
+    materiales: [], tareas: [], evals: [], mats: [], entregas: [], adjuntos: [], notas: {},   // notas: evalId|matId -> {valor}
     verPapelera: false, nuevaTarea: false, editando: null, abierta: null, revisando: null, adjuntosDisponibles: true   // abierta = tareaId; revisando = matriculaId
   };
   var estado = null;
@@ -81,7 +81,7 @@
     if (S.claseId && !S.plan.some(function(c) { return c.id === S.claseId; })) S.claseId = null;
     S.materiales = r[0]; S.tareas = r[1]; S.evals = r[2];
     S.mats = r[3].sort(function (x, y) { return nombreEst(x).localeCompare(nombreEst(y), 'es'); });
-    S.entregas = []; S.adjuntos = []; S.notas = {}; S.desglose = {}; S.notasDesglose = {};
+    S.entregas = []; S.adjuntos = []; S.notas = {};
     var ids = S.tareas.map(function (x) { return x.id; });
     if (ids.length) {
       S.entregas = await consultar(db.from('portal2027_entregas').select('*').in('tarea_id', ids));
@@ -92,15 +92,6 @@
         // Normalmente significa que falta ejecutar la migración 0050 en Supabase.
         console.error('Adjuntos de tareas no disponibles', e);
         S.adjuntos = []; S.adjuntosDisponibles = false;
-      }
-    }
-    if (ids.length) {
-      var vinculos = await consultar(db.from('portal2027_tareas_desglose').select('tarea_id,evaluacion_id,grupo').in('tarea_id', ids));
-      vinculos.forEach(function(v) { S.desglose[v.tarea_id] = v; });
-      var grupos = vinculos.map(function(v) { return v.grupo; });
-      if (grupos.length) {
-        var celdas = await consultar(db.from('portal2027_registros_semana').select('grupo,matricula_id,valor').in('grupo', grupos));
-        celdas.forEach(function(n) { S.notasDesglose[n.grupo + '|' + n.matricula_id] = n; });
       }
     }
     var evIds = S.tareas.filter(function (x) { return x.evaluacion_id; }).map(function (x) { return x.evaluacion_id; });
@@ -869,12 +860,11 @@
   }
 
   function formRevision(t, m, en) {
-    var vinculoTarea = S.desglose[t.id];
-    var notaActual = vinculoTarea ? S.notasDesglose[vinculoTarea.grupo + '|' + m.id] : (t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null);
+    var notaActual = t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null;
     var valorActual = notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? String(Number(notaActual.valor)) : '';
     var coment = el('textarea', { rows: '3', maxlength: '2000', value: en.comentario_profesor || '' });
-    var nota = (vinculoTarea || t.evaluacion_id) ? el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' }) : null;
-    var motivo = (vinculoTarea || t.evaluacion_id) ? el('input', { type: 'text', maxlength: '200' }) : null;
+    var nota = t.evaluacion_id ? el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' }) : null;
+    var motivo = t.evaluacion_id ? el('input', { type: 'text', maxlength: '200' }) : null;
     var guardar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Guardar revisión' });
 
     var hijos = [
@@ -920,10 +910,6 @@
           p_entrega: en.id, p_version: en.version, p_comentario: coment.value, p_nota: valor, p_motivo: motivo ? motivo.value : null
         });
         if (g.error) { throw g.error; }
-        if (vinculoTarea && valor !== null) {
-          var n = await db.rpc('portal2027_calificar_tarea_desglose', { p_tarea: t.id, p_matricula: m.id, p_nota: valor });
-          if (n.error) { throw new Error('Se guardó la revisión, pero no la nota: ' + n.error.message); }
-        }
       });
       guardar.disabled = false;
     });
