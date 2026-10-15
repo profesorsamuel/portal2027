@@ -807,7 +807,8 @@
       acciones.push(botonCopiar('Copiar alumnos'));
     }
     acciones.push(boton(enPapelera ? 'Restaurar' : 'A la papelera', function () {
-      cambiarTarea(t, { p_a_papelera: !enPapelera }, enPapelera ? 'Tarea restaurada.' : 'Tarea en la papelera.');
+      if (!enPapelera && !window.confirm('¿Enviar esta tarea a la papelera? Se borrarán sus notas de la libreta y se recalcularán los promedios. Las notas no se recuperarán al restaurar la tarea.')) { return; }
+      cambiarTarea(t, { p_a_papelera: !enPapelera }, enPapelera ? 'Tarea restaurada sin calificaciones anteriores.' : 'Tarea en la papelera. Sus notas fueron limpiadas de la libreta.');
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
