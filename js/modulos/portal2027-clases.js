@@ -668,10 +668,10 @@
     var titulo = el('input', { type: 'text', maxlength: '120', required: true, value: t ? t.titulo : '' });
     var instr = el('textarea', { rows: '3', maxlength: '4000', value: t ? t.instrucciones : '' });
     var plazo = el('input', { type: 'datetime-local', value: t ? C.aInputFecha(t.fecha_limite) : '' });
-    // Una evaluación semanal puede contener varias tareas: cada una recibe
-    // su propio grupo/columna en portal2027_tareas_desglose (migraciones 0052-0056).
+    var usados = {};
+    S.tareas.forEach(function (x) { if (x.evaluacion_id && (!t || x.id !== t.id)) { usados[x.evaluacion_id] = true; } });
     var opciones = [el('option', { value: '', texto: 'Sin nota (solo se revisa y se comenta)' })];
-    S.evals.forEach(function (e) {
+    S.evals.filter(function (e) { return !usados[e.id]; }).forEach(function (e) {
       opciones.push(el('option', { value: e.id, texto: etiquetaEval(e), selected: !!(t && t.evaluacion_id === e.id) }));
     });
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
@@ -685,7 +685,6 @@
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
       campo('Nota en la libreta', vinculo)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
-    hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Cada tarea de esta clase crea su propia columna en el desglose de la semana correspondiente. Puede crear Tarea 1, Tarea 2, Tarea 3 y más, y calificar cada una de 0 a 5. Requiere ejecutar las migraciones SQL 0052 a 0056 en orden.' }));
     hijos.push(bloqueAdjuntos(t, pendientes));
     hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
     var acciones = [enviar];
@@ -788,7 +787,7 @@
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
-      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
+      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: (numero ? 'Tarea ' + numero : 'En papelera') }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
       el('div', { clase: 'tarea-chips' }, chips),
       t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
       progresoEntregas(t),
@@ -800,13 +799,15 @@
   }
 
   function seccionTareas() {
-    // Numeración fija por orden de creación dentro de la clase (las de la papelera conservan su número).
+    // Numerar solo las tareas activas de la clase. Las tareas en papelera
+    // no consumen números; al restaurarlas se recalcula el orden visible.
     var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
       return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
     });
+    var activas = todas.filter(function (t) { return !t.eliminada_en; });
     var numeros = {};
-    todas.forEach(function (t, i) { numeros[t.id] = i + 1; });
-    var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
+    activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
+    var lista = S.verPapelera ? todas : activas;
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
