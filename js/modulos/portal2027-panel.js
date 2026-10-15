@@ -217,22 +217,6 @@
     { titulo: 'Mis documentos', icono: '📁', texto: 'Documentos entregados y pendientes' }
   ];
 
-  // Los ejercicios virtuales van dentro de «Mis notas»: se mueven como un apartado, antes de la asistencia.
-  function unirEjerciciosEnNotas(zona) {
-    var secs = Array.prototype.filter.call(zona.children, function (c) { return c.tagName === 'SECTION'; });
-    function porTitulo(t) { return secs.filter(function (x) { var h = x.querySelector('h2'); return h && h.textContent.trim() === t; })[0]; }
-    var notas = porTitulo('Mis notas y asistencia'), ejer = porTitulo('Mis ejercicios virtuales');
-    if (!notas) { return; }
-    notas.querySelector('h2').textContent = 'Mis notas y ejercicios';
-    if (!ejer) { return; }
-    var apartado = el('div', { clase: 'apartado-ejercicios no-imprimir' }, [el('h3', { texto: 'Apreciación: ejercicios virtuales' }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Los ejercicios virtuales son su nota de apreciación. La nota pasa a la tabla de arriba cuando el profesor cierra el periodo.' })]);
-    Array.prototype.slice.call(ejer.children).forEach(function (n) { if (n.tagName !== 'H2') { apartado.appendChild(n); } });
-    var asis = Array.prototype.filter.call(notas.children, function (n) { return n.tagName === 'H3' && n.textContent.trim() === 'Asistencia'; })[0];
-    notas.insertBefore(apartado, asis || null);
-    ejer.parentNode.removeChild(ejer);
-  }
-
   function menuEstudiante(zona) {
     var secciones = Array.prototype.filter.call(zona.children, function (c) { return c.tagName === 'SECTION'; });
     if (secciones.length === 0) { return; }
@@ -332,9 +316,7 @@
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
         await P.renderEstudianteClases(zona, info);
-        await P.renderEstudianteEjercicios(zona, info);
         await P.renderDocumentosEstudiante(zona, info);
-        unirEjerciciosEnNotas(zona);
         menuEstudiante(zona);
       }
     } catch (e) {
