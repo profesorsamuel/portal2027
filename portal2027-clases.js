@@ -814,9 +814,7 @@
   function formRevision(t, m, en) {
     var notaActual = t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null;
     // Las tareas vinculadas usan la nota oficial de la libreta; las demás guardan su nota en la entrega.
-    var valorGuardado = t.evaluacion_id
-      ? (notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? notaActual.valor : null)
-      : en.nota_profesor;
+    var valorGuardado = t.evaluacion_id && notaActual && notaActual.valor != null ? notaActual.valor : en.nota_profesor;
     var valorActual = valorGuardado !== null && valorGuardado !== undefined ? String(Number(valorGuardado)) : '';
     var coment = el('textarea', { rows: '3', maxlength: '2000', value: en.comentario_profesor || '' });
     var nota = el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' });
@@ -836,11 +834,9 @@
       })),
       campo('Comentario para el estudiante', coment)
     ];
-    hijos.push(campo(t.evaluacion_id ? 'Nota de 0 a 5 (se guarda en la libreta)' : 'Nota de 0 a 5 para esta tarea', nota));
+    hijos.push(campo('Nota de 0 a 5 (vinculada con la libreta)', nota));
     hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
-    if (!t.evaluacion_id) {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta nota queda guardada en la tarea y no modifica la libreta de calificaciones.' }));
-    }
+    hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'La nota se registra en el desglose semanal de la libreta cuando la tarea está vinculada.' }));
     var acciones = [guardar];
     if (en.estado === 'revisada') {
       acciones.push(boton('Devolver para corregir', function () {
