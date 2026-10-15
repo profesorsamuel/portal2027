@@ -740,7 +740,7 @@
     }, enPapelera ? '' : 'boton-peligro'));
 
     var hijos = [
-      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: (numero ? 'Tarea ' + numero : 'En papelera') }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
+      el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: 'Tarea ' + numero }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
       el('div', { clase: 'tarea-chips' }, chips),
       t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
       progresoEntregas(t),
@@ -752,18 +752,13 @@
   }
 
   function seccionTareas() {
-    // Numeración consecutiva calculada solo con tareas activas de esta clase.
-    // Las tareas eliminadas/en papelera no consumen números ni dejan huecos.
+    // Numeración fija por orden de creación dentro de la clase (las de la papelera conservan su número).
     var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
-      var a = x.creado_en || '', b = y.creado_en || '';
-      if (a !== b) { return a < b ? -1 : 1; }
-      var ix = String(x.id || ''), iy = String(y.id || '');
-      return ix < iy ? -1 : (ix > iy ? 1 : 0);
+      return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
     });
-    var activas = todas.filter(function (t) { return !t.eliminada_en; });
-    var numeros = Object.create(null);
-    activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
-    var lista = S.verPapelera ? activas.concat(todas.filter(function (t) { return !!t.eliminada_en; })) : activas;
+    var numeros = {};
+    todas.forEach(function (t, i) { numeros[t.id] = i + 1; });
+    var lista = todas.filter(function (t) { return S.verPapelera || !t.eliminada_en; });
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
@@ -818,10 +813,14 @@
 
   function formRevision(t, m, en) {
     var notaActual = t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null;
-    var valorActual = notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? String(Number(notaActual.valor)) : '';
+    // Las tareas vinculadas usan la nota oficial de la libreta; las demás guardan su nota en la entrega.
+    var valorGuardado = t.evaluacion_id
+      ? (notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? notaActual.valor : null)
+      : en.nota_profesor;
+    var valorActual = valorGuardado !== null && valorGuardado !== undefined ? String(Number(valorGuardado)) : '';
     var coment = el('textarea', { rows: '3', maxlength: '2000', value: en.comentario_profesor || '' });
-    var nota = t.evaluacion_id ? el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' }) : null;
-    var motivo = t.evaluacion_id ? el('input', { type: 'text', maxlength: '200' }) : null;
+    var nota = el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' });
+    var motivo = el('input', { type: 'text', maxlength: '200', placeholder: 'Motivo si cambia una nota ya guardada' });
     var guardar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Guardar revisión' });
 
     var hijos = [
@@ -837,11 +836,10 @@
       })),
       campo('Comentario para el estudiante', coment)
     ];
-    if (nota) {
-      hijos.push(campo('Nota de 0 a 5 (vacía = no guardar nota)', nota));
-      hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
-    } else {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta tarea no está vinculada a la libreta; solo se guarda el comentario.' }));
+    hijos.push(campo(t.evaluacion_id ? 'Nota de 0 a 5 (se guarda en la libreta)' : 'Nota de 0 a 5 para esta tarea', nota));
+    hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
+    if (!t.evaluacion_id) {
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta nota queda guardada en la tarea y no modifica la libreta de calificaciones.' }));
     }
     var acciones = [guardar];
     if (en.estado === 'revisada') {

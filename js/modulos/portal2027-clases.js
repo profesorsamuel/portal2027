@@ -71,12 +71,6 @@
   /* ---------- carga ---------- */
   async function cargar() {
     var a = S.asig.id, t = S.trimestreId;
-    // Antes de leer las columnas, asegura que exista la apreciación de cada clase planificada.
-    // Esto restaura una semana enviada a la papelera o crea la que falte (por ejemplo, Semana 1).
-    try {
-      var asegurar = await db.rpc('portal2027_asegurar_semanas_plan', { p_asignacion: a, p_trimestre: t });
-      if (asegurar.error) { console.warn('No se pudieron asegurar las apreciaciones de la planificación:', asegurar.error); }
-    } catch (e) { console.warn('No se pudieron asegurar las apreciaciones de la planificación:', e); }
     var r = await Promise.all([
       consultar(db.from('portal2027_materiales').select('*').eq('asignacion_id', a).eq('trimestre_id', t).order('creado_en', { ascending: false })),
       consultar(db.from('portal2027_tareas').select('*').eq('asignacion_id', a).eq('trimestre_id', t).order('creado_en')),
@@ -674,10 +668,10 @@
     var titulo = el('input', { type: 'text', maxlength: '120', required: true, value: t ? t.titulo : '' });
     var instr = el('textarea', { rows: '3', maxlength: '4000', value: t ? t.instrucciones : '' });
     var plazo = el('input', { type: 'datetime-local', value: t ? C.aInputFecha(t.fecha_limite) : '' });
-    // Una misma apreciación puede recibir varias tareas. No ocultar una columna
-    // solo porque ya esté vinculada a otra tarea.
+    var usados = {};
+    S.tareas.forEach(function (x) { if (x.evaluacion_id && (!t || x.id !== t.id)) { usados[x.evaluacion_id] = true; } });
     var opciones = [el('option', { value: '', texto: 'Sin nota (solo se revisa y se comenta)' })];
-    S.evals.forEach(function (e) {
+    S.evals.filter(function (e) { return !usados[e.id]; }).forEach(function (e) {
       opciones.push(el('option', { value: e.id, texto: etiquetaEval(e), selected: !!(t && t.evaluacion_id === e.id) }));
     });
     if (t && t.evaluacion_id && !evalPorId(t.evaluacion_id)) {
@@ -805,20 +799,15 @@
   }
 
   function seccionTareas() {
-    // La numeración es consecutiva y se calcula desde las tareas activas
-    // de esta clase cada vez que se dibuja la lista. Borrar una tarea (también
-    // enviarla a papelera) no deja huecos: las restantes pasan a ser 1, 2, 3…
-    // Las tareas de papelera se muestran aparte y no consumen números.
+    // Numerar solo las tareas activas de la clase. Las tareas en papelera
+    // no consumen números; al restaurarlas se recalcula el orden visible.
     var todas = S.tareas.filter(function (t) { return (t.clase_id || null) === S.claseId; }).slice().sort(function (x, y) {
-      var a = x.creado_en || '', b = y.creado_en || '';
-      if (a !== b) { return a < b ? -1 : 1; }
-      var ix = String(x.id || ''), iy = String(y.id || '');
-      return ix < iy ? -1 : (ix > iy ? 1 : 0);
+      return x.creado_en < y.creado_en ? -1 : (x.creado_en > y.creado_en ? 1 : (x.id < y.id ? -1 : 1));
     });
     var activas = todas.filter(function (t) { return !t.eliminada_en; });
-    var numeros = Object.create(null);
+    var numeros = {};
     activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
-    var lista = S.verPapelera ? activas.concat(todas.filter(function (t) { return !!t.eliminada_en; })) : activas;
+    var lista = S.verPapelera ? todas : activas;
     var sec = el('section', { clase: 'bloque' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
@@ -873,10 +862,14 @@
 
   function formRevision(t, m, en) {
     var notaActual = t.evaluacion_id ? S.notas[t.evaluacion_id + '|' + m.id] : null;
-    var valorActual = notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? String(Number(notaActual.valor)) : '';
+    // Las tareas vinculadas usan la nota oficial de la libreta; las demás guardan su nota en la entrega.
+    var valorGuardado = t.evaluacion_id
+      ? (notaActual && notaActual.valor !== null && notaActual.valor !== undefined ? notaActual.valor : null)
+      : en.nota_profesor;
+    var valorActual = valorGuardado !== null && valorGuardado !== undefined ? String(Number(valorGuardado)) : '';
     var coment = el('textarea', { rows: '3', maxlength: '2000', value: en.comentario_profesor || '' });
-    var nota = t.evaluacion_id ? el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' }) : null;
-    var motivo = t.evaluacion_id ? el('input', { type: 'text', maxlength: '200' }) : null;
+    var nota = el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' });
+    var motivo = el('input', { type: 'text', maxlength: '200', placeholder: 'Motivo si cambia una nota ya guardada' });
     var guardar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Guardar revisión' });
 
     var hijos = [
@@ -892,11 +885,10 @@
       })),
       campo('Comentario para el estudiante', coment)
     ];
-    if (nota) {
-      hijos.push(campo('Nota de 0 a 5 (vacía = no guardar nota)', nota));
-      hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
-    } else {
-      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta tarea no está vinculada a la libreta; solo se guarda el comentario.' }));
+    hijos.push(campo(t.evaluacion_id ? 'Nota de 0 a 5 (se guarda en la libreta)' : 'Nota de 0 a 5 para esta tarea', nota));
+    hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
+    if (!t.evaluacion_id) {
+      hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'Esta nota queda guardada en la tarea y no modifica la libreta de calificaciones.' }));
     }
     var acciones = [guardar];
     if (en.estado === 'revisada') {
