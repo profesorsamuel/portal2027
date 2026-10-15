@@ -50,16 +50,21 @@
   function campo(texto, control) { return el('label', null, [texto, control]); }
 
   // Ejecuta una acción de escritura y muestra el resultado real (nunca «guardado» si falló).
+  // Separa «no se guardó» de «se guardó pero no se pudo recargar»: si la escritura ya ocurrió,
+  // no se debe decir que falló, porque el usuario volvería a crear el mismo registro.
   async function accion(textoOcupado, textoOk, fn) {
     aviso(textoOcupado, 'info');
+    try { await fn(); }
+    catch (e) { aviso('No se guardó. ' + C.textoError(e), 'error'); return false; }
     try {
-      await fn();
       await cargar();
       dibujar();
       aviso(textoOk, 'ok');
     } catch (e) {
-      aviso('No se guardó. ' + C.textoError(e), 'error');
+      console.error('Recargar clases después de guardar', e);
+      aviso('Se guardó, pero no se pudo actualizar la pantalla. Pulse «Recargar» antes de seguir.', 'info');
     }
+    return true;
   }
 
   /* ---------- carga ---------- */
