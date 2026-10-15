@@ -636,7 +636,7 @@
     var acciones = [enviar];
     if (t) { acciones.push(boton('Cancelar', function () { S.editando = null; dibujar(); })); }
     hijos.push(el('div', { clase: 'cabecera-acciones' }, acciones));
-    var f = el('form', { clase: 'formulario-clases' }, hijos);
+    var f = el('form', { clase: 'formulario-clases formulario-revision' }, hijos);
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       if (!titulo.value.trim()) { aviso('Escriba el título de la tarea.', 'error'); return; }
@@ -779,7 +779,12 @@
     if (S.revisando) {
       var m = S.mats.filter(function (x) { return x.id === S.revisando; })[0];
       var en = m ? entregaDe(t.id, m.id) : null;
-      if (m && en) { cont.appendChild(formRevision(t, m, en)); }
+      // El panel va ARRIBA de la lista para verlo sin bajar hasta el final de los 25 estudiantes.
+      if (m && en) {
+        var panel = formRevision(t, m, en);
+        cont.insertBefore(panel, cont.firstChild);
+        setTimeout(function () { if (panel.scrollIntoView) { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, 0);
+      }
     }
     return cont;
   }
@@ -796,7 +801,8 @@
       el('h3', { texto: 'Entrega de ' + nombreEst(m) }),
       el('p', { clase: 'bloque-ayuda', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + (Array.isArray(en.archivos) ? en.archivos.length + ' archivo(s)' : en.archivo_nombre) }),
       en.comentario ? el('p', { clase: 'bloque-ayuda', texto: 'Comentario del estudiante: ' + en.comentario }) : null,
-      el('div', { clase: 'cabecera-acciones' }, (Array.isArray(en.archivos) && en.archivos.length ? en.archivos : [{ ruta: en.archivo_ruta, nombre: en.archivo_nombre }]).map(function (a) {
+      vistaEntrega(archivosEntrega(en)),
+      el('div', { clase: 'cabecera-acciones' }, archivosEntrega(en).map(function (a) {
         return boton('Abrir ' + a.nombre, async function () {
           try { await C.abrir(C.BUCKET_ENTREGAS, a.ruta); }
           catch (e) { console.error('Abrir adjunto del estudiante', e); aviso('No se pudo abrir el archivo. Inténtelo de nuevo.', 'error'); }
@@ -820,7 +826,7 @@
       }));
     }
     hijos.push(el('div', { clase: 'cabecera-acciones' }, acciones));
-    var f = el('form', { clase: 'formulario-clases' }, hijos);
+    var f = el('form', { clase: 'formulario-clases formulario-revision' }, hijos);
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       var valor = null;
@@ -838,6 +844,29 @@
       guardar.disabled = false;
     });
     return f;
+  }
+
+  function archivosEntrega(en) {
+    return Array.isArray(en.archivos) && en.archivos.length ? en.archivos : [{ ruta: en.archivo_ruta, nombre: en.archivo_nombre }];
+  }
+
+  // Muestra las fotos entregadas directamente en la pantalla (clic = abrir en tamaño completo).
+  function vistaEntrega(archivos) {
+    var imagenes = archivos.filter(function (a) { return /\.(jpe?g|png|gif|webp)$/i.test(a.nombre || ''); });
+    if (!imagenes.length) { return null; }
+    return el('div', { clase: 'entrega-vista' }, imagenes.map(function (a) {
+      var img = el('img', { alt: 'Entrega: ' + a.nombre, loading: 'lazy', clase: 'entrega-imagen', hidden: true });
+      var marco = el('button', { type: 'button', clase: 'entrega-marco', title: 'Abrir ' + a.nombre, onclick: async function () {
+        try { await C.abrir(C.BUCKET_ENTREGAS, a.ruta); }
+        catch (e) { console.error('Abrir imagen de la entrega', e); aviso('No se pudo abrir el archivo. Inténtelo de nuevo.', 'error'); }
+      } }, [img, el('small', { texto: a.nombre })]);
+      try {
+        Promise.resolve(db.storage.from(C.BUCKET_ENTREGAS).createSignedUrl(a.ruta, 600)).then(function (r) {
+          if (!r.error && r.data) { img.src = r.data.signedUrl; img.hidden = false; }
+        }).catch(function () {});
+      } catch (e) { console.error('Vista previa de la entrega', e); }
+      return marco;
+    }));
   }
 
   /* ---------- pantalla ---------- */
