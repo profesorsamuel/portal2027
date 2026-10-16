@@ -139,7 +139,7 @@
     // Etapa 7B: «Ver mis notas» como reporte imprimible (PDF desde el navegador). Es informativo: sin promedio anual ni honor.
     var btnImp = el('button', { clase: 'boton boton-secundario boton-chico no-imprimir', type: 'button', texto: 'Imprimir o guardar mi reporte (PDF)', onclick: function () {
       var nombre = P.nombreCompleto(info && info.perfil) || 'Estudiante';
-      var archivo = 'Notas_' + nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + sel.options[sel.selectedIndex].text.replace(/\s+/g, '_');
+      var archivo = 'Notas_' + nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + sel.options[sel.selectedIndex].text.replace(/\s+/g, '_') + '_' + new Date().toLocaleDateString('en-CA').replace(/\//g, '-');
       document.title = archivo;
       document.body.classList.add('solo-reporte');
       window.print();

@@ -88,3 +88,16 @@ body[data-rol="estudiante"] .foto-marco { border-radius: 14px; }
 @media print {
   .menu-estudiante, .volver-menu { display: none !important; }
 }
+
+/* Boletín compacto para PDF: reduce espacio y evita tarjetas enormes. */
+@media print {
+ @page { size: A4 portrait; margin: 10mm 11mm; }
+ body.solo-reporte .reporte-imprimible { padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; }
+ body.solo-reporte .materia-notas, body.solo-reporte .grupo-notas { padding: 5px 7px !important; margin: 4px 0 !important; border-radius: 0 !important; break-inside: auto !important; }
+ body.solo-reporte h2, body.solo-reporte h3, body.solo-reporte h4 { margin: 5px 0 !important; line-height: 1.2 !important; }
+ body.solo-reporte table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt !important; }
+ body.solo-reporte th, body.solo-reporte td { padding: 3px 5px !important; height: auto !important; line-height: 1.25 !important; }
+ body.solo-reporte .tabla-contenedor { overflow: visible !important; margin: 3px 0 !important; }
+ body.solo-reporte p { margin: 4px 0 !important; }
+ body.solo-reporte .promedio-final { padding: 5px 8px !important; margin: 5px 0 !important; }
+}
