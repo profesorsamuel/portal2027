@@ -158,12 +158,54 @@
       var copiar = el('button', { type: 'button', clase: 'boton boton-secundario', texto: 'Copiar mensaje para todo el grupo' });
       copiar.addEventListener('click', async function () { try { await navigator.clipboard.writeText(mensaje.value); copiar.textContent = 'Mensaje copiado ✓'; } catch (_) { copiar.textContent = 'Seleccione y copie el mensaje'; mensaje.focus(); mensaje.select(); } });
       zonaContactos.appendChild(copiar);
+      // Archivos locales: WhatsApp Web exige que el usuario confirme el adjunto.
+      var adjuntos = el('div', { clase: 'consejeria-adjuntos' });
+      var tituloAdj = el('strong', { texto: '📎 Adjuntar PDF o imágenes para WhatsApp' });
+      var selector = el('input', { type: 'file', accept: '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png', multiple: true });
+      selector.setAttribute('aria-label', 'Seleccionar archivos PDF, JPG o PNG');
+      var detalle = el('p', { clase: 'bloque-ayuda', texto: 'Seleccione PDF o fotos JPG/PNG (máximo 10 archivos, 15 MB cada uno). No se envían automáticamente.' });
+      var compartir = el('button', { type: 'button', clase: 'boton boton-secundario', texto: '📤 Compartir archivos', disabled: true });
+      var ayuda = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite', texto: 'En computadora: abra WhatsApp del acudiente y use el clip 📎 para adjuntar estos archivos desde su equipo.' });
+      function archivosValidos() {
+        var lista = Array.from(selector.files || []);
+        var tipos = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (lista.length > 10 || lista.some(function (f) { return f.size > 15 * 1024 * 1024 || !(tipos.includes(f.type) || /\.(pdf|jpe?g|png)$/i.test(f.name)); })) {
+          ayuda.textContent = 'Seleccione hasta 10 archivos PDF/JPG/PNG de 15 MB como máximo cada uno.';
+          compartir.disabled = true;
+          return [];
+        }
+        compartir.disabled = lista.length === 0;
+        detalle.textContent = lista.length ? lista.map(function (f) { return f.name; }).join(' · ') : 'Seleccione PDF o fotos JPG/PNG (máximo 10 archivos, 15 MB cada uno).';
+        return lista;
+      }
+      selector.addEventListener('change', archivosValidos);
+      compartir.addEventListener('click', async function () {
+        var lista = archivosValidos();
+        if (!lista.length) { return; }
+        try {
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: lista })) {
+            await navigator.share({ files: lista, text: mensaje.value });
+            ayuda.textContent = 'Seleccione WhatsApp y confirme el destinatario y los archivos antes de enviar.';
+          } else {
+            ayuda.textContent = 'Este navegador no permite compartir archivos directamente. Abra el WhatsApp individual y use el clip 📎 para elegir los archivos seleccionados.';
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') { ayuda.textContent = 'No se pudo compartir. Adjunte los archivos manualmente con el clip 📎 de WhatsApp.'; }
+        }
+      });
+      adjuntos.appendChild(tituloAdj);
+      adjuntos.appendChild(selector);
+      adjuntos.appendChild(detalle);
+      adjuntos.appendChild(compartir);
+      adjuntos.appendChild(ayuda);
+      zonaContactos.appendChild(adjuntos);
       var filas = mats.map(function (m) {
         var tel = m.estudiante.telefono_acudiente || ''; var valido = telefonoWhatsApp(tel);
         var boton = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'WhatsApp', disabled: !valido });
         boton.addEventListener('click', function () {
           var url = 'https://wa.me/' + valido + '?text=' + encodeURIComponent('Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value);
           window.open(url, '_blank', 'noopener,noreferrer');
+          if (selector.files && selector.files.length) { ayuda.textContent = 'WhatsApp abierto para ' + nombreEst(m.estudiante) + '. En WhatsApp Web use el clip 📎 para adjuntar sus PDF o fotos; los archivos no se envían automáticamente.'; }
         });
         return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, [boton])]);
       });
