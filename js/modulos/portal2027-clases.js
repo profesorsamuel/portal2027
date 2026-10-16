@@ -293,11 +293,14 @@
     var f = el('form', { clase: 'formulario-clases' }, [
       campo('Título', titulo), campo('Descripción (opcional)', desc), S.tipoMaterial === 'enlace' ? campo('Enlace de tarea o recurso', enlace) : campo('Archivo (hasta ' + F.maxMB('materiales') + ' MB)', archivo),
       S.tipoMaterial === 'enlace' ? null : F.vincularPeso(archivo, 'materiales'),
-      el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']), enviar
+      el('p', { clase: 'material-auto-ayuda', texto: 'Al elegir o arrastrar un archivo se guarda y publica automáticamente.' })
     ]);
+    var guardando = false;
     if (S.tipoMaterial === 'pdf') habilitarArrastre(f, archivo, function(files) { if (files.length) { archivo.files = files; archivo.dispatchEvent(new Event('change')); } });
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
+      if (guardando) return;
+      if (!titulo.value.trim() && archivo.files[0]) { titulo.value = archivo.files[0].name.replace(/\.[^.]+$/, '').slice(0, 120); }
       if (!titulo.value.trim()) { aviso('Escriba el título del material.', 'error'); return; }
       var arch = S.tipoMaterial === 'enlace' ? null : archivo.files[0] || null, ruta = null, nombre = null;
       if (enlace.value && !C.urlSegura(enlace.value)) { aviso('Use un enlace que empiece con https:// o http://.', 'error'); return; }
@@ -308,7 +311,7 @@
         ruta = S.asig.id + '/' + Date.now() + '-' + C.nombreSeguro(arch.name);
         nombre = arch.name;
       }
-      enviar.disabled = true;
+      guardando = true; archivo.disabled = true;
       var subido = false;
       await accion('Guardando material…', 'Material guardado.', async function () {
         if (arch) {
@@ -318,14 +321,19 @@
         }
         var g = await db.rpc('portal2027_crear_material_clase', {
           p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_titulo: titulo.value, p_descripcion: desc.value,
-          p_ruta: ruta, p_nombre: nombre, p_publicado: pub.checked, p_clase: S.claseId, p_enlace: enlace.value || null
+          p_ruta: ruta, p_nombre: nombre, p_publicado: true, p_clase: S.claseId, p_enlace: enlace.value || null
         });
         if (g.error) {
           if (subido) { await db.storage.from(C.BUCKET_MATERIALES).remove([ruta]); }   // no deja archivos sueltos
           throw g.error;
         }
       });
-      enviar.disabled = false;
+      guardando = false; archivo.disabled = false;
+    });
+    archivo.addEventListener('change', function () {
+      if (archivo.files && archivo.files.length && !guardando) {
+        f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
     });
     return f;
   }
