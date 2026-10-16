@@ -235,8 +235,10 @@
       adjuntos.appendChild(ayuda);
       zonaContactos.appendChild(adjuntos);
       var filas = mats.map(function (m) {
-        var tel = m.estudiante.telefono_acudiente || ''; var valido = telefonoWhatsApp(tel);
-        var boton = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'WhatsApp', disabled: !valido });
+        var tel = m.estudiante.telefono_acudiente || '';
+        var numeros = Array.from(new Set((String(tel).match(/(?:\+?507[\s-]*)?[0-9]{4}[\s-]*[0-9]{4}/g) || []).map(telefonoWhatsApp).filter(Boolean)));
+        var botones = numeros.map(function (valido, indice) {
+        var boton = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: numeros.length > 1 ? 'WhatsApp ' + (indice + 1) : 'WhatsApp' });
         boton.addEventListener('click', async function () {
           var texto = 'Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value;
           var lista = archivosValidos();
@@ -256,7 +258,10 @@
             ayuda.textContent = 'WhatsApp abierto para ' + nombreEst(m.estudiante) + '. En Windows, WhatsApp no permite adjuntar automáticamente el archivo desde esta página. Use el clip 📎 del chat para seleccionar el PDF o JPG y confirme el envío. Para fotos también puede usar Copiar imagen y Ctrl+V.';
           }
         });
-        return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, [boton])]);
+        return boton;
+        });
+        if (!botones.length) { botones.push(el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'WhatsApp', disabled: true })); }
+        return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, botones)]);
       });
       zonaContactos.appendChild(tabla(['Estudiante', 'Acudiente', 'Teléfono', 'Mensaje'], filas, 'Sin estudiantes matriculados.'));
     }
