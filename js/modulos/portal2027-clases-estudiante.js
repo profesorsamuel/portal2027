@@ -145,7 +145,7 @@
       var en = t.entrega, items = [], preparando = false, bloqueada = false, comentarioEnviado = null;
       var archivo = el('input', { type: 'file', accept: C.ACEPTAR, multiple: true, clase: 'archivo-oculto' });
       var coment = el('input', { type: 'text', maxlength: '1000', placeholder: 'Ej.: me costó el ejercicio 3' });
-      var enviar = el('button', { clase: 'boton-entregar', type: 'submit', texto: en ? 'Reemplazar mi entrega' : 'Entregar tarea' });
+      var enviar = el('button', { clase: 'boton-entregar', type: 'submit', texto: en ? 'Guardar nueva entrega' : 'Guardar entrega' });
       var lista = el('ul', { clase: 'fotos-previas', hidden: true });
       var progreso = el('progress', { max: '1', value: '0', hidden: true, 'aria-label': 'Archivos preparados para entregar' });
       var estadoEntrega = el('p', { role: 'status', 'aria-live': 'polite' });
@@ -208,9 +208,10 @@
             }
             dibujarFotos();
           }
-          estadoEntrega.textContent = 'Revisa tus archivos antes de entregar.';
+          estadoEntrega.textContent = items.some(function (it) { return it.error; }) ? 'Quita los archivos con errores para continuar.' : 'Archivos preparados. Guardando la entrega automáticamente…';
         } finally {
           preparando = false; entregaOcupada = false; archivo.disabled = false; sel.disabled = false; enviar.disabled = false; dibujarFotos();
+          if (items.length && items.every(function (it) { return !!it.final && !it.error; })) { f.requestSubmit(); }
         }
       });
       f.addEventListener('submit', async function (ev) {
@@ -279,7 +280,7 @@
         } finally {
           entregaOcupada = false;
           controles.forEach(function (c, i) { c.disabled = previos[i]; });
-          archivo.disabled = true; coment.disabled = true; enviar.disabled = recibida;
+          archivo.disabled = recibida; coment.disabled = recibida; enviar.disabled = recibida;
           if (bloqueada === 'conflicto') { enviar.type = 'button'; }
           dibujarFotos();
         }
