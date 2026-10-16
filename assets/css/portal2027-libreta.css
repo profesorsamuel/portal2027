@@ -216,3 +216,19 @@
   .mini { min-height: 44px; min-width: 44px; }
   .tabla-desglose .col-prom-sem { position: static; }
 }
+
+/* Desglose adaptable: evita que un título largo ensanche toda la columna. */
+.portal2027-desglose .desglose-cuerpo{min-width:0;width:100%;box-sizing:border-box;overflow-x:auto}
+.portal2027-desglose .tabla-desglose{table-layout:fixed;width:100%;min-width:0}
+.portal2027-desglose .tabla-desglose .col-est{width:clamp(108px,16vw,170px);min-width:0;max-width:170px;white-space:normal;overflow-wrap:anywhere}
+.portal2027-desglose .tabla-desglose .col-prom-sem{width:clamp(78px,10vw,112px);min-width:0}
+.portal2027-desglose .tabla-desglose th.col-registro{min-width:0;width:auto;max-width:none;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.3}
+.portal2027-desglose .tabla-desglose th,.portal2027-desglose .tabla-desglose td{box-sizing:border-box;padding:.4rem .3rem}
+.portal2027-desglose .desglose-celda{display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;min-width:0}
+.portal2027-desglose .nota-input{box-sizing:border-box;width:clamp(44px,5vw,58px);max-width:100%;min-width:44px;padding:.3rem .15rem;text-align:center}
+.portal2027-desglose .desglose-col-borrar{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:700px){
+ .portal2027-desglose .tabla-desglose{min-width:560px}
+ .portal2027-desglose .tabla-desglose .col-est{width:110px}
+ .portal2027-desglose .tabla-desglose .col-prom-sem{width:78px}
+}
