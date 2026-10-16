@@ -63,3 +63,13 @@ tr.fila-activa td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
 .plan-cuerpo .tabla-datos .cabecera-acciones .boton:nth-child(4) {background:#fff1f2;color:#be123c;border-color:#fda4af}
 .plan-cuerpo .plan-resumen-sesiones {padding:9px 12px;margin:8px 0 12px;background:#e9f4ff;border-left:4px solid #0284c7}
 @media(max-width:720px){.plan-cuerpo .tabla-datos{min-width:680px}.plan-cuerpo .tabla-datos td{padding:8px 5px}.plan-cuerpo .tabla-datos .cabecera-acciones{min-width:136px}}
+
+/* Navegación compacta de planificación: una sección visible por vez */
+.plan-cuerpo.secciones { gap: 12px; }
+.plan-navegacion { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding:10px; border:1px solid #b9d9e5; background:#f1f8fc; border-radius:12px; }
+.plan-pestana { cursor:pointer; min-height:42px; padding:9px 7px; border:1px solid #b7cfda; border-radius:9px; background:white; color:#173b4c; font-weight:700; font-size:13px; }
+.plan-pestana:hover { background:#e5f3fc; }
+.plan-pestana.activa { background:#156b91; border-color:#156b91; color:white; box-shadow:0 2px 6px #0c5b8033; }
+.plan-cuerpo > .bloque { margin-block:0; padding:14px; }
+.plan-cuerpo > .bloque h2 { margin-top:0; margin-bottom:9px; }
+@media(max-width:650px) { .plan-navegacion { grid-template-columns:repeat(2,minmax(0,1fr)); } .plan-pestana { font-size:12px; } }

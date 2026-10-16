@@ -452,7 +452,7 @@
         el('td', null, [el('div', { clase: 'cabecera-acciones' }, [
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlAsistencia(c), texto: 'Asistencia' }),
           el('a', { clase: 'boton boton-secundario boton-chico', href: urlApreciacion(c), texto: 'Apreciación' }),
-          el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Editar', disabled: S.cerrado, onclick: function () { S.editando = c; dibujar(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }),
+          el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Editar', disabled: S.cerrado, onclick: function () { S.editando = c; pestañaPlan = 'agregar'; dibujar(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }),
           el('button', { clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar', disabled: S.cerrado, onclick: function () { return quitar(c); } })
         ])])
       ]);
@@ -465,6 +465,17 @@
     return sec;
   }
 
+  var pestañaPlan = 'clases';
+  function cambiarPestañaPlan(nombre) {
+    pestañaPlan = nombre;
+    dibujar();
+  }
+  function navegacionPlan() {
+    var opciones = [['clases', '📚 Ver clases'], ['agregar', '➕ Agregar clase'], ['pegar', '📋 Pegar varias'], ['grupos', '👥 Sincronizar grupos']];
+    return el('nav', { clase: 'plan-navegacion', 'aria-label': 'Secciones de planificación' }, opciones.map(function (op) {
+      return el('button', { type: 'button', clase: 'plan-pestana' + (pestañaPlan === op[0] ? ' activa' : ''), 'aria-pressed': pestañaPlan === op[0] ? 'true' : 'false', texto: op[1], onclick: function () { cambiarPestañaPlan(op[0]); } });
+    }));
+  }
   function dibujar() {
     var previo = contenido.querySelector('.plan-cuerpo');
     if (previo) { previo.remove(); }
@@ -477,7 +488,13 @@
         el('label', null, ['Trimestre', selTrim]),
         el('button', { clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Recargar', onclick: function () { recargar('Planificación recargada.'); } })
       ]), S.cerrado ? el('p', { clase: 'mensaje info', texto: 'Este trimestre está cerrado: la planificación no se puede cambiar.' }) : null]),
-      calendarioSeguro(), dibujarActiva(), dibujarGrupos(), dibujarFormulario(), dibujarLote(), dibujarTabla()
+      navegacionPlan(),
+      pestañaPlan === 'clases' ? calendarioSeguro() : null,
+      pestañaPlan === 'clases' ? dibujarActiva() : null,
+      pestañaPlan === 'clases' ? dibujarTabla() : null,
+      pestañaPlan === 'agregar' ? dibujarFormulario() : null,
+      pestañaPlan === 'pegar' ? dibujarLote() : null,
+      pestañaPlan === 'grupos' ? (dibujarGrupos() || el('section', { clase: 'bloque' }, [el('h2', { texto: 'Grupos del mismo nivel' }), el('p', { texto: 'No hay otros grupos de este nivel para sincronizar.' })])) : null
     ]);
     contenido.appendChild(cuerpo);
   }
