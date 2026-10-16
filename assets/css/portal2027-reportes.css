@@ -48,3 +48,23 @@
   body.solo-reporte .tabla-contenedor { overflow: visible !important; }
   body.solo-reporte .reporte-imprimible .vacio-texto { margin: 1mm 0 !important; font-size: 8pt !important; }
 }
+
+/* PDF del estudiante: tablas densas, sin tarjetas gigantes ni cortes innecesarios. */
+@media print {
+  @page { size: A4 portrait; margin: 9mm 11mm; }
+  body.solo-reporte, body.solo-reporte * { box-shadow: none !important; text-shadow: none !important; }
+  body.solo-reporte .reporte-imprimible > .solo-impresion { font-size: 10pt !important; padding: 0 0 2mm !important; margin: 0 0 2mm !important; border-bottom: 1px solid #999 !important; }
+  body.solo-reporte .reporte-imprimible > .bloque-ayuda { display: none !important; }
+  body.solo-reporte .reporte-imprimible > h3 { margin: 2mm 0 1mm !important; }
+  body.solo-reporte .materia-notas { padding: 1mm 0 !important; border: 0 !important; margin: 0 0 2mm !important; }
+  body.solo-reporte .grupo-notas { margin: 1mm 0 !important; }
+  body.solo-reporte .grupo-notas .tabla-contenedor, body.solo-reporte .tabla-contenedor { border: 0 !important; border-radius: 0 !important; }
+  body.solo-reporte .tabla-notas, body.solo-reporte .tabla-datos { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; }
+  body.solo-reporte .tabla-notas tr, body.solo-reporte .tabla-datos tr { display: table-row !important; }
+  body.solo-reporte .tabla-notas td, body.solo-reporte .tabla-notas th, body.solo-reporte .tabla-datos td, body.solo-reporte .tabla-datos th { display: table-cell !important; padding: 1mm 1.5mm !important; line-height: 1.15 !important; height: auto !important; min-height: 0 !important; border: 0 !important; border-bottom: 1px solid #ddd !important; background: #fff !important; text-align: left !important; }
+  body.solo-reporte .tabla-notas .col-nota { text-align: right !important; width: 16mm !important; }
+  body.solo-reporte .tabla-notas thead, body.solo-reporte .tabla-datos thead { display: table-header-group !important; }
+  body.solo-reporte .promedio-final { padding: 1mm 2mm !important; margin: 1mm 0 !important; }
+  body.solo-reporte .pf-ayuda { display: none !important; }
+  body.solo-reporte .reporte-imprimible { min-height: 0 !important; }
+}
