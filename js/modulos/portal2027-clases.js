@@ -710,13 +710,11 @@
     var vinculo = el('select', null, opciones);
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
     if (bloqueaVinculo) { vinculo.disabled = true; }
-    var pub = el('input', { type: 'checkbox', checked: t ? t.publicada : false });
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: t ? 'Guardar cambios' : 'Crear tarea' });
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
       campo('Nota de esta tarea en la libreta', vinculo)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
     hijos.push(bloqueAdjuntos(t, pendientes));
-    hijos.push(el('label', { clase: 'etiqueta-check' }, [pub, 'Visible para los estudiantes']));
     var acciones = [enviar];
     if (t) { acciones.push(boton('Cancelar', function () { S.editando = null; dibujar(); })); }
     hijos.push(el('div', { clase: 'cabecera-acciones' }, acciones));
@@ -749,12 +747,12 @@
             p_id: t.id, p_version: t.version, p_titulo: titulo.value, p_instrucciones: instr.value,
             p_fecha_limite: iso, p_limpiar_plazo: !iso,
             p_evaluacion: vinculo.value || null, p_limpiar_evaluacion: !vinculo.value && !bloqueaVinculo,
-            p_publicada: pub.checked, p_a_papelera: null
+            p_publicada: true, p_a_papelera: null
           });
         } else {
           g = await db.rpc('portal2027_crear_tarea_clase', {
             p_asignacion: S.asig.id, p_trimestre: S.trimestreId, p_titulo: titulo.value, p_instrucciones: instr.value,
-            p_fecha_limite: iso, p_evaluacion: vinculo.value || null, p_publicada: pub.checked, p_clase: S.claseId
+            p_fecha_limite: iso, p_evaluacion: vinculo.value || null, p_publicada: true, p_clase: S.claseId
           });
           if (!g.error) { nuevaId = g.data; }
         }
