@@ -164,8 +164,8 @@
       var selector = el('input', { type: 'file', accept: '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png', multiple: true });
       selector.setAttribute('aria-label', 'Seleccionar archivos PDF, JPG o PNG');
       var detalle = el('p', { clase: 'bloque-ayuda', texto: 'Seleccione PDF o fotos JPG/PNG (máximo 10 archivos, 15 MB cada uno). No se envían automáticamente.' });
-      var compartir = el('button', { type: 'button', clase: 'boton boton-secundario', texto: '📤 Compartir archivos', disabled: true });
-      var ayuda = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite', texto: 'En PC: para JPG/PNG use Copiar imagen y péguela con Ctrl+V en WhatsApp. Para PDF use el clip 📎 de WhatsApp. Ningún archivo se envía sin confirmación.' });
+      var compartir = el('button', { type: 'button', clase: 'boton boton-secundario', texto: '📤 Compartir archivos desde dispositivo', disabled: true });
+      var ayuda = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite', texto: 'Para enviar archivo y mensaje juntos, use Compartir desde dispositivo si WhatsApp aparece entre las opciones. WhatsApp Web/Windows no admite adjuntar archivos desde enlaces externos: en PC use el clip 📎 o copie y pegue una imagen.' });
       function archivosValidos() {
         var lista = Array.from(selector.files || []);
         var tipos = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -237,10 +237,24 @@
       var filas = mats.map(function (m) {
         var tel = m.estudiante.telefono_acudiente || ''; var valido = telefonoWhatsApp(tel);
         var boton = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'WhatsApp', disabled: !valido });
-        boton.addEventListener('click', function () {
-          var url = 'https://wa.me/' + valido + '?text=' + encodeURIComponent('Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value);
-          window.open(url, '_blank', 'noopener,noreferrer');
-          if (selector.files && selector.files.length) { ayuda.textContent = 'Chat abierto para ' + nombreEst(m.estudiante) + '. Si copió una foto, pulse Ctrl+V en el chat y confirme el envío. Para PDF utilice el clip 📎.'; }
+        boton.addEventListener('click', async function () {
+          var texto = 'Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value;
+          var lista = archivosValidos();
+          // Compartir archivos y texto en una sola acción solo cuando el sistema
+          // operativo ofrece Web Share API con archivos. No puede fijarse el chat.
+          if (lista.length && navigator.share && navigator.canShare && navigator.canShare({ files: lista })) {
+            try {
+              await navigator.share({ files: lista, text: texto });
+              ayuda.textContent = 'Seleccione WhatsApp, el contacto correcto y confirme el envío. Compruebe que el mensaje y los archivos estén incluidos.';
+              return;
+            } catch (e) {
+              if (e.name === 'AbortError') { ayuda.textContent = 'Compartir cancelado; no se envió ningún archivo.'; return; }
+            }
+          }
+          window.open('https://wa.me/' + valido + '?text=' + encodeURIComponent(texto), '_blank', 'noopener,noreferrer');
+          if (lista.length) {
+            ayuda.textContent = 'WhatsApp abierto para ' + nombreEst(m.estudiante) + '. En Windows, WhatsApp no permite adjuntar automáticamente el archivo desde esta página. Use el clip 📎 del chat para seleccionar el PDF o JPG y confirme el envío. Para fotos también puede usar Copiar imagen y Ctrl+V.';
+          }
         });
         return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, [boton])]);
       });
