@@ -1,0 +1,26 @@
+/* Administración: asignaciones docentes compactas. Solo presentación. */
+.admin-asig-tabla {max-width:100%;}
+.admin-asig-tabla .tabla-contenedor {overflow-x:auto; border:1px solid #d5e3e8; border-radius:12px;}
+.admin-asig-tabla .tabla-datos {width:100%; border-collapse:separate; border-spacing:0; font-size:12px; line-height:1.35;}
+.admin-asig-tabla .tabla-datos th {background:#153b49; color:white; font-size:11px; letter-spacing:.03em; padding:10px 9px; position:sticky; top:0; z-index:1;}
+.admin-asig-tabla .tabla-datos td {padding:8px 9px; vertical-align:middle; border-bottom:1px solid #dce8ed;}
+.admin-asig-tabla .tabla-datos tbody tr:nth-child(odd) {background:#f5fafd;}
+.admin-asig-tabla .tabla-datos tbody tr:nth-child(even) {background:#fff;}
+.admin-asig-tabla .tabla-datos tbody tr:hover {background:#e9f5fc;}
+.admin-asig-tabla .tabla-datos tbody tr.admin-asig-es-consejero {background:#e9f8f0;}
+.admin-asig-tabla .tabla-datos td:first-child {font-weight:800; color:#0e627f; white-space:nowrap;}
+.admin-asig-tabla .tabla-datos td:nth-child(2) {font-weight:650; min-width:105px;}
+.admin-asig-tabla .tabla-datos td:nth-child(3) {white-space:nowrap; color:#526676;}
+.admin-asig-tabla .cabecera-acciones {display:flex; flex-wrap:wrap; gap:4px; align-items:center;}
+.admin-asig-tabla .admin-asig-materia {margin-bottom:5px;}
+.admin-asig-tabla .admin-asig-materia strong {width:100%; color:#0f5268; font-size:12px;}
+.admin-asig-tabla .boton {min-height:28px; padding:5px 8px; border-radius:7px; font-size:11px; line-height:1.2; white-space:nowrap;}
+.admin-asig-tabla a.boton[href*="libreta"] {background:#e8f4ff; color:#1358a0; border-color:#b9d9fa;}
+.admin-asig-tabla a.boton[href*="planificacion"] {background:#f1eaff; color:#6436a0; border-color:#d8c5fb;}
+.admin-asig-tabla a.boton[href*="asistencia"] {background:#e8f7ee; color:#176c3b; border-color:#b9e4c9;}
+.admin-asig-tabla a.boton[href*="clases"] {background:#fff2dd; color:#915300; border-color:#f5d6a0;}
+.admin-asig-tabla a.boton[href*="ejercicios"] {background:#e8f7fa; color:#096778; border-color:#b9e3eb;}
+.admin-asig-tabla .admin-cons-si strong {background:#d1f5df; color:#13683a; padding:4px 8px; border-radius:99px;}
+.admin-asig-tabla .admin-cons-no span {color:#687d88;}
+.admin-asig-tabla .boton-peligro {color:#ae2c34; border-color:#e9b4b8;}
+@media(max-width:720px){.admin-asig-tabla .tabla-datos {min-width:660px;} .admin-asig-tabla .tabla-datos td {padding:6px;} }

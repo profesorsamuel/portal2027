@@ -585,7 +585,7 @@
         var enlace = function (pagina, texto) {
           return el('a', { clase: 'boton boton-secundario boton-chico', href: P.raiz + 'pages/' + pagina + '?asignacion=' + encodeURIComponent(a.id), texto: texto });
         };
-        return el('div', { clase: 'cabecera-acciones' }, [
+        return el('div', { clase: 'cabecera-acciones admin-asig-materia' }, [
           el('strong', { texto: a.materia ? a.materia.nombre : '' }),
           enlace('portal2027-libreta.html', 'Libreta'), enlace('portal2027-planificacion.html', 'Planificación'), enlace('portal2027-asistencia.html', 'Asistencia'),
           enlace('portal2027-clases.html', 'Clases y tareas'), enlace('portal2027-ejercicios.html', 'Ejercicios virtuales'), quitar
@@ -594,7 +594,7 @@
       if (materias.length === 0) { materias = [el('span', { clase: 'bloque-ayuda', texto: 'Sin materia (solo consejería)' })]; }
 
       var celdaCons = f.consejero
-        ? el('div', { clase: 'cabecera-acciones' }, [el('strong', { texto: 'Sí' }), el('button', {
+        ? el('div', { clase: 'cabecera-acciones admin-cons-si' }, [el('strong', { texto: 'Sí' }), el('button', {
             clase: 'boton boton-secundario boton-chico boton-peligro', type: 'button', texto: 'Quitar consejería',
             onclick: async function (ev) {
               await confirmarCambio(ev.currentTarget, 'Quitar consejería', '¿Quitar a este profesor como consejero de este grupo?', 'Quitar consejería', async function () {
@@ -603,12 +603,12 @@
               }, 'Consejería quitada.');
             }
           })])
-        : el('div', { clase: 'cabecera-acciones' }, [el('span', { texto: 'No' }), el('button', {
+        : el('div', { clase: 'cabecera-acciones admin-cons-no' }, [el('span', { texto: 'No' }), el('button', {
             clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Hacer consejero',
             onclick: function () { ejecutar(function () { return hacerConsejero(f.salonId, f.profId); }, 'Consejería asignada.'); }
           })]);
 
-      return el('tr', null, [
+      return el('tr', { clase: 'admin-asig-fila' + (f.consejero ? ' admin-asig-es-consejero' : '') }, [
         el('td', { texto: etiquetaSalon(salonDe[f.salonId]) }),
         el('td', { texto: P.nombreCompleto(perfilDe[f.profId]) }),
         el('td', { texto: (perfilDe[f.profId] && perfilDe[f.profId].telefono) || '—' }),
@@ -650,7 +650,7 @@
     var hijos = [
       el('h2', { texto: 'Profesores por grupo' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Elija al profesor, agregue sus materias y marque los salones de cada una. Puede atender varios grupos y dar materias diferentes en cada grupo.' }),
-      tabla(['Grupo', 'Profesor', 'Teléfono', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')
+      el('div', { clase: 'admin-asig-tabla' }, [tabla(['Grupo', 'Profesor', 'Teléfono', 'Materias', 'Consejero'], filas, 'Todavía no hay profesores asignados a grupos.')])
     ];
     if (profesores.length === 0) {
       hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'No hay cuentas para asignar. Cree las cuentas de los profesores en «Profesores y materias que imparten» o importe la lista de profesores desde Excel.' }));
