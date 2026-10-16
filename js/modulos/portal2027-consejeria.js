@@ -119,13 +119,14 @@
     var zonaTabla = el('div');
     var zonaNotas = el('div');
     var zonaContactos = el('div');
+    var zonaExtra = el('div');
     var navegacion = el('nav', { clase: 'con-nav', 'aria-label': 'Secciones de consejería' });
-    var secciones = { estudiantes: zonaContactos, asistencia: zonaTabla, notas: zonaNotas };
+    var secciones = { estudiantes: zonaContactos, asistencia: zonaTabla, notas: zonaNotas, gestion: zonaExtra };
     function activarSeccion(id) {
       Object.keys(secciones).forEach(function (k) { secciones[k].hidden = k !== id; });
       Array.from(navegacion.querySelectorAll('button')).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.seccion === id)); });
     }
-    [['estudiantes','👥 Estudiantes y WhatsApp'],['asistencia','📋 Asistencia'],['notas','📘 Notas y avisos']].forEach(function (par) {
+    [['estudiantes','👥 Estudiantes y WhatsApp'],['asistencia','📋 Asistencia'],['notas','📘 Notas y avisos'],['gestion','🗓️ Horario y pagos']].forEach(function (par) {
       var b = el('button', { type: 'button', clase: 'boton boton-secundario', texto: par[1] });
       b.dataset.seccion = par[0]; b.addEventListener('click', function () { activarSeccion(par[0]); }); navegacion.appendChild(b);
     });
@@ -136,8 +137,11 @@
     sec.appendChild(zonaContactos);
     sec.appendChild(zonaTabla);
     sec.appendChild(zonaNotas);
+    sec.appendChild(zonaExtra);
 
     activarSeccion('estudiantes');
+    function refrescarExtra(){if(P.renderConsejeriaExtra)P.renderConsejeriaExtra(zonaExtra,S.grupo.id);}
+    refrescarExtra();
 
     function telefonoWhatsApp(valor) {
       var t = String(valor || '').replace(/\D/g, '');
@@ -285,7 +289,7 @@
 
     selGrupo.addEventListener('change', async function () {
       S.grupo = grupos.filter(function (g) { return g.id === selGrupo.value; })[0];
-      await cargarTrimestres(); await cargarGrupo();
+      await cargarTrimestres(); await cargarGrupo(); zonaExtra.replaceChildren(); refrescarExtra();
     });
     selTrim.addEventListener('change', function () { S.trimestreId = selTrim.value; cargarGrupo(); });
     await cargarTrimestres();

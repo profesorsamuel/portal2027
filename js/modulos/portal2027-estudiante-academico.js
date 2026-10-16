@@ -132,6 +132,7 @@
     var sec = el('section', { clase: 'bloque reporte-imprimible' }, [el('h2', { texto: 'Mis notas y asistencia' })]);
     var cabImpresion = el('p', { clase: 'solo-impresion' });
     zona.appendChild(sec);
+    if(P.renderConsejeriaEstudianteExtra)P.renderConsejeriaEstudianteExtra(zona);
 
     var mats = await consultar(db.from('portal2027_matriculas').select('anio_id,anio:portal2027_anios(anio)'));
     mats = mats.filter(function (m) { return m.anio; }).sort(function (a, b) { return b.anio.anio - a.anio.anio; });
