@@ -145,7 +145,7 @@
       var en = t.entrega, items = [], preparando = false, bloqueada = false, comentarioEnviado = null;
       var archivo = el('input', { type: 'file', accept: C.ACEPTAR, multiple: true, clase: 'archivo-oculto' });
       var coment = el('input', { type: 'text', maxlength: '1000', placeholder: 'Ej.: me costó el ejercicio 3' });
-      var enviar = el('button', { clase: 'boton-entregar', type: 'submit', texto: en ? 'Guardar nueva entrega' : 'Guardar entrega' });
+      var enviar = el('button', { clase: 'boton-entregar', type: 'submit', texto: 'Reintentar entrega', hidden: true });
       var lista = el('ul', { clase: 'fotos-previas', hidden: true });
       var progreso = el('progress', { max: '1', value: '0', hidden: true, 'aria-label': 'Archivos preparados para entregar' });
       var estadoEntrega = el('p', { role: 'status', 'aria-live': 'polite' });
@@ -250,7 +250,7 @@
           }
           if (items.some(function (it) { return !it.subida; })) {
             estadoEntrega.textContent = 'Tu entrega todavía no se registró. Vuelve a intentarlo: se conservan los archivos ya subidos.';
-            enviar.textContent = 'Reintentar entrega'; return;
+            enviar.textContent = 'Reintentar entrega'; enviar.hidden = false; return;
           }
           estadoEntrega.textContent = 'Confirmando la entrega…';
           var g = await db.rpc('portal2027_entregar_tarea_archivos', {
@@ -268,14 +268,14 @@
           if (recibida) { aviso('Tu entrega se guardó, pero la pantalla no se actualizó. Recarga la página para verla.', 'info'); }
           else if (/CONFLICTO|ya fue revisada/i.test((e && e.message) || '')) {
             estadoEntrega.textContent = 'Tu entrega cambió o el profesor ya la revisó. Recarga para ver su estado antes de volver a enviarla.';
-            enviar.textContent = 'Recargar entrega';
+            enviar.textContent = 'Recargar entrega'; enviar.hidden = false;
             enviar.onclick = function () { if (!entregaOcupada) { cargar(); } };
             // El próximo clic recarga; no vuelve a registrar una versión anterior.
             f.onsubmit = function (evento) { evento.preventDefault(); };
             bloqueada = 'conflicto';
           } else {
             estadoEntrega.textContent = 'No se pudo confirmar tu entrega. Inténtalo otra vez: no hace falta subir los archivos de nuevo.';
-            enviar.textContent = 'Reintentar entrega';
+            enviar.textContent = 'Reintentar entrega'; enviar.hidden = false;
           }
         } finally {
           entregaOcupada = false;
