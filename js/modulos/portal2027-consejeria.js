@@ -118,11 +118,53 @@
     var estado = el('p', { clase: 'mensaje', hidden: true });
     var zonaTabla = el('div');
     var zonaNotas = el('div');
+    var zonaContactos = el('div');
+    var navegacion = el('nav', { clase: 'con-nav', 'aria-label': 'Secciones de consejería' });
+    var secciones = { estudiantes: zonaContactos, asistencia: zonaTabla, notas: zonaNotas };
+    function activarSeccion(id) {
+      Object.keys(secciones).forEach(function (k) { secciones[k].hidden = k !== id; });
+      Array.from(navegacion.querySelectorAll('button')).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.seccion === id)); });
+    }
+    [['estudiantes','👥 Estudiantes y WhatsApp'],['asistencia','📋 Asistencia'],['notas','📘 Notas y avisos']].forEach(function (par) {
+      var b = el('button', { type: 'button', clase: 'boton boton-secundario', texto: par[1] });
+      b.dataset.seccion = par[0]; b.addEventListener('click', function () { activarSeccion(par[0]); }); navegacion.appendChild(b);
+    });
     sec.appendChild(el('div', { clase: 'formulario-fila' }, [el('label', null, ['Grupo', selGrupo]), el('label', null, ['Trimestre', selTrim])]));
     sec.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Solo lectura. La asistencia es el conteo de todas las materias del grupo; una casilla sin marcar no cuenta como ausencia. Las notas aparecen solo de las materias que el profesor ya publicó.' }));
     sec.appendChild(estado);
+    sec.appendChild(navegacion);
+    sec.appendChild(zonaContactos);
     sec.appendChild(zonaTabla);
     sec.appendChild(zonaNotas);
+
+    activarSeccion('estudiantes');
+
+    function telefonoWhatsApp(valor) {
+      var t = String(valor || '').replace(/\D/g, '');
+      if (t.length === 8) { t = '507' + t; }
+      return /^507\d{8}$/.test(t) ? t : '';
+    }
+    function mostrarContactos(mats) {
+      zonaContactos.textContent = '';
+      zonaContactos.appendChild(el('h3', { texto: 'Estudiantes y WhatsApp · ' + mats.length }));
+      zonaContactos.appendChild(el('p', { clase: 'bloque-ayuda', texto: 'Los mensajes se preparan para cada acudiente. Confirme cada envío en WhatsApp. Los teléfonos no se muestran en la plataforma de otros estudiantes.' }));
+      var mensaje = el('textarea', { rows: 2, placeholder: 'Mensaje para acudientes de ' + S.grupo.nombre });
+      mensaje.value = 'Estimado acudiente: le escribo desde la consejería de ' + S.grupo.nombre + ' del C.E.B.G. El Jiral.';
+      zonaContactos.appendChild(el('label', null, ['Mensaje para WhatsApp', mensaje]));
+      var copiar = el('button', { type: 'button', clase: 'boton boton-secundario', texto: 'Copiar mensaje para todo el grupo' });
+      copiar.addEventListener('click', async function () { try { await navigator.clipboard.writeText(mensaje.value); copiar.textContent = 'Mensaje copiado ✓'; } catch (_) { copiar.textContent = 'Seleccione y copie el mensaje'; mensaje.focus(); mensaje.select(); } });
+      zonaContactos.appendChild(copiar);
+      var filas = mats.map(function (m) {
+        var tel = m.estudiante.telefono_acudiente || ''; var valido = telefonoWhatsApp(tel);
+        var boton = el('button', { type: 'button', clase: 'boton boton-secundario boton-chico', texto: 'WhatsApp', disabled: !valido });
+        boton.addEventListener('click', function () {
+          var url = 'https://wa.me/' + valido + '?text=' + encodeURIComponent('Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        });
+        return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, [boton])]);
+      });
+      zonaContactos.appendChild(tabla(['Estudiante', 'Acudiente', 'Teléfono', 'Mensaje'], filas, 'Sin estudiantes matriculados.'));
+    }
 
     function error(t) { estado.textContent = t; estado.className = 'mensaje error'; estado.hidden = !t; }
 
@@ -209,6 +251,7 @@
         if (r[2].error) { throw r[2].error; }
         var resumen = r[2].data, mats = r[0].filter(function (m) { return m.estudiante; });
         mats.sort(function (a, b) { return a.estudiante.apellidos.localeCompare(b.estudiante.apellidos, 'es') || a.estudiante.nombres.localeCompare(b.estudiante.nombres, 'es'); });
+        mostrarContactos(mats);
         var conteos = {}, usados = {};
         resumen.filas.forEach(function (f) { conteos[f.matricula_id] = f.conteos; Object.keys(f.conteos).forEach(function (c) { usados[c] = true; }); });
         var estados = r[1].filter(function (e) { return e.activo || usados[e.codigo]; });
