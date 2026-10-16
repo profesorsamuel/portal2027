@@ -711,8 +711,29 @@
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
     if (bloqueaVinculo) { vinculo.disabled = true; }
     var enviar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: t ? 'Guardar cambios' : 'Crear tarea' });
+    var controlNota = vinculo;
+    if (!t) {
+      // Mantener el select como fuente del valor que usa el guardado, pero mostrar botones de un clic.
+      vinculo.style.display = 'none';
+      var conNota = el('button', { type: 'button', texto: '✓ Con nota' });
+      var sinNota = el('button', { type: 'button', texto: '○ Sin nota' });
+      function actualizarBotonesNota() {
+        var activo = vinculo.value === '__crear_apreciacion__';
+        conNota.style.cssText = 'flex:1;min-width:130px;padding:12px;border-radius:10px;cursor:pointer;font-weight:700;border:2px solid ' + (activo ? '#15803d;background:#dcfce7;color:#166534' : '#cbd5e1;background:white;color:#334155');
+        sinNota.style.cssText = 'flex:1;min-width:130px;padding:12px;border-radius:10px;cursor:pointer;font-weight:700;border:2px solid ' + (!activo ? '#475569;background:#e2e8f0;color:#334155' : '#cbd5e1;background:white;color:#334155');
+        conNota.setAttribute('aria-pressed', String(activo));
+        sinNota.setAttribute('aria-pressed', String(!activo));
+      }
+      conNota.addEventListener('click', function () { vinculo.value = '__crear_apreciacion__'; actualizarBotonesNota(); });
+      sinNota.addEventListener('click', function () { vinculo.value = ''; actualizarBotonesNota(); });
+      controlNota = el('div', null, [
+        el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;' }, [conNota, sinNota]),
+        vinculo
+      ]);
+      actualizarBotonesNota();
+    }
     var hijos = [campo('Título', titulo), campo('Instrucciones', instr), campo('Plazo (opcional)', plazo),
-      campo('Nota de esta tarea en la libreta', vinculo)];
+      campo('Nota de esta tarea en la libreta', controlNota)];
     if (bloqueaVinculo) { hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'El vínculo con la libreta no se puede cambiar: ya hay entregas revisadas.' })); }
     hijos.push(bloqueAdjuntos(t, pendientes));
     var acciones = [enviar];
