@@ -22,3 +22,29 @@
   body.solo-reporte .panel-cabecera, body.solo-reporte .secciones > :not(.reporte-imprimible) { display: none !important; }
   body.solo-reporte .reporte-imprimible .formulario-fila { display: none !important; }
 }
+
+/* Reporte estudiantil compacto: únicamente al imprimir o guardar como PDF. */
+@media print {
+  @page { size: A4 portrait; margin: 12mm 13mm; }
+  body.solo-reporte { font: 9pt/1.3 Arial, sans-serif !important; color: #172b3a !important; }
+  body.solo-reporte .reporte-imprimible { padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; background: #fff !important; }
+  body.solo-reporte .reporte-imprimible > h2 { display: none !important; }
+  body.solo-reporte .reporte-imprimible > .solo-impresion { display: block !important; font-size: 12pt !important; font-weight: 700; padding: 0 0 7mm; margin: 0 0 5mm !important; border-bottom: 2px solid #244d70; color: #183c59; }
+  body.solo-reporte .reporte-imprimible > .bloque-ayuda { font-size: 8pt !important; margin: 0 0 3mm !important; }
+  body.solo-reporte .reporte-imprimible > h3 { margin: 4mm 0 2mm !important; padding: 0 !important; font-size: 10pt !important; }
+  body.solo-reporte .materia-notas { padding: 2.5mm 3mm !important; margin: 0 0 3mm !important; border: 1px solid #cad5df !important; border-radius: 4px !important; break-inside: auto !important; }
+  body.solo-reporte .materia-notas > h3 { font-size: 10pt !important; margin: 0 0 2mm !important; }
+  body.solo-reporte .grupo-notas { margin: 2mm 0 !important; break-inside: auto !important; }
+  body.solo-reporte .grupo-notas h4 { margin: 0 0 1mm !important; font-size: 8.5pt !important; }
+  body.solo-reporte .grupo-notas .promedio-grupo { padding: 0 !important; background: none !important; font-size: 8pt !important; }
+  body.solo-reporte .tabla-notas { font-size: 8pt !important; table-layout: auto !important; }
+  body.solo-reporte .tabla-notas th, body.solo-reporte .tabla-notas td { padding: 1.1mm 2mm !important; line-height: 1.2 !important; border-bottom: 1px solid #e0e6ed !important; }
+  body.solo-reporte .tabla-notas thead { display: table-header-group; }
+  body.solo-reporte .tabla-notas tr { break-inside: avoid !important; }
+  body.solo-reporte .etiqueta-tipo, body.solo-reporte .nota-valor { padding: 0 !important; background: none !important; border-radius: 0 !important; font-size: 8pt !important; min-width: 0 !important; }
+  body.solo-reporte .promedio-final { margin: 2mm 0 0 !important; padding: 1.5mm 2mm !important; border: 1px solid #ccd7e0 !important; border-radius: 3px !important; font-size: 8.5pt !important; }
+  body.solo-reporte .promedio-final .pf-numero { font: bold 10pt Arial, sans-serif !important; }
+  body.solo-reporte .promedio-final .pf-ayuda { font-size: 7pt !important; }
+  body.solo-reporte .tabla-contenedor { overflow: visible !important; }
+  body.solo-reporte .reporte-imprimible .vacio-texto { margin: 1mm 0 !important; font-size: 8pt !important; }
+}
