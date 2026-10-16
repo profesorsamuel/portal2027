@@ -416,7 +416,7 @@
 
   function seccionMateriales() {
     var lista = S.materiales.filter(function (m) { return (m.clase_id || null) === S.claseId && (S.verPapelera || !m.eliminado_en); });
-    var sec = el('section', { clase: 'bloque' }, [el('h2', { texto: '📎 Material de la clase' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['📕 Subir PDF de la clase', '🖼️ Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }, 'boton-claro'); })), S.tipoMaterial ? formMaterial() : null]);
+    var sec = el('section', { clase: 'bloque bloque-materiales' }, [el('h2', { texto: '📎 Material de la clase' }), el('div', { clase: 'cabecera-acciones' }, ['pdf', 'imagen'].map(function(tipo, i) { return boton(['📕 Subir PDF de la clase', '🖼️ Agregar imagen'][i], function() { S.tipoMaterial = tipo; dibujar(); }, 'boton-claro'); })), S.tipoMaterial ? formMaterial() : null]);
     if (lista.length === 0) { sec.appendChild(el('p', { clase: 'vacio-texto', texto: 'Todavía no hay materiales en esta clase.' })); }
     else { sec.appendChild(listaMateriales(lista)); }
     return sec;
@@ -833,7 +833,7 @@
     var numeros = {};
     activas.forEach(function (t, i) { numeros[t.id] = i + 1; });
     var lista = S.verPapelera ? todas : activas;
-    var sec = el('section', { clase: 'bloque' }, [
+    var sec = el('section', { clase: 'bloque bloque-tareas' }, [
       el('h2', { texto: '✏️ Tareas de la clase' }),
       el('p', { clase: 'bloque-ayuda', texto: S.mats.length + ' alumnos en este salón. Las tareas se numeran por orden de creación.' }),
       el('div', { clase: 'cabecera-acciones' }, [

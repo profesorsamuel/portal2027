@@ -217,3 +217,20 @@ body.pagina-clases { background: #eef3f4; }
 .mat-foto-mas-cuerpo { display: grid; gap: .3rem; margin-top: .3rem; }
 .pagina-clases .mat-foto-mas-cuerpo select { width: 100%; font-size: .78rem; }
 @media (max-width: 640px) { .fotos-cuadricula { grid-template-columns: repeat(2, 1fr); } }
+
+/* Identificación visual de materiales y tareas — sin modificar datos ni comportamiento */
+.pagina-clases .bloque-materiales, .bloque-materiales {border:2px solid #81c8ed!important;border-left:7px solid #1688c7!important;background:linear-gradient(125deg,#eef9ff 0%,#fff 48%)!important;box-shadow:0 5px 16px #166b9820;}
+.pagina-clases .bloque-tareas, .bloque-tareas {border:2px solid #f3bc75!important;border-left:7px solid #e88b19!important;background:linear-gradient(125deg,#fff5e6 0%,#fff 48%)!important;box-shadow:0 5px 16px #ae671b20;}
+.bloque-materiales>h2,.bloque-tareas>h2{padding:.65rem .85rem;border-radius:10px;font-weight:800;letter-spacing:.01em;}
+.bloque-materiales>h2{background:#d7f0ff;color:#07527d;}
+.bloque-tareas>h2{background:#ffebc9;color:#874400;}
+.bloque-materiales>.cabecera-acciones,.bloque-tareas>.cabecera-acciones{padding:.45rem 0 .8rem;gap:.55rem;}
+.bloque-materiales>.cabecera-acciones button{background:#dff2ff!important;border:1.5px solid #60b4e3!important;color:#064c74!important;font-weight:750;}
+.bloque-tareas>.cabecera-acciones button:first-child{background:#743ac1!important;border:1.5px solid #743ac1!important;color:#fff!important;font-weight:750;}
+.bloque-materiales .lista-materiales-filas>li{border:1.5px solid #a7d8ef!important;background:#f2fbff!important;border-radius:11px;}
+.bloque-materiales .mat-foto{border:2px solid #b1dcec;background:#f1faff;box-shadow:0 2px 7px #1a698015;}
+.bloque-materiales .mat-foto:hover{border-color:#1688c7;box-shadow:0 4px 13px #147eb52b;}
+.bloque-materiales .mat-foto-cuenta{color:#12618a;font-weight:700;}
+.bloque-tareas .lista-clases>li{border:1.5px solid #f3ca92;background:#fffaf1;border-radius:11px;}
+.bloque-tareas .vacio-texto{background:#fff6e9;border:1.5px dashed #e8b675;color:#87540d;border-radius:10px;padding:1rem;}
+@media(max-width:640px){.bloque-materiales>h2,.bloque-tareas>h2{font-size:1.08rem}.bloque-materiales,.bloque-tareas{border-left-width:5px!important}}
