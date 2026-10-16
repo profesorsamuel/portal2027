@@ -57,6 +57,23 @@
         cont.appendChild(bloque);
         return;
       }
+      // La vista del estudiante resume cada semana en su columna principal.
+      // Las tareas de esa misma semana siguen disponibles en «Mis clases y tareas»,
+      // pero no se repiten como filas independientes cuando existe la nota semanal.
+      var semanasPrincipales = {};
+      evals.forEach(function (e) {
+        var tema = String(e.tema || '');
+        var match = tema.match(/^semana\s*(\d+)\s*[·:.-]/i);
+        if (e.categoria === 'apreciacion' && match && !/\btarea\s*\d+/i.test(tema)) {
+          semanasPrincipales[match[1]] = true;
+        }
+      });
+      evals = evals.filter(function (e) {
+        if (e.categoria !== 'apreciacion') { return true; }
+        var tema = String(e.tema || '');
+        var match = tema.match(/^semana\s*(\d+)\s*[·:.-]\s*tarea\s*\d+\s*$/i);
+        return !(match && semanasPrincipales[match[1]]);
+      });
       var notas = {};
       evals.forEach(function (e) { if (M.esNota(e.valor)) { notas[e.id] = Number(e.valor); } });
       var r = M.calcular(evals, notas);
