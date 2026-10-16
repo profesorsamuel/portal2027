@@ -823,6 +823,36 @@
     ]);
   }
 
+  function resumenAdjuntosProfesor(t) {
+    var archivos = adjuntosDeTarea(t.id);
+    var bloque = el('div', { clase: 'tarea-materiales-profesor' }, [
+      el('strong', { clase: 'tarea-materiales-titulo', texto: '📎 Materiales adjuntos (' + archivos.length + ')' })
+    ]);
+    if (!archivos.length) {
+      bloque.appendChild(el('p', { clase: 'tarea-materiales-vacio', texto: 'Esta tarea no tiene PDF, imágenes ni enlaces adjuntos.' }));
+      return bloque;
+    }
+    var lista = el('ul', { clase: 'tarea-materiales-lista' });
+    archivos.forEach(function (a) {
+      var tipo = a.tipo === 'pdf' ? '📕 PDF' : (a.tipo === 'imagen' ? '🖼️ Imagen' : '🔗 Enlace');
+      var titulo = a.titulo || a.archivo_nombre || 'Archivo sin título';
+      var detalle = a.archivo_nombre && a.archivo_nombre !== titulo ? a.archivo_nombre : '';
+      var accion = a.tipo === 'enlace'
+        ? C.enlace(a.enlace, 'Abrir enlace')
+        : boton('Abrir archivo', function () { abrirAdjunto(a); });
+      lista.appendChild(el('li', { clase: 'tarea-materiales-item' }, [
+        el('span', { clase: 'tarea-materiales-tipo', texto: tipo }),
+        el('span', { clase: 'tarea-materiales-nombre' }, [
+          el('strong', { texto: titulo }),
+          detalle ? el('small', { texto: detalle }) : null
+        ]),
+        accion
+      ]));
+    });
+    bloque.appendChild(lista);
+    return bloque;
+  }
+
   function tarjetaTarea(t, numero) {
     var enPapelera = !!t.eliminada_en;
     var ev = t.evaluacion_id ? evalPorId(t.evaluacion_id) : null;
@@ -853,6 +883,7 @@
       el('div', { clase: 'tarea-titulo-fila' }, [el('span', { clase: 'tarea-numero-prof', texto: (numero ? 'Tarea ' + numero : 'En papelera') }), el('strong', { clase: 'tarea-titulo-prof', texto: t.titulo })]),
       el('div', { clase: 'tarea-chips' }, chips),
       t.instrucciones ? el('p', { clase: 'tarea-texto', texto: t.instrucciones }) : null,
+      resumenAdjuntosProfesor(t),
       progresoEntregas(t),
       el('div', { clase: 'cabecera-acciones tarea-acciones' }, acciones)
     ];
