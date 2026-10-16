@@ -969,9 +969,14 @@
     var nota = el('input', { type: 'text', inputmode: 'decimal', value: valorActual, 'aria-label': 'Nota de 0 a 5' });
     var motivo = el('input', { type: 'text', maxlength: '200', placeholder: 'Motivo si cambia una nota ya guardada' });
     var guardar = el('button', { clase: 'boton boton-principal-chico', type: 'submit', texto: 'Guardar revisión' });
+    var revisables = S.mats.filter(function (al) { return !!entregaDe(t.id, al.id); });
+    var posicion = revisables.findIndex(function (al) { return al.id === m.id; });
+    var navegando = false;
+    var indicador = el('p', { clase: 'bloque-ayuda', texto: 'Entrega ' + (posicion + 1) + ' de ' + revisables.length + ' recibidas · Al avanzar se guardan nota y comentario.' });
 
     var hijos = [
       el('h3', { texto: 'Entrega de ' + nombreEst(m) }),
+      indicador,
       el('p', { clase: 'bloque-ayuda', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + (Array.isArray(en.archivos) ? en.archivos.length + ' archivo(s)' : en.archivo_nombre) }),
       en.comentario ? el('p', { clase: 'bloque-ayuda', texto: 'Comentario del estudiante: ' + en.comentario }) : null,
       vistaEntrega(archivosEntrega(en)),
@@ -995,23 +1000,68 @@
         });
       }));
     }
+    var anterior = boton('← Anterior estudiante', function () { avanzar(-1); });
+    var siguiente = boton('Siguiente estudiante →', function () { avanzar(1); }, 'boton-relleno');
+    anterior.disabled = posicion <= 0;
+    siguiente.disabled = posicion >= revisables.length - 1;
     hijos.push(el('div', { clase: 'cabecera-acciones' }, acciones));
+    hijos.push(el('div', { clase: 'cabecera-acciones revision-navegacion' }, [anterior, siguiente]));
     var f = el('form', { clase: 'formulario-clases formulario-revision' }, hijos);
-    f.addEventListener('submit', async function (ev) {
-      ev.preventDefault();
+    async function guardarDatos() {
       var valor = null;
-      if (nota && nota.value.trim() !== '') {
+      if (nota.value.trim() !== '') {
         valor = Number(nota.value.trim().replace(',', '.'));
-        if (!isFinite(valor) || valor < 0 || valor > 5) { aviso('La nota debe estar entre 0 y 5.', 'error'); return; }
+        if (!isFinite(valor) || valor < 0 || valor > 5) { aviso('La nota debe estar entre 0 y 5.', 'error'); return false; }
       }
+      var comentarioNuevo = coment.value;
+      var comentarioAnterior = en.comentario_profesor || '';
+      var cambioNota = (valor === null ? null : Number(valor)) !== (valorGuardado == null ? null : Number(valorGuardado));
+      var cambioComentario = comentarioNuevo !== comentarioAnterior;
+      if (!cambioNota && !cambioComentario && en.estado === 'revisada') { return true; }
       guardar.disabled = true;
-      await accion('Guardando revisión…', 'Revisión guardada.', async function () {
+      anterior.disabled = true;
+      siguiente.disabled = true;
+      aviso('Guardando nota y comentario…', 'info');
+      try {
         var g = await db.rpc('portal2027_revisar_entrega', {
-          p_entrega: en.id, p_version: en.version, p_comentario: coment.value, p_nota: valor, p_motivo: motivo ? motivo.value : null
+          p_entrega: en.id, p_version: en.version, p_comentario: comentarioNuevo,
+          p_nota: valor, p_motivo: motivo.value || null
         });
         if (g.error) { throw g.error; }
-      });
-      guardar.disabled = false;
+      } catch (e) {
+        aviso('No se guardó. ' + C.textoError(e), 'error');
+        guardar.disabled = false;
+        anterior.disabled = posicion <= 0;
+        siguiente.disabled = posicion >= revisables.length - 1;
+        return false;
+      }
+      try { await cargar(); }
+      catch (e) {
+        aviso('Se guardó, pero no se pudo recargar. Pulse «Recargar» antes de continuar.', 'info');
+        return false;
+      }
+      return true;
+    }
+    async function avanzar(direccion) {
+      if (navegando) { return; }
+      var destino = revisables[posicion + direccion];
+      if (!destino) { return; }
+      navegando = true;
+      var ok = await guardarDatos();
+      if (ok) {
+        S.revisando = destino.id;
+        dibujar();
+        aviso('Revisión guardada. Mostrando siguiente entrega.', 'ok');
+      }
+      navegando = false;
+    }
+    f.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      if (navegando) { return; }
+      navegando = true;
+      var ok = await guardarDatos();
+      if (ok) { dibujar(); aviso('Revisión guardada.', 'ok'); }
+      navegando = false;
     });
     return f;
   }
