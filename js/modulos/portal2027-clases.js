@@ -77,7 +77,16 @@
       consultar(db.from('portal2027_evaluaciones').select('id,categoria,tema,orden').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('orden')),
       consultar(db.from('portal2027_matriculas').select('id,estudiante:portal2027_estudiantes(codigo,nombres,apellidos)').eq('salon_id', S.asig.salon.id))
     ]);
-    S.plan = await consultar(db.from('portal2027_plan_clases').select('id,numero,tema,fecha_inicio,fecha_fin,visible_estudiantes').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('numero'));
+    // Compatibilidad: permite abrir la pantalla aunque aún no se haya ejecutado la migración 0069.
+    var consultaPlan = function (campos) { return db.from('portal2027_plan_clases').select(campos).eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('numero'); };
+    var respuestaPlan = await consultaPlan('id,numero,tema,fecha_inicio,fecha_fin,visible_estudiantes');
+    S.visibilidadDisponible = true;
+    if (respuestaPlan.error && /visible_estudiantes|schema cache|column .* does not exist/i.test(String(respuestaPlan.error.message || ''))) {
+      S.visibilidadDisponible = false;
+      respuestaPlan = await consultaPlan('id,numero,tema,fecha_inicio,fecha_fin');
+    }
+    if (respuestaPlan.error) throw respuestaPlan.error;
+    S.plan = respuestaPlan.data || [];
     if (S.claseId && !S.plan.some(function(c) { return c.id === S.claseId; })) S.claseId = null;
     S.materiales = r[0]; S.tareas = r[1]; S.evals = r[2];
     S.mats = r[3].sort(function (x, y) { return nombreEst(x).localeCompare(nombreEst(y), 'es'); });
@@ -125,7 +134,7 @@
         el('span', { clase: 'clase-conteo' }, [chip('📎 ' + nm, nm ? 'azul' : ''), chip('✏️ ' + nt, nt ? 'ambar' : '')])
       ]);
       if (esSin) return selector;
-      var check = el('input', { type: 'checkbox', checked: c.visible_estudiantes !== false });
+      var check = el('input', { type: 'checkbox', checked: c.visible_estudiantes !== false, disabled: !S.visibilidadDisponible, title: S.visibilidadDisponible ? 'Publicar u ocultar clase' : 'Ejecute la migración 0069 en Supabase para activar este control' });
       check.addEventListener('change', async function () {
         var nuevo = check.checked; check.disabled = true;
         var ok = await accion('Actualizando visibilidad…', nuevo ? 'Clase publicada para los estudiantes.' : 'Clase oculta para los estudiantes.', async function () {
@@ -134,7 +143,7 @@
         });
         if (!ok) { check.checked = !nuevo; check.disabled = false; }
       });
-      return el('div', { clase: 'clase-control-visibilidad' }, [selector, el('label', { clase: 'clase-publicacion' }, [check, el('span', { texto: c.visible_estudiantes !== false ? 'Visible a estudiantes' : 'Oculta a estudiantes' })])]);
+      return el('div', { clase: 'clase-control-visibilidad' }, [selector, el('label', { clase: 'clase-publicacion' }, [check, el('span', { texto: !S.visibilidadDisponible ? 'Pendiente de activar en Supabase' : (c.visible_estudiantes !== false ? 'Visible a estudiantes' : 'Oculta a estudiantes') })])]);
     })));
     if (!S.plan.length) sec.appendChild(el('p', { clase: 'mensaje info', texto: 'Agregue las clases en Planificación para organizar sus recursos.' }));
     sec.appendChild(el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a Planificación' }));
