@@ -108,6 +108,18 @@
     }
   }
 
+  // Compatibilidad con funciones Supabase antiguas que aún no devuelven etiqueta.
+  // La función actualizada debe proporcionar apellido/nombre separados para casos ambiguos.
+  function etiquetaEstudiante(e) {
+    if (e.etiqueta && String(e.etiqueta).trim()) return String(e.etiqueta).trim();
+    if (e.apellidos && e.nombres) return String(e.apellidos).trim() + ', ' + String(e.nombres).trim();
+    var partes = String(e.nombre || '').trim().split(/\s+/).filter(Boolean);
+    if (partes.length < 2) return String(e.nombre || '');
+    // Formato antiguo habitual: primer nombre seguido del apellido.
+    var apellido = partes.slice(1).join(' ');
+    return apellido.toLocaleUpperCase('es') + ', ' + partes[0];
+  }
+
   var solicitudLista = 0;
   async function cargarEstudiantes() {
     var turno = ++solicitudLista;
@@ -125,11 +137,11 @@
       if (r.error || (r.data && r.data.error)) { throw await errorFuncion(r); }
       if (!r.data || !Array.isArray(r.data.estudiantes)) { throw new Error('Actualice la función portal2027-buscar-estudiante en Supabase con el código de este ZIP.'); }
       var estudiantes = r.data.estudiantes.slice().sort(function (a, b) {
-        return (a.etiqueta || a.nombre).localeCompare(b.etiqueta || b.nombre, 'es', { sensitivity: 'base' });
+        return etiquetaEstudiante(a).localeCompare(etiquetaEstudiante(b), 'es', { sensitivity: 'base' });
       });
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: estudiantes.length ? 'Elija su nombre…' : 'No hay estudiantes con acceso en este salón' }));
-      estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: e.etiqueta || e.nombre })); });
+      estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: etiquetaEstudiante(e) })); });
       sel.disabled = !estudiantes.length;
     } catch (e) {
       if (turno !== solicitudLista) { return; }
