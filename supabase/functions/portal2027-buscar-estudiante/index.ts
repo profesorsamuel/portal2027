@@ -101,8 +101,11 @@ Deno.serve(async (req) => {
     const activos = new Set((cuentas || []).map((c) => c.id));
     // Solo nombres: nunca cédulas, teléfonos, correos ni contraseñas.
     const estudiantes = alumnos.filter((e: any) => activos.has(e.usuario_id))
-      .map((e: any) => ({ nombre: [e.nombres, e.apellidos].filter(Boolean).join(' ').trim() }))
-      .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre, 'es'));
+      .map((e: any) => ({
+        nombre: [e.nombres, e.apellidos].filter(Boolean).join(' ').trim(),
+        etiqueta: [e.apellidos, e.nombres].filter(Boolean).join(', ').replace(/^, |, $/g, '').trim()
+      }))
+      .sort((a: any, b: any) => a.etiqueta.localeCompare(b.etiqueta, 'es', { sensitivity: 'base' }));
     return responder({ estudiantes });
   }
 

@@ -124,10 +124,12 @@
       if (turno !== solicitudLista) { return; }
       if (r.error || (r.data && r.data.error)) { throw await errorFuncion(r); }
       if (!r.data || !Array.isArray(r.data.estudiantes)) { throw new Error('Actualice la función portal2027-buscar-estudiante en Supabase con el código de este ZIP.'); }
-      var estudiantes = r.data.estudiantes;
+      var estudiantes = r.data.estudiantes.slice().sort(function (a, b) {
+        return (a.etiqueta || a.nombre).localeCompare(b.etiqueta || b.nombre, 'es', { sensitivity: 'base' });
+      });
       sel.textContent = '';
       sel.appendChild(P.el('option', { value: '', texto: estudiantes.length ? 'Elija su nombre…' : 'No hay estudiantes con acceso en este salón' }));
-      estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: e.nombre })); });
+      estudiantes.forEach(function (e) { sel.appendChild(P.el('option', { value: e.nombre, texto: e.etiqueta || e.nombre })); });
       sel.disabled = !estudiantes.length;
     } catch (e) {
       if (turno !== solicitudLista) { return; }
