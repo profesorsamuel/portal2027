@@ -972,12 +972,12 @@
     var revisables = S.mats.filter(function (al) { return !!entregaDe(t.id, al.id); });
     var posicion = revisables.findIndex(function (al) { return al.id === m.id; });
     var navegando = false;
-    var indicador = el('p', { clase: 'bloque-ayuda', texto: 'Entrega ' + (posicion + 1) + ' de ' + revisables.length + ' recibidas · Al avanzar se guardan nota y comentario.' });
+    var indicador = el('p', { clase: 'bloque-ayuda revision-indicador', texto: 'Entrega ' + (posicion + 1) + ' de ' + revisables.length + ' recibidas · Al avanzar se guardan nota y comentario.' });
 
     var hijos = [
       el('h3', { texto: 'Entrega de ' + nombreEst(m) }),
       indicador,
-      el('p', { clase: 'bloque-ayuda', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + (Array.isArray(en.archivos) ? en.archivos.length + ' archivo(s)' : en.archivo_nombre) }),
+      el('p', { clase: 'bloque-ayuda revision-fecha', texto: 'Entregada el ' + C.fechaHora(en.entregada_en) + (en.tardia ? ' (después del plazo)' : '') + ' · ' + (Array.isArray(en.archivos) ? en.archivos.length + ' archivo(s)' : en.archivo_nombre) }),
       en.comentario ? el('p', { clase: 'bloque-ayuda', texto: 'Comentario del estudiante: ' + en.comentario }) : null,
       vistaEntrega(archivosEntrega(en)),
       el('div', { clase: 'cabecera-acciones' }, archivosEntrega(en).map(function (a) {
@@ -989,7 +989,17 @@
       campo('Comentario para el estudiante', coment)
     ];
     hijos.push(campo('Nota de 0 a 5 (vinculada con la libreta)', nota));
-    hijos.push(campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo));
+    var campoMotivo = campo('Motivo (obligatorio si cambia una nota ya guardada)', motivo);
+    campoMotivo.classList.add('revision-motivo');
+    function actualizarMotivo() {
+      var escrito = nota.value.trim().replace(',', '.');
+      var nuevo = escrito === '' ? null : Number(escrito);
+      var previo = valorGuardado == null ? null : Number(valorGuardado);
+      campoMotivo.hidden = !(previo !== null && nuevo !== previo);
+    }
+    nota.addEventListener('input', actualizarMotivo);
+    actualizarMotivo();
+    hijos.push(campoMotivo);
     hijos.push(el('p', { clase: 'bloque-ayuda', texto: 'La nota se registra en el desglose semanal de la libreta cuando la tarea está vinculada.' }));
     var acciones = [guardar];
     if (en.estado === 'revisada') {

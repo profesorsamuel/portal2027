@@ -244,3 +244,21 @@ body.pagina-clases { background: #eef3f4; }
 .tarea-materiales-nombre{display:flex;flex:1;min-width:145px;flex-direction:column;overflow-wrap:anywhere;font-size:13px}
 .tarea-materiales-nombre small{font-size:11px;color:#64748b}
 .tarea-materiales-vacio{margin:0;font-size:12px;color:#64748b}
+
+/* Panel de revisión compacto: mantiene controles y guardado existentes. */
+.pagina-clases .formulario-revision { padding: .75rem .85rem; margin: .45rem 0 .65rem; display:flex; flex-direction:column; gap:.45rem; }
+.pagina-clases .formulario-revision h3 { margin:0; font-size:1rem; line-height:1.25; }
+.pagina-clases .formulario-revision .bloque-ayuda { margin:0; font-size:.76rem; line-height:1.35; }
+.pagina-clases .formulario-revision .revision-indicador { font-weight:600; color:#176477; }
+.pagina-clases .formulario-revision .entrega-vista { display:flex; flex-wrap:wrap; gap:.45rem; align-items:flex-start; }
+.pagina-clases .formulario-revision .entrega-marco { width:112px; max-width:100%; padding:.25rem; gap:.15rem; }
+.pagina-clases .formulario-revision .entrega-imagen { height:76px; max-height:76px; object-fit:cover; }
+.pagina-clases .formulario-revision .entrega-marco small { font-size:.65rem; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pagina-clases .formulario-revision > label { display:flex; flex-direction:column; gap:.2rem; margin:0; font-size:.79rem; font-weight:650; }
+.pagina-clases .formulario-revision > label textarea { min-height:58px; height:62px; resize:vertical; }
+.pagina-clases .formulario-revision > label input { min-height:36px; padding:.4rem .55rem; }
+.pagina-clases .formulario-revision .revision-motivo[hidden] { display:none!important; }
+.pagina-clases .formulario-revision .cabecera-acciones { display:flex; flex-wrap:wrap; gap:.4rem; margin:0; padding:0; }
+.pagina-clases .formulario-revision .cabecera-acciones button { padding:.43rem .72rem; font-size:.8rem; min-height:34px; }
+@media(min-width:680px){.pagina-clases .formulario-revision > label:has(input[aria-label="Nota de 0 a 5"]) { max-width:240px; }}
+@media(max-width:480px){.pagina-clases .formulario-revision{padding:.65rem}.pagina-clases .formulario-revision .entrega-marco{width:95px}.pagina-clases .formulario-revision .entrega-imagen{height:66px}}
