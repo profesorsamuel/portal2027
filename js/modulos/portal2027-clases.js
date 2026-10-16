@@ -681,12 +681,10 @@
     if (!t) {
       opciones = [
         el('option', { value: '__crear_apreciacion__', texto: 'Apreciación — nota propia de esta tarea', selected: true }),
-        el('option', { value: '__crear_escrito__', texto: 'Ejercicio escrito — nota propia de esta tarea' }),
         el('option', { value: '', texto: 'Sin nota' })
       ];
     } else {
       opciones.push(el('option', { value: '__crear_apreciacion__', texto: 'Apreciación — crear nota propia' }));
-      opciones.push(el('option', { value: '__crear_escrito__', texto: 'Ejercicio escrito — crear nota propia' }));
     }
     var vinculo = el('select', null, opciones);
     var bloqueaVinculo = t && S.entregas.some(function (e) { return e.tarea_id === t.id && e.estado === 'revisada'; });
