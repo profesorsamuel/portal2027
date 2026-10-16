@@ -621,31 +621,11 @@
       return P.nombreCompleto(p);
     }, 'Elija el profesor'));
     var editor = el('div', { clase: 'editor-docente', hidden: true });
-    var grupoConsejeria = el('select', { required: true, 'aria-label': 'Grupo de consejería' }, opciones(datos.salones, function (s) { return s.id; }, etiquetaSalon, 'Elija el grupo de consejería'));
     selProfesor.addEventListener('change', function () {
-      grupoConsejeria.value = '';
       var perfil = perfilDe[selProfesor.value];
       if (perfil) { abrirAsignacionesDocente(editor, perfil); }
       else { editor.hidden = true; editor.replaceChildren(); }
     });
-    var formConsejeria = el('form', { clase: 'formulario-fila', novalidate: true }, [
-      campo('Grupo de consejería', grupoConsejeria),
-      el('button', { clase: 'boton boton-secundario', type: 'submit', texto: 'Asignar consejería' })
-    ]);
-    formConsejeria.addEventListener('submit', function (ev) {
-      ev.preventDefault();
-      if (!selProfesor.value || !grupoConsejeria.value) { aviso('Elija el profesor y el grupo de consejería.', 'error'); return; }
-      var perfil = perfilDe[selProfesor.value];
-      if (!perfil || perfil.activo === false) { aviso('Elija un docente con cuenta activa.', 'error'); return; }
-      var profId = selProfesor.value;
-      var salonId = grupoConsejeria.value;
-      ejecutar(function () { return hacerConsejero(salonId, profId); }, 'Consejería asignada.');
-    });
-    var consejeria = el('details', { clase: 'consejeria-opcional' }, [
-      el('summary', { texto: 'Asignar consejería (opcional)' }),
-      el('p', { clase: 'bloque-ayuda', texto: 'Elija arriba al docente. La consejería se asigna aparte de los salones donde imparte clases.' }),
-      formConsejeria
-    ]);
 
     var hijos = [
       el('h2', { texto: 'Profesores por grupo' }),
@@ -657,7 +637,6 @@
     }
     hijos.push(el('div', { clase: 'formulario-fila' }, [campo('Profesor', selProfesor)]));
     hijos.push(editor);
-    hijos.push(consejeria);
     return el('section', { clase: 'bloque' }, hijos);
   }
 
