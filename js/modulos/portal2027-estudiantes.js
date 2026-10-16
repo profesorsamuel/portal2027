@@ -909,7 +909,7 @@
           p_direccion: controles.direccion.value.trim()
         });
         if (r.error) { throw r.error; }
-        avisoContacto.mostrar('Sus datos de contacto se guardaron correctamente.', 'ok');
+        avisoContacto.mostrar('Sus datos se guardaron. Si está activa la evaluación de la semana 1, se registrará la nota de 5.0 en Apreciación.', 'ok');
       } catch (e) { avisoContacto.mostrar(P.traducirError(e), 'error'); }
       guardarContacto.disabled = false;
     });
