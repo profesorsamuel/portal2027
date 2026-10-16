@@ -234,3 +234,7 @@ body.pagina-clases { background: #eef3f4; }
 .bloque-tareas .lista-clases>li{border:1.5px solid #f3ca92;background:#fffaf1;border-radius:11px;}
 .bloque-tareas .vacio-texto{background:#fff6e9;border:1.5px dashed #e8b675;color:#87540d;border-radius:10px;padding:1rem;}
 @media(max-width:640px){.bloque-materiales>h2,.bloque-tareas>h2{font-size:1.08rem}.bloque-materiales,.bloque-tareas{border-left-width:5px!important}}
+
+/* Selección automática y arrastrar/soltar adjuntos de tareas */
+.zona-soltar-adjuntos { padding:1.2rem; border:2px dashed #4a9bb3; border-radius:12px; background:#eef9fc; color:#174b60; font-weight:650; text-align:center; cursor:pointer; transition:background .15s,border-color .15s; }
+.zona-soltar-adjuntos:hover,.zona-soltar-adjuntos:focus-visible,.zona-soltar-adjuntos.arrastrando { background:#d8f2e6; border-color:#16845b; outline-offset:2px; }

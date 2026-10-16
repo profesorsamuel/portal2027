@@ -529,6 +529,7 @@
       el('div', { clase: 'cabecera-acciones' }, [aceptarBtn, cerrarBtn])
     ]);
     var lista = el('ul', { clase: 'lista-adjuntos' });
+    var zonaSoltar = el('div', { clase: 'zona-soltar-adjuntos', role: 'button', tabindex: '0', 'aria-label': 'Arrastre PDF o imágenes aquí, o pulse para elegir archivos', texto: '📂 Arrastre y suelte aquí sus PDF o imágenes, o haga clic para elegir archivos.' });
     var contador = el('p', { clase: 'bloque-ayuda' });
     var resumen = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite' });
     var botones = { pdf: boton('Agregar PDF', null), imagen: boton('Agregar imágenes', null), enlace: boton('Agregar enlaces', null) };
@@ -540,6 +541,7 @@
       tipo = k;
       titulo.value = ''; archivo.value = ''; enlace.value = '';
       archivo.hidden = k === 'enlace'; enlace.hidden = k !== 'enlace';
+      aceptarBtn.hidden = k !== 'enlace';
       archivo.accept = k === 'pdf' ? '.pdf' : '.jpg,.jpeg,.png';
       etiqueta.textContent = k === 'enlace' ? 'Escriba un enlace y presione Añadir. Puede agregar varios seguidos (https://…).'
         : k === 'pdf' ? 'Elija uno o varios PDF (hasta ' + F.maxMB('materiales') + ' MB cada uno).'
@@ -550,16 +552,16 @@
     }
 
     // Convierte lo elegido en una lista de adjuntos. Valida antes de subir nada.
-    function leerItems() {
+    function leerItems(archivosElegidos) {
       if (tipo === 'enlace') {
         var url = enlace.value.trim();
         if (!C.urlSegura(url)) { mostrarEstado('Use un enlace que empiece con https:// o http://.', 'error'); return null; }
         var nombre = titulo.value.trim() || new URL(url).hostname;
         return [{ tipo: 'enlace', titulo: nombre.slice(0, 120), enlace: url }];
       }
-      var archivos = Array.prototype.slice.call(archivo.files || []);
+      var archivos = archivosElegidos || Array.prototype.slice.call(archivo.files || []);
       if (!archivos.length) { mostrarEstado('Elija al menos un archivo.', 'error'); return null; }
-      var patron = tipo === 'pdf' ? /\.pdf$/i : /\.(jpe?g|png)$/i;
+      var patron = tipo === 'pdf' ? /\.pdf$/i : tipo === 'imagen' ? /\.(jpe?g|png)$/i : /\.(pdf|jpe?g|png)$/i;
       var malos = archivos.filter(function (a) { return !patron.test(a.name); });
       if (malos.length) {
         mostrarEstado((tipo === 'pdf' ? 'Solo se aceptan PDF: ' : 'Solo se aceptan JPG o PNG: ') + malos.map(function (a) { return a.name; }).join(', '), 'error');
@@ -573,7 +575,7 @@
       return archivos.map(function (f, n) {
         var sinExtension = f.name.replace(/\.[^.]+$/, '');
         var tit = base ? (archivos.length > 1 ? base + ' ' + (n + 1) : base) : sinExtension;
-        return { tipo: tipo, titulo: tit.slice(0, 120), archivo: f };
+        return { tipo: tipo === 'mixto' ? (/\.pdf$/i.test(f.name) ? 'pdf' : 'imagen') : tipo, titulo: tit.slice(0, 120), archivo: f };
       });
     }
 
@@ -633,25 +635,44 @@
       c.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); aceptarBtn.click(); } });
     });
 
-    aceptarBtn.addEventListener('click', async function () {
-      var items = leerItems();
+    var procesando = false;
+    async function agregarSeleccion(archivosElegidos) {
+      if (procesando) { return; }
+      var items = leerItems(archivosElegidos);
       if (!items) { return; }
       var libres = MAX_ADJUNTOS - cantidad();
       if (items.length > libres) {
         mostrarEstado(libres > 0 ? 'Solo caben ' + libres + ' adjuntos más en esta tarea.' : 'Esta tarea ya tiene ' + MAX_ADJUNTOS + ' adjuntos.', 'error');
         return;
       }
+      procesando = true;
       var fallos = [];
-      if (!t) {
-        pendientes.push.apply(pendientes, items);
-        dibujarLista();
-        resumen.textContent = items.length === 1 ? 'Adjunto listo. Se guardará al crear la tarea.' : items.length + ' adjuntos listos. Se guardarán al crear la tarea.';
-      } else {
-        fallos = await guardarLote(t.id, items);
-      }
-      if (fallos.length) { mostrarEstado('Revise lo que no se guardó.', 'error'); return; }
-      if (tipo === 'enlace') { enlace.value = ''; titulo.value = ''; mostrarEstado('Enlace añadido. Puede agregar otro.', 'ok'); enlace.focus(); }
-      else { cerrarPanel(); }
+      try {
+        if (!t) {
+          pendientes.push.apply(pendientes, items);
+          dibujarLista();
+          resumen.textContent = items.length === 1 ? 'Archivo listo. Se guardará al crear la tarea.' : items.length + ' archivos listos. Se guardarán al crear la tarea.';
+        } else {
+          fallos = await guardarLote(t.id, items);
+        }
+        if (fallos.length) { mostrarEstado('Revise lo que no se guardó.', 'error'); return; }
+        if (tipo === 'enlace') { enlace.value = ''; titulo.value = ''; mostrarEstado('Enlace añadido. Puede agregar otro.', 'ok'); enlace.focus(); }
+        else { archivo.value = ''; titulo.value = ''; cerrarPanel(); }
+      } finally { procesando = false; }
+    }
+    aceptarBtn.addEventListener('click', function () { agregarSeleccion(); });
+    archivo.addEventListener('change', function () {
+      if (archivo.files && archivo.files.length) { agregarSeleccion(); }
+    });
+    zonaSoltar.addEventListener('click', function () { if (S.adjuntosDisponibles) { abrirPanel('pdf'); archivo.accept = '.pdf,.jpg,.jpeg,.png'; tipo = 'mixto'; archivo.click(); } });
+    zonaSoltar.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); zonaSoltar.click(); } });
+    ['dragenter', 'dragover'].forEach(function (nombre) { zonaSoltar.addEventListener(nombre, function (e) { e.preventDefault(); zonaSoltar.classList.add('arrastrando'); }); });
+    ['dragleave', 'drop'].forEach(function (nombre) { zonaSoltar.addEventListener(nombre, function (e) { e.preventDefault(); zonaSoltar.classList.remove('arrastrando'); }); });
+    zonaSoltar.addEventListener('drop', function (e) {
+      if (!S.adjuntosDisponibles || !e.dataTransfer || !e.dataTransfer.files.length) { return; }
+      var archivos = Array.prototype.slice.call(e.dataTransfer.files);
+      tipo = 'mixto';
+      agregarSeleccion(archivos);
     });
 
     dibujarLista();
@@ -659,7 +680,7 @@
       el('legend', { texto: 'Archivos y enlaces de la tarea' }),
       el('p', { clase: 'bloque-ayuda', texto: 'Agregue PDF, imágenes o enlaces. Puede elegir varias imágenes a la vez y agregar varios enlaces.' }),
       el('div', { clase: 'cabecera-acciones' }, [botones.pdf, botones.imagen, botones.enlace]),
-      panel, lista, contador, resumen
+      zonaSoltar, panel, lista, contador, resumen
     ]);
   }
 
