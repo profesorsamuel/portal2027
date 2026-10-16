@@ -604,8 +604,15 @@
             }
           })])
         : el('div', { clase: 'cabecera-acciones admin-cons-no' }, [el('span', { texto: 'No' }), el('button', {
-            clase: 'boton boton-secundario boton-chico', type: 'button', texto: 'Hacer consejero',
-            onclick: function () { ejecutar(function () { return hacerConsejero(f.salonId, f.profId); }, 'Consejería asignada.'); }
+            clase: 'boton boton-secundario boton-chico', type: 'button', texto: datos.consejerias.some(function (c) { return c.salon_id === f.salonId && c.consejero_id !== f.profId; }) ? 'Cambiar consejero' : 'Hacer consejero',
+            onclick: async function (ev) {
+              var actual = datos.consejerias.filter(function (c) { return c.salon_id === f.salonId && c.consejero_id !== f.profId; });
+              if (actual.length) {
+                await confirmarCambio(ev.currentTarget, 'Cambiar consejero', 'Este grupo ya tiene consejero. ¿Reemplazar la asignación anterior por este profesor? No se eliminará ninguna cuenta.', 'Cambiar consejero', function () { return hacerConsejero(f.salonId, f.profId); }, 'Consejero actualizado.');
+              } else {
+                await ejecutar(function () { return hacerConsejero(f.salonId, f.profId); }, 'Consejería asignada.');
+              }
+            }
           })]);
 
       return el('tr', { clase: 'admin-asig-fila' + (f.consejero ? ' admin-asig-es-consejero' : '') }, [
@@ -640,17 +647,10 @@
     return el('section', { clase: 'bloque' }, hijos);
   }
 
-  // Da el rol consejero al profesor si aún no lo tiene y lo pone como consejero del grupo (sin duplicar).
+  // Cambio atómico en Supabase: una sola consejería por salón.
   async function hacerConsejero(salonId, profId) {
-    if (!tieneRol(profId, 'consejero')) {
-      var rr = await db.from('portal2027_roles_usuario').insert({ usuario_id: profId, rol: 'consejero' });
-      if (rr.error) { throw rr.error; }
-    }
-    var ya = datos.consejerias.some(function (c) { return c.salon_id === salonId && c.consejero_id === profId; });
-    if (!ya) {
-      var r = await db.from('portal2027_consejeros_salon').insert({ salon_id: salonId, consejero_id: profId });
-      if (r.error) { throw r.error; }
-    }
+    var r = await db.rpc('portal2027_asignar_consejero_unico', { p_salon: salonId, p_consejero: profId });
+    if (r.error) { throw r.error; }
   }
 
   function dibujar() {
