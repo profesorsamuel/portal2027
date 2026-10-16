@@ -77,7 +77,7 @@
       consultar(db.from('portal2027_evaluaciones').select('id,categoria,tema,orden').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('orden')),
       consultar(db.from('portal2027_matriculas').select('id,estudiante:portal2027_estudiantes(codigo,nombres,apellidos)').eq('salon_id', S.asig.salon.id))
     ]);
-    S.plan = await consultar(db.from('portal2027_plan_clases').select('id,numero,tema,fecha_inicio,fecha_fin').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('numero'));
+    S.plan = await consultar(db.from('portal2027_plan_clases').select('id,numero,tema,fecha_inicio,fecha_fin,visible_estudiantes').eq('asignacion_id', a).eq('trimestre_id', t).is('eliminada_en', null).order('numero'));
     if (S.claseId && !S.plan.some(function(c) { return c.id === S.claseId; })) S.claseId = null;
     S.materiales = r[0]; S.tareas = r[1]; S.evals = r[2];
     S.mats = r[3].sort(function (x, y) { return nombreEst(x).localeCompare(nombreEst(y), 'es'); });
@@ -118,12 +118,23 @@
       var nm = S.materiales.filter(function(m) { return (m.clase_id || null) === c.id && !m.eliminado_en; }).length;
       var nt = S.tareas.filter(function(t) { return (t.clase_id || null) === c.id && !t.eliminada_en; }).length;
       var esSin = c.numero === null;
-      return el('button', { type: 'button', clase: 'clase-selector' + (S.claseId === c.id ? ' activa' : ''), 'aria-pressed': S.claseId === c.id ? 'true' : 'false', onclick: function() { S.claseId = c.id; S.tipoMaterial = null; S.editando = null; S.nuevaTarea = false; S.abierta = null; S.revisando = null; dibujar(); } }, [
+      var selector = el('button', { type: 'button', clase: 'clase-selector' + (S.claseId === c.id ? ' activa' : ''), 'aria-pressed': S.claseId === c.id ? 'true' : 'false', onclick: function() { S.claseId = c.id; S.tipoMaterial = null; S.editando = null; S.nuevaTarea = false; S.abierta = null; S.revisando = null; dibujar(); } }, [
         el('span', { clase: 'clase-num', texto: esSin ? '·' : 'Clase ' + c.numero }),
         el('strong', { texto: esSin ? c.tema : c.tema }),
         c.fecha_inicio ? el('small', { clase: 'clase-fechas', texto: '📅 ' + c.fecha_inicio + ' → ' + c.fecha_fin }) : null,
         el('span', { clase: 'clase-conteo' }, [chip('📎 ' + nm, nm ? 'azul' : ''), chip('✏️ ' + nt, nt ? 'ambar' : '')])
       ]);
+      if (esSin) return selector;
+      var check = el('input', { type: 'checkbox', checked: c.visible_estudiantes !== false });
+      check.addEventListener('change', async function () {
+        var nuevo = check.checked; check.disabled = true;
+        var ok = await accion('Actualizando visibilidad…', nuevo ? 'Clase publicada para los estudiantes.' : 'Clase oculta para los estudiantes.', async function () {
+          var r = await db.rpc('portal2027_visibilidad_clase', { p_clase: c.id, p_visible: nuevo });
+          if (r.error) throw r.error;
+        });
+        if (!ok) { check.checked = !nuevo; check.disabled = false; }
+      });
+      return el('div', { clase: 'clase-control-visibilidad' }, [selector, el('label', { clase: 'clase-publicacion' }, [check, el('span', { texto: c.visible_estudiantes !== false ? 'Visible a estudiantes' : 'Oculta a estudiantes' })])]);
     })));
     if (!S.plan.length) sec.appendChild(el('p', { clase: 'mensaje info', texto: 'Agregue las clases en Planificación para organizar sus recursos.' }));
     sec.appendChild(el('a', { clase: 'boton boton-secundario', href: P.raiz + 'pages/portal2027-planificacion.html?asignacion=' + encodeURIComponent(S.asig.id), texto: 'Ir a Planificación' }));

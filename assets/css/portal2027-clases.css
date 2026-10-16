@@ -262,3 +262,6 @@ body.pagina-clases { background: #eef3f4; }
 .pagina-clases .formulario-revision .cabecera-acciones button { padding:.43rem .72rem; font-size:.8rem; min-height:34px; }
 @media(min-width:680px){.pagina-clases .formulario-revision > label:has(input[aria-label="Nota de 0 a 5"]) { max-width:240px; }}
 @media(max-width:480px){.pagina-clases .formulario-revision{padding:.65rem}.pagina-clases .formulario-revision .entrega-marco{width:95px}.pagina-clases .formulario-revision .entrega-imagen{height:66px}}
+
+/* Publicación de clases completas */
+.clase-control-visibilidad{display:flex;flex-direction:column;min-width:0;gap:5px}.clase-control-visibilidad>.clase-selector{flex:1;width:100%}.clase-publicacion{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:700;padding:7px 4px;border:1px solid #d4e3e8;border-radius:9px;background:#f3f8fa;cursor:pointer}.clase-publicacion input{width:16px;height:16px;accent-color:#087e64}
