@@ -165,7 +165,7 @@
       selector.setAttribute('aria-label', 'Seleccionar archivos PDF, JPG o PNG');
       var detalle = el('p', { clase: 'bloque-ayuda', texto: 'Seleccione PDF o fotos JPG/PNG (máximo 10 archivos, 15 MB cada uno). No se envían automáticamente.' });
       var compartir = el('button', { type: 'button', clase: 'boton boton-secundario', texto: '📤 Compartir archivos', disabled: true });
-      var ayuda = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite', texto: 'En computadora: abra WhatsApp del acudiente y use el clip 📎 para adjuntar estos archivos desde su equipo.' });
+      var ayuda = el('p', { clase: 'bloque-ayuda', role: 'status', 'aria-live': 'polite', texto: 'En PC: para JPG/PNG use Copiar imagen y péguela con Ctrl+V en WhatsApp. Para PDF use el clip 📎 de WhatsApp. Ningún archivo se envía sin confirmación.' });
       function archivosValidos() {
         var lista = Array.from(selector.files || []);
         var tipos = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -178,7 +178,41 @@
         detalle.textContent = lista.length ? lista.map(function (f) { return f.name; }).join(' · ') : 'Seleccione PDF o fotos JPG/PNG (máximo 10 archivos, 15 MB cada uno).';
         return lista;
       }
-      selector.addEventListener('change', archivosValidos);
+      // WhatsApp Web no acepta adjuntos mediante enlaces. Para fotos ofrecemos
+      // una vía compatible con Chrome/Edge: copiar PNG comprimido al portapapeles
+      // y pegarlo en el chat con Ctrl+V, con confirmación del usuario.
+      var copiarImagen = el('button', { type: 'button', clase: 'boton boton-secundario', texto: '📋 Copiar imagen para WhatsApp', disabled: true });
+      async function imagenParaPortapapeles(archivo) {
+        var bitmap = await createImageBitmap(archivo);
+        try {
+          var escala = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(bitmap.width * escala));
+          canvas.height = Math.max(1, Math.round(bitmap.height * escala));
+          var ctx = canvas.getContext('2d');
+          if (!ctx) { throw new Error('No se pudo procesar la imagen.'); }
+          ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          return await new Promise(function (resolve, reject) {
+            canvas.toBlob(function (blob) { blob ? resolve(blob) : reject(new Error('No se pudo comprimir la imagen.')); }, 'image/png');
+          });
+        } finally { bitmap.close(); }
+      }
+      copiarImagen.addEventListener('click', async function () {
+        var fotos = archivosValidos().filter(function (f) { return /image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name); });
+        if (!fotos.length) { ayuda.textContent = 'Primero seleccione una imagen JPG o PNG.'; return; }
+        if (!navigator.clipboard || !window.ClipboardItem) {
+          ayuda.textContent = 'Este navegador no admite copiar imágenes. Abra WhatsApp y adjunte la foto usando el clip 📎.'; return;
+        }
+        copiarImagen.disabled = true;
+        try {
+          var png = await imagenParaPortapapeles(fotos[0]);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+          ayuda.textContent = 'Imagen copiada ✓. Pulse WhatsApp del acudiente, haga clic en el cuadro del mensaje y presione Ctrl+V. Compruebe la foto y pulse Enviar en WhatsApp. Para otra foto, selecciónela y repita.';
+        } catch (e) {
+          ayuda.textContent = 'No se pudo copiar la imagen (' + (e.message || 'permiso denegado') + '). Use el clip 📎 en WhatsApp.';
+        } finally { copiarImagen.disabled = false; }
+      });
+      selector.addEventListener('change', function () { var lista = archivosValidos(); copiarImagen.disabled = !lista.some(function (f) { return /\.(jpe?g|png)$/i.test(f.name); }); });
       compartir.addEventListener('click', async function () {
         var lista = archivosValidos();
         if (!lista.length) { return; }
@@ -197,6 +231,7 @@
       adjuntos.appendChild(selector);
       adjuntos.appendChild(detalle);
       adjuntos.appendChild(compartir);
+      adjuntos.appendChild(copiarImagen);
       adjuntos.appendChild(ayuda);
       zonaContactos.appendChild(adjuntos);
       var filas = mats.map(function (m) {
@@ -205,7 +240,7 @@
         boton.addEventListener('click', function () {
           var url = 'https://wa.me/' + valido + '?text=' + encodeURIComponent('Acudiente de ' + nombreEst(m.estudiante) + ':\n\n' + mensaje.value);
           window.open(url, '_blank', 'noopener,noreferrer');
-          if (selector.files && selector.files.length) { ayuda.textContent = 'WhatsApp abierto para ' + nombreEst(m.estudiante) + '. En WhatsApp Web use el clip 📎 para adjuntar sus PDF o fotos; los archivos no se envían automáticamente.'; }
+          if (selector.files && selector.files.length) { ayuda.textContent = 'Chat abierto para ' + nombreEst(m.estudiante) + '. Si copió una foto, pulse Ctrl+V en el chat y confirme el envío. Para PDF utilice el clip 📎.'; }
         });
         return el('tr', null, [el('td', { texto: nombreEst(m.estudiante) }), el('td', { texto: m.estudiante.nombre_acudiente || '—' }), el('td', { texto: tel || 'Sin registrar' }), el('td', null, [boton])]);
       });
