@@ -1,0 +1,5 @@
+1. En Supabase SQL Editor, ejecute supabase/migrations/0065_limpiar_apreciaciones_prueba.sql.
+2. Compruebe que el resultado muestre las 7 clases vinculadas. Si muestra menos, NO repita el SQL: hay clases sin evaluacion_id y requieren reparación de vínculo.
+3. Reemplace en GitHub js/modulos/portal2027-libreta.js con el archivo incluido.
+4. Espere a GitHub Pages, recargue con Ctrl+F5 y pulse Recargar en la libreta.
+Nota: las columnas sobrantes pasan a papelera, no se destruyen tareas ni notas. El SQL se limita a la asignación y trimestre indicados.
