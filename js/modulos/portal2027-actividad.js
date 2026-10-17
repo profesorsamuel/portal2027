@@ -1,0 +1,29 @@
+/* Estadísticas y seguimiento. No bloquea otras funciones si la migración aún no está instalada. */
+(function(){'use strict';
+ var P=window.portal2027;if(!P)return;
+ function evento(tipo,detalle){if(!P.db)return Promise.resolve();return P.db.rpc('portal2027_registrar_actividad',{p_evento:tipo,p_detalle:detalle||''}).then(function(r){if(r.error)console.warn('Actividad:',r.error.message);}).catch(function(e){console.warn('Actividad:',e.message);});}
+ P.actividad={registrar:evento};
+ function nodo(tag,clase,texto){var x=document.createElement(tag);if(clase)x.className=clase;if(texto!==undefined)x.textContent=texto;return x;}
+ function fecha(s){return new Date(s).toLocaleString('es-PA',{timeZone:'America/Panama',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});}
+ function tabla(encabezados,filas){var t=nodo('table','tabla-datos');var h=nodo('thead'),tr=nodo('tr');encabezados.forEach(function(v){tr.appendChild(nodo('th','',v));});h.appendChild(tr);t.appendChild(h);var b=nodo('tbody');filas.forEach(function(f){var r=nodo('tr');f.forEach(function(v){r.appendChild(nodo('td','',String(v)));});b.appendChild(r);});t.appendChild(b);return t;}
+ P.renderActividad=async function(zona){
+ var sec=nodo('section','bloque actividad-panel');sec.appendChild(nodo('h2','','Actividad y estadísticas'));sec.appendChild(nodo('p','bloque-ayuda','Accesos, consultas y descargas registrados automáticamente. Solo se muestran grupos autorizados.'));
+ var filtros=nodo('div','actividad-filtros');var salon=nodo('select'),periodo=nodo('select'),buscar=nodo('input');buscar.placeholder='Buscar estudiante';buscar.setAttribute('aria-label','Buscar estudiante');
+ [['','Todos los grupos']].forEach(function(o){var e=nodo('option','',o[1]);e.value=o[0];salon.appendChild(e);});
+ [['7','Últimos 7 días'],['30','Últimos 30 días'],['0','Todo el historial']].forEach(function(o){var e=nodo('option','',o[1]);e.value=o[0];periodo.appendChild(e);});
+ var btn=nodo('button','boton boton-secundario boton-chico','Actualizar');btn.type='button';filtros.append(salon,periodo,buscar,btn);sec.appendChild(filtros);
+ var estado=nodo('p','bloque-ayuda','Cargando registros…'),res=nodo('div','actividad-resultados');sec.append(estado,res);zona.appendChild(sec);
+ var registros=[];
+ function pintar(){res.replaceChildren();var q=buscar.value.trim().toLocaleLowerCase();var datos=registros.filter(function(x){return(!salon.value||x.salon_id===salon.value)&&(!q||(x.estudiante||'').toLocaleLowerCase().includes(q));});
+ var estudiantes=new Set(datos.map(function(x){return x.estudiante_id;}));var pdf=datos.filter(function(x){return x.evento==='pdf_descargado';}).length;
+ var resumen=nodo('div','actividad-tarjetas');[['Eventos',datos.length],['Estudiantes activos',estudiantes.size],['Descargas PDF',pdf],['Grupos',new Set(datos.map(function(x){return x.salon_id;})).size]].forEach(function(x){var c=nodo('div','actividad-tarjeta');c.append(nodo('small','',x[0]),nodo('strong','',String(x[1])));resumen.appendChild(c);});res.appendChild(resumen);
+ var ranking={};datos.forEach(function(x){var k=x.estudiante_id;if(!ranking[k])ranking[k]={nombre:x.estudiante,salon:x.salon,visitas:0,pdf:0,ultima:x.ocurrido_en};if(x.evento==='ingreso')ranking[k].visitas++;if(x.evento==='pdf_descargado')ranking[k].pdf++;});
+ var top=Object.values(ranking).sort(function(a,b){return b.visitas-a.visitas;}).slice(0,5);res.appendChild(nodo('h3','','Estudiantes más activos'));res.appendChild(tabla(['#','Estudiante','Grupo','Ingresos','PDF','Última actividad'],top.map(function(x,i){return [i+1,x.nombre,x.salon,x.visitas,x.pdf,fecha(x.ultima)];})));
+ var grupos={};datos.forEach(function(x){var g=grupos[x.salon_id]||(grupos[x.salon_id]={nombre:x.salon,est:new Set(),ingresos:0,pdf:0});g.est.add(x.estudiante_id);if(x.evento==='ingreso')g.ingresos++;if(x.evento==='pdf_descargado')g.pdf++;});res.appendChild(nodo('h3','','Actividad por salón'));res.appendChild(tabla(['Salón','Estudiantes activos','Ingresos','PDF'],Object.values(grupos).sort(function(a,b){return a.nombre.localeCompare(b.nombre);}).map(function(x){return[x.nombre,x.est.size,x.ingresos,x.pdf];})));
+ res.appendChild(nodo('h3','','Historial de actividades (últimos 200 resultados)'));res.appendChild(tabla(['Estudiante','Grupo','Actividad','Detalle','Fecha y hora'],datos.slice(0,200).map(function(x){return[x.estudiante,x.salon,x.evento.replace(/_/g,' '),x.detalle||'—',fecha(x.ocurrido_en)];})));
+ estado.textContent=datos.length+' eventos en el filtro seleccionado.';
+ }
+ async function cargar(){estado.textContent='Actualizando…';var dias=Number(periodo.value),desde=dias?new Date(Date.now()-dias*86400000).toISOString():null;var r=await P.db.rpc('portal2027_consultar_actividad',{p_salon:null,p_desde:desde,p_hasta:null});if(r.error){estado.textContent='No se pudo consultar la actividad. Compruebe que instaló SQL 0071: '+r.error.message;return;}registros=r.data||[];var valor=salon.value;var salones={};registros.forEach(function(x){salones[x.salon_id]=x.salon;});salon.replaceChildren();var o=nodo('option','','Todos los grupos');o.value='';salon.appendChild(o);Object.keys(salones).sort(function(a,b){return salones[a].localeCompare(salones[b]);}).forEach(function(id){var op=nodo('option','',salones[id]);op.value=id;salon.appendChild(op);});salon.value=valor;pintar();}
+ btn.addEventListener('click',cargar);salon.addEventListener('change',pintar);buscar.addEventListener('input',pintar);periodo.addEventListener('change',cargar);await cargar();
+ };
+})();

@@ -90,7 +90,8 @@
     { id: 'estudiantes', texto: 'Estudiantes', titulos: ['Estudiantes'] },
     { id: 'documentos', texto: 'Documentos', titulos: ['Documentos de estudiantes'] },
     { id: 'config', texto: 'Configuración', titulos: ['Configuración académica'] },
-    { id: 'respaldos', texto: 'Respaldos', titulos: ['Respaldos'] }
+    { id: 'respaldos', texto: 'Respaldos', titulos: ['Respaldos'] },
+    { id: 'actividad', texto: 'Actividad', titulos: ['Actividad y estadísticas'] }
   ];
 
   function menuSecciones(zona) {
@@ -266,6 +267,7 @@
       rejilla.hidden = true;
       barra.hidden = false;
       tituloActual.textContent = it.titulo;
+      if (empujar && P.actividad) { if(it.titulo === 'Mis notas y ejercicios') P.actividad.registrar('notas'); if(it.titulo === 'Mis clases y tareas') P.actividad.registrar('tareas'); }
       if (empujar) { try { window.history.pushState({ est: id }, '', '#apartado-' + id); } catch (e) { /* sin historial */ } }
       window.scrollTo({ top: 0 });
     }
@@ -303,15 +305,19 @@
         await P.renderDocumentosAdmin(zona, info);
         await P.renderConfigAdmin(zona, info);
         await P.renderRespaldosAdmin(zona, info);
+        if(P.renderActividad) await P.renderActividad(zona);
         menuSecciones(zona);
       } else if (rol === 'profesor') {
         zona.appendChild(await vistaProfesor(info));
         await P.renderEstudiantesProfesor(zona, info);
+        if(P.renderActividad) await P.renderActividad(zona);
       } else if (rol === 'consejero') {
         await P.renderConsejeria(zona, info);
         await P.renderDocumentosConsejeria(zona, info);
+        if(P.renderActividad) await P.renderActividad(zona);
       }
       else {
+        if(P.actividad) P.actividad.registrar('ingreso');
         await P.renderEstudianteFicha(zona, info);
         await P.renderEstudianteAcademico(zona, info);
         await P.renderEstudianteClases(zona, info);
