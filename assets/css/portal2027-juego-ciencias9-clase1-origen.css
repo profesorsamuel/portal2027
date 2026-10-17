@@ -1,0 +1,72 @@
+/* portal2027-juego-ciencias9-clase1-origen.css — Quiz de Ciencias Naturales 9.° · Clase 1.
+   Sin estilos en línea: todo el aspecto vive aquí. Los estados no dependen solo del color
+   (llevan texto y símbolos). Botones de al menos 44 px de alto. */
+
+.c1-barra-superior { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between; margin: 0.75rem 0; }
+.c1-barra-superior .c1-sonido { min-height: 44px; padding: 0.5rem 0.9rem; border: 2px solid var(--tinta); border-radius: 999px; background: var(--blanco); color: var(--tinta); font: inherit; font-weight: 600; cursor: pointer; }
+.c1-barra-superior .c1-sonido[aria-pressed="true"] { background: #e7eeed; }
+.c1-barra-superior .c1-sonido:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+.c1-estado { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: center; font-weight: 600; margin: 0.5rem 0; }
+.c1-vidas { font-size: 1.35rem; letter-spacing: 0.15rem; color: #b3261e; }
+.c1-etiqueta { font-size: 0.95rem; color: var(--texto-suave); font-weight: 600; }
+
+.c1-progreso { display: block; width: 100%; height: 14px; margin: 0.35rem 0 0.15rem; border: 0; border-radius: 999px; overflow: hidden; background: #dfe8e6; accent-color: var(--ok); }
+.c1-progreso::-webkit-progress-bar { background: #dfe8e6; border-radius: 999px; }
+.c1-progreso::-webkit-progress-value { background: var(--ok); border-radius: 999px; }
+.c1-progreso::-moz-progress-bar { background: var(--ok); border-radius: 999px; }
+.c1-progreso-texto { margin: 0 0 0.75rem; font-size: 0.92rem; color: var(--texto-suave); }
+
+.c1-tarjeta { background: var(--blanco); border: 1px solid var(--borde-panel); border-radius: var(--radio); padding: 1.1rem 1rem 1.25rem; margin: 0.75rem 0; }
+.c1-nivel { display: inline-block; margin: 0 0 0.5rem; padding: 0.2rem 0.65rem; border: 2px solid var(--tinta); border-radius: 999px; font-size: 0.85rem; font-weight: 700; color: var(--tinta); background: #eef4f3; }
+.c1-subida { margin: 0 0 0.75rem; padding: 0.6rem 0.8rem; border-left: 6px solid var(--acento); background: #fff6df; color: #5c3c00; font-weight: 600; border-radius: 6px; }
+.c1-enunciado { font-size: clamp(1.1rem, 3.4vw, 1.4rem); line-height: 1.35; margin: 0.25rem 0 1rem; font-family: var(--fuente-texto); }
+
+.c1-opciones { display: grid; gap: 0.6rem; }
+.c1-opcion { display: flex; gap: 0.7rem; align-items: flex-start; text-align: left; width: 100%; min-height: 48px; padding: 0.7rem 0.85rem; border: 2px solid var(--borde-panel); border-radius: 10px; background: var(--blanco); color: var(--texto); font: inherit; line-height: 1.3; cursor: pointer; }
+.c1-opcion:hover { border-color: var(--tinta); }
+.c1-opcion:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.c1-opcion .c1-letra { flex: 0 0 auto; min-width: 2rem; height: 2rem; display: inline-grid; place-items: center; border-radius: 50%; border: 2px solid var(--tinta); font-weight: 700; background: #eef4f3; }
+.c1-opcion .c1-texto { flex: 1 1 auto; overflow-wrap: anywhere; }
+.c1-opcion .c1-marca { flex: 0 0 auto; font-weight: 700; font-size: 0.9rem; }
+.c1-opcion.c1-elegida { border-color: var(--tinta); background: #e3eeef; box-shadow: inset 0 0 0 2px var(--tinta); }
+.c1-opcion.c1-descartada { opacity: 0.55; text-decoration: line-through; cursor: not-allowed; border-style: dashed; }
+.c1-opcion.c1-correcta { border-color: var(--ok); background: #e8f5ec; box-shadow: inset 0 0 0 2px var(--ok); }
+.c1-opcion.c1-incorrecta { border-color: #b3261e; background: #fdecea; box-shadow: inset 0 0 0 2px #b3261e; }
+.c1-opcion:disabled { cursor: default; }
+
+.c1-acciones { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; align-items: center; }
+.c1-boton { min-height: 48px; padding: 0.6rem 1.1rem; border: 2px solid var(--tinta); border-radius: 10px; background: var(--tinta); color: #ffffff; font: inherit; font-weight: 700; cursor: pointer; }
+.c1-boton:hover, .c1-boton:focus-visible { background: var(--tinta-suave); }
+.c1-boton:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.c1-boton:disabled { opacity: 0.6; cursor: not-allowed; }
+.c1-boton.c1-secundario { background: transparent; color: var(--tinta); }
+.c1-boton.c1-secundario:hover, .c1-boton.c1-secundario:focus-visible { background: #e7eeed; }
+a.c1-boton { display: inline-flex; align-items: center; text-decoration: none; }
+
+.c1-pistas { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+.c1-pista-texto { margin: 0.75rem 0 0; padding: 0.6rem 0.8rem; background: #eef4f3; border-left: 6px solid var(--foco); border-radius: 6px; }
+
+.c1-retro { margin-top: 1rem; padding: 0.8rem 0.95rem; border-radius: 10px; border: 2px solid var(--linea); line-height: 1.4; }
+.c1-retro.c1-bien { background: #e8f5ec; border-color: var(--ok); color: #174d2c; }
+.c1-retro.c1-mal { background: #fff6df; border-color: var(--acento-oscuro); color: #4d3200; }
+.c1-retro strong { display: block; margin-bottom: 0.2rem; font-size: 1.05rem; }
+.c1-retro p { margin: 0.35rem 0 0; }
+
+.c1-intro ul, .c1-intro ol, .c1-resultado ol, .c1-resultado ul { padding-left: 1.3rem; margin: 0.5rem 0 1rem; }
+.c1-intro li, .c1-resultado li { margin: 0.4rem 0; line-height: 1.4; }
+.c1-nota-grande { font-size: clamp(2rem, 9vw, 3rem); font-weight: 800; color: var(--tinta); margin: 0.25rem 0; line-height: 1.1; }
+.c1-resumen { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0 1rem; }
+.c1-dato { padding: 0.4rem 0.8rem; border: 1px solid var(--borde-panel); border-radius: 999px; background: #eef4f3; font-weight: 600; font-size: 0.95rem; }
+.c1-reflexion { margin-top: 1.25rem; padding: 0.9rem 1rem; border: 2px dashed var(--borde-panel); border-radius: 10px; background: #fbfdfc; }
+.c1-reflexion h3 { margin-top: 0; }
+.c1-reflexion li { margin: 0.7rem 0; }
+.c1-reflexion .c1-parte { display: block; font-size: 0.85rem; font-weight: 700; color: var(--texto-suave); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .c1-progreso::-webkit-progress-value { transition: width 0.3s ease; }
+}
+@media (max-width: 480px) {
+  .c1-tarjeta { padding: 0.9rem 0.75rem 1rem; }
+  .c1-boton, .c1-acciones .c1-boton { width: 100%; justify-content: center; text-align: center; }
+}
