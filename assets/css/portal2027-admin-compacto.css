@@ -62,3 +62,36 @@ body[data-rol="administrador"] .listado-profesores .tabla-datos td:nth-child(4){
 body[data-rol="administrador"] .listado-profesores .tabla-datos td:nth-child(5){width:15%}
 body[data-rol="administrador"] .menu-subsecciones~section,body[data-rol="administrador"] .secciones-admin>section{border-radius:12px}
 @media(max-width:760px){body[data-rol="administrador"] .portal{width:98%}body[data-rol="administrador"] .menu-secciones{gap:5px;padding:6px}body[data-rol="administrador"] .menu-secciones button{flex:1 1 auto;padding:7px 9px;font-size:11px}body[data-rol="administrador"] .menu-subsecciones button{flex:1 1 100%;min-height:32px}body[data-rol="administrador"] .listado-profesores{padding:10px}body[data-rol="administrador"] .listado-profesores .tabla-datos{min-width:720px}body[data-rol="administrador"] .herramientas-profesores input[type="search"]{max-width:none}}
+
+/* Panel administrativo compacto 2027 — solo estilos, sin alterar datos ni acciones */
+body[data-rol="administrador"]{background:#f2f6fb;color:#20374b}
+body[data-rol="administrador"] .portal{max-width:1480px;width:calc(100% - 24px)}
+body[data-rol="administrador"] .menu-secciones{gap:5px;padding:6px;background:#e5edf8;border-color:#cbdbea;box-shadow:0 3px 12px #183d6010}
+body[data-rol="administrador"] .menu-secciones button{padding:7px 11px;min-height:32px;font-size:11px;border-radius:8px;transition:background .15s,transform .15s}
+body[data-rol="administrador"] .menu-secciones button:hover{background:#d7eafa;transform:translateY(-1px)}
+body[data-rol="administrador"] .menu-secciones button.activa{background:linear-gradient(125deg,#14628d,#2282ad);color:white}
+body[data-rol="administrador"] .menu-subsecciones{padding:4px;gap:4px;margin:6px 0 9px}
+body[data-rol="administrador"] .menu-subsecciones button{min-height:31px;padding:5px 9px;font-size:11px}
+body[data-rol="administrador"] .secciones-admin>section,body[data-rol="administrador"] section.bloque{padding:13px 15px;margin:8px 0;border:1px solid #dce6ef;background:#fff;box-shadow:0 3px 12px #17334e0b}
+body[data-rol="administrador"] section.bloque>h2{font-size:18px;color:#155d85;margin:0 0 7px;padding-bottom:7px;border-bottom:2px solid #dcebf7}
+body[data-rol="administrador"] section.bloque h3{font-size:14px;color:#17638b;margin:12px 0 7px}
+body[data-rol="administrador"] .bloque-ayuda{font-size:11px;line-height:1.45;margin:5px 0 8px;color:#536a7c}
+body[data-rol="administrador"] .zona-importar{background:#f5f9ff;border:1px solid #dbe9f7;border-left:3px solid #2584ba;border-radius:10px;padding:10px 12px;margin:9px 0}
+body[data-rol="administrador"] .zona-importar details{margin:5px 0;font-size:11px}
+body[data-rol="administrador"] .zona-importar summary{color:#176a96;font-weight:700;cursor:pointer}
+body[data-rol="administrador"] .zona-importar label{font-size:11px;font-weight:650;display:block;margin:6px 0}
+body[data-rol="administrador"] input[type="file"]{max-width:100%;font-size:11px;padding:6px;background:#fff;border:1px dashed #b8d2e6;border-radius:8px}
+body[data-rol="administrador"] .boton,body[data-rol="administrador"] button{transition:background .15s,box-shadow .15s}
+body[data-rol="administrador"] .boton{padding:6px 10px;min-height:30px;font-size:11px;border-radius:8px}
+body[data-rol="administrador"] .zona-lista .tabla-contenedor{max-width:100%;overflow-x:auto;border:1px solid #d8e5ed;border-radius:10px}
+body[data-rol="administrador"] .zona-lista table{width:100%;border-collapse:collapse;font-size:11px;line-height:1.35}
+body[data-rol="administrador"] .zona-lista th{background:#185e83;color:#fff;font-size:10px;letter-spacing:.025em;padding:8px 7px;text-align:left;white-space:normal}
+body[data-rol="administrador"] .zona-lista td{padding:6px 7px;border-bottom:1px solid #e0e9f0;vertical-align:middle;overflow-wrap:anywhere}
+body[data-rol="administrador"] .zona-lista tbody tr:nth-child(even){background:#f0f7fc}
+body[data-rol="administrador"] .zona-lista tbody tr:hover{background:#e3f2ff}
+body[data-rol="administrador"] .zona-lista td .boton,body[data-rol="administrador"] .zona-lista td button{min-height:27px;padding:4px 8px;font-size:10px;margin:2px;border-radius:7px}
+body[data-rol="administrador"] .zona-lista td small{font-size:10px;color:#617587}
+body[data-rol="administrador"] .zona-lista td:nth-child(1){color:#17658d;font-weight:700;white-space:nowrap}
+body[data-rol="administrador"] .zona-lista td:nth-child(5){color:#16714c}
+body[data-rol="administrador"] .zona-lista td:last-child{min-width:76px}
+@media(max-width:750px){body[data-rol="administrador"] .portal{width:calc(100% - 12px)}body[data-rol="administrador"] section.bloque{padding:10px}body[data-rol="administrador"] .zona-importar{padding:8px}body[data-rol="administrador"] .zona-lista table{min-width:750px}}
