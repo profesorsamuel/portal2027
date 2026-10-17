@@ -136,10 +136,22 @@
     }
     // Semanas ligadas a la planificación: sus columnas no se pueden eliminar desde la libreta.
     S.planEv = {};
+    var plSemanasActivas = [];
     try {
       var pl = await todas(function () { return db.from('portal2027_plan_clases').select('evaluacion_id,numero').eq('asignacion_id', asigId).eq('trimestre_id', trId).is('eliminada_en', null).order('id'); });
+      plSemanasActivas = pl;
       pl.forEach(function (p) { if (p.evaluacion_id) { S.planEv[p.evaluacion_id] = p.numero; } });
     } catch (e) { /* si la planificación no está instalada, no hay columnas ligadas */ }
+    // La planificación es la fuente de verdad para las apreciaciones semanales.
+    // No mostrar columnas semanales heredadas, duplicadas o sin clase activa.
+    // Las evaluaciones sueltas se conservan para no afectar tareas independientes.
+    if (plSemanasActivas.length) {
+      var idsPlan = {};
+      plSemanasActivas.forEach(function (p) { if (p.evaluacion_id) idsPlan[p.evaluacion_id] = true; });
+      S.evals = S.evals.filter(function (e) {
+        return e.categoria !== 'apreciacion' || e.semana == null || !!idsPlan[e.id];
+      });
+    }
     S.mats = r[1].filter(function (m) { return m.estudiante; }).sort(function (a, b) { return comparaEst(a.estudiante, b.estudiante); });
     S.notas = {};
     r[2].forEach(function (n) { S.notas[clave(n.evaluacion_id, n.matricula_id)] = { valor: n.valor === null ? null : Number(n.valor), version: n.version, nota_manual: !!n.nota_manual }; });
