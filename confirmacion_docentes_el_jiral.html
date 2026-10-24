@@ -55,7 +55,7 @@ input[type=text]{width:100%;padding:12px;border:1px solid #b9c9dd;border-radius:
 .grp{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:54px;margin-top:10px;padding:10px 14px;background:var(--soft);border:2px solid #cfdcf0;border-radius:12px;cursor:pointer;color:var(--blue);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .grp:focus-visible{outline:3px solid #123e8566;outline-offset:2px}
 .grp.open{background:var(--blue);border-color:var(--blue);color:#fff}
-.grp .gt{display:block;font-weight:800;font-size:17px;line-height:1.25}
+.grp .gt{display:block;font-weight:700;font-size:17px;line-height:1.25}
 .grp .gc{display:block;font-size:12.5px;margin-top:2px;opacity:.85;font-weight:600}
 .grp .arrow{flex:none;font-size:20px;line-height:1;transition:transform .2s}
 .grp.open .arrow{transform:rotate(90deg)}
@@ -125,19 +125,15 @@ h1{font-size:22px;margin:8px 0}
 </header>
 
 <div class="body">
-<div class="notice">
-<strong>Estimados docentes y personal de apoyo:</strong>
-<p>Por favor, confirme su asistencia a cada una de las actividades. Las respuestas permitirán organizar la participación del C.E.B.G. El Jiral.</p>
-<strong>Aclaración sobre los días libres:</strong>
-<p>Quien asista al acto cívico del <strong>3 de noviembre</strong> tendrá libre el <strong>6 de noviembre</strong>. Quien asista al desfile en la provincia de <strong>Colón</strong> tendrá libre el <strong>9 de noviembre</strong>, según lo indicado para esta convocatoria.</p>
-</div>
-
 <div class="events">
 <div class="event"><h3>🇵🇦 3 de noviembre</h3><p>Acto cívico del C.E.B.G. El Jiral</p><p class="free">Día libre correspondiente: 6 de noviembre</p></div>
 <div class="event"><h3>🇵🇦 Desfile en Colón</h3><p>Participación en los desfiles de la provincia de Colón</p><p class="free">Día libre correspondiente: 9 de noviembre</p></div>
 </div>
 
 <div id="banner"></div>
+
+<h2>Confirmación individual</h2>
+<div id="list" class="list"></div>
 
 <h2>Resultados en vivo</h2>
 <p><small>Todos los docentes pueden ver aquí cómo va la confirmación. Se actualiza solo.</small></p>
@@ -147,9 +143,6 @@ h1{font-size:22px;margin:8px 0}
 </div>
 <div class="progress"><div id="bar"></div></div>
 <small id="progressTxt"></small>
-
-<h2>Confirmación individual</h2>
-<div id="list" class="list"></div>
 </div>
 
 <footer>C.E.B.G. EL JIRAL · HONESTIDAD, ESTUDIO Y TRABAJO · COLÓN</footer>
