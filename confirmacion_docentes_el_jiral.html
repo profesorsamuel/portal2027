@@ -272,21 +272,22 @@ async function load() {
 }
 
 async function save(n, a, b) {
+  if (!configured) throw new Error("Falta configurar Supabase: pegue SUPABASE_URL y SUPABASE_ANON_KEY al inicio del script.");
   const row = {nombre: n, acto_3_nov: a, desfile_colon: b, updated_at: new Date().toISOString()};
-  if (configured) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?on_conflict=nombre`, {
-      method: "POST",
-      headers: {...HEADERS, Prefer: "resolution=merge-duplicates,return=minimal"},
-      body: JSON.stringify(row)
-    });
-    if (!r.ok) throw new Error(await r.text());
-  }
-  data[n] = {a, b, t: row.updated_at};
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?on_conflict=nombre`, {
+    method: "POST",
+    headers: {...HEADERS, Prefer: "resolution=merge-duplicates,return=minimal"},
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  await load();   // confirma que quedó guardado leyendo de la base de datos
+  if (!data[n] || data[n].a !== a || data[n].b !== b) throw new Error("No se confirmó el guardado en la base de datos (revise las políticas de la tabla).");
 }
 
 async function refresh(manual) {
   try {
     await load();
+    if (configured) showBanner("", "");
     if (!saving) render();
   } catch (e) {
     showBanner("err", "No se pudieron cargar los resultados. Revise la URL/clave de Supabase y las políticas de la tabla. Detalle: " + String(e.message).slice(0, 200));
@@ -416,7 +417,7 @@ function render() {
 /* ---------- Eventos ---------- */
 
 /* ---------- Inicio ---------- */
-if (!configured) console.warn("Supabase no está configurado: pegue SUPABASE_URL y SUPABASE_ANON_KEY al inicio del script.");
+if (!configured) { console.warn("Supabase no está configurado."); showBanner("warn", "⚠ Esta página aún no está conectada a la base de datos (Supabase). Las respuestas NO se guardan ni se ven en otras páginas hasta pegar SUPABASE_URL y SUPABASE_ANON_KEY al inicio del script."); }
 if (openName) { draft = {a: "", b: ""}; openGroups.add(GROUPS.find(g => g.items.some(p => p.n === openName)).titulo); }
 render();
 refresh().then(() => { if (openName && data[openName]) { draft = {a: data[openName].a || "", b: data[openName].b || ""}; render(); } });
